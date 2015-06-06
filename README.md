@@ -8,14 +8,14 @@ SNPGenie is Perl-based program for calculating evolutionary parameters such as n
 # Using snpgenie
 SNPGenie version 1.2 is a command-line interface application written in Perl and also available as an executable (.exe) file. As such, it is limited only by the memory and processing capabilities of the local hardware. It accepts one or more reference sequence files in FASTA format (.fa/.fasta), one file with ORF information in Gene Transfer Format (.gtf), and one or more tab-delimited (.txt) SNP Reports in CLC format (http://www.geneious.com/). 
 At minimum, the SNP report must include the following 8 default column selections, with the unaltered CLC labels: 
-(1) Reference Position, which refers to the start site of the polymorphism within the reference FASTA sequence;
-(2) Type, which refers to the nature of the record, usually the type of polymorphism, e.g., “SNV”;
-(3) Reference, the reference nucleotide(s) at that site(s);
-(4) Allele, the variant nucleotide(s) at that site(s);
-(5) Count, the number of reads containing the variant;
-(6) Coverage, the total number of sequencing reads at the site(s);
-(7) Frequency, the frequency of the variant as a percentage, e.g., “14.6” for 14.60%; and
-(8) Overlapping annotations, containing the name of the protein product or open reading frame (ORF), e.g., “CDS: ORF1”.
+1. Reference Position, which refers to the start site of the polymorphism within the reference FASTA sequence;
+2. Type, which refers to the nature of the record, usually the type of polymorphism, e.g., “SNV”;
+3. Reference, the reference nucleotide(s) at that site(s);
+4. Allele, the variant nucleotide(s) at that site(s);
+5. Count, the number of reads containing the variant;
+6. Coverage, the total number of sequencing reads at the site(s);
+7. Frequency, the frequency of the variant as a percentage, e.g., “14.6” for 14.60%; and
+8. Overlapping annotations, containing the name of the protein product or open reading frame (ORF), e.g., “CDS: ORF1”.
 
 In addition to the aforementioned columns, the SNP report should also be free of thousand separators (,) in the Reference Position, Count, and Coverage columns (default format). The Variant Frequency must remain a percentage (default format). Finally, the user should verify that the reading frame in the CLC output is correct. SNPGenie will produce various errors to ensure that these things are so, e.g., by checking that all products begin with START and end with STOP codons, and checking for premature stop codons.
 	The Gene Transfer Format (.gtf) file must include records for all ORFs present in your SNP Report(s). If a single ORF has multiple segments with different coordinates, simply enter one line for each segment, using the same product name. SNPGenie for CLC can currently handle 2 segments per ORF. For more information about GTF, please visit <http://mblab.wustl.edu/GTF22.html>.
