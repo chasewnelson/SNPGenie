@@ -84,6 +84,7 @@ Along with the aforementioned WARNINGS, SNPGenie will also alert you to such abe
 # Output
 
 SNPGenie creates a new folder called SNPGenie_Results within the working directory. This contains 3 TAB-delimited files:
+
 1. WARNINGS.txt. This file alerts you to peculiarities observed in your data or any indicators that your annotations might be incorrect. All warnings are also printed to the Terminal (Unix) window.
 
 2. Nucleotide_diversity_results.txt. This file contains the nucleotide diversity results for all SNP Reports processed. The columns are:
@@ -138,8 +139,8 @@ When using this software, please refer to and cite:
 
 # Troubleshooting
 
+* Are (end-of-line) newline characters in Unix LF (\n) format? Although SNPGenie was also designed to accept Windows CRLF (\r\n) or Mac CR (\r) formats, these can sometimes introduce problems causing SNPGenie to crash or return all 0 values. Trying changing the newline character to Unix LF using a free program such a [TextWrangler] (http://www.barebones.com/products/textwrangler/).
 * Are the files tab-delimited? (All SNP Report and FASTA files must end in .txt with columns separated by tabs [\t])
-* Are (end-of-line) newline characters in either Unix LF (\n; preferable) or Windows CRLF (\r\n) format?
 * Are there no commas in the integer fields (CDS Position, Coverage, Minimum, and Maximum)? This can be readily fixed by formatting only those columns as type “General” in Excel.
 * Is the Variant Frequency column in a Percentage format—NOT a decimal (e.g., 0.1% rather than 0.001)?
 * Is the FRAME correct (i.e., do the codons in the SNP report begin with ATG and end with TAA, TAG, or TGA)?
