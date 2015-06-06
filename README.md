@@ -1,4 +1,4 @@
-snpgenie
+snpgenie version 1.2
 ===================================
 
 Perl software for estimating evolutionary parameters from pooled next-generation sequencing SNP data. Here's a list:
