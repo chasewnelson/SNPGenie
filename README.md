@@ -115,7 +115,8 @@ Finally, the first output is divided by the appropriate second output to obtain 
 # Citation
 When using this software, please refer to and cite:
 
-	Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: Insights from next-generation 		sequencing. Infection, Genetics and Evolution 30:1-7. 
+	Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: 
+	Insights from next-generation sequencing. Infection, Genetics and Evolution 30:1-7. 
 	doi: 10.1016/j.meegid.2014.11.026
 
 # Troubleshooting
