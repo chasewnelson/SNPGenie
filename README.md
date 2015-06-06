@@ -1,11 +1,7 @@
-# snpgenie
-Perl software for estimating evolutionary parameters from pooled next-generation sequencing SNP data
-
-Cheesesquare Sample
+snpgenie
 ===================================
 
-Demos the new Android Design library. This is not an exhaustive sample, but shows
-some of the important features in the Design library:
+Perl software for estimating evolutionary parameters from pooled next-generation sequencing SNP data. Here's a list:
 
 - Collapsing Toolbar
 - FloatingActionButton
