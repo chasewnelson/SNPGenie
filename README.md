@@ -1,6 +1,6 @@
 # snpgenie
 
-Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. 
+Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. Just run **snpgenie-1.2.pl** in a directory containing the necessary input files, and we take care of the rest!
 
 # Introduction
 
@@ -50,6 +50,19 @@ At minimum, the Geneious SNP report must include the following default column se
 ## Gene Transfer Input
 
 The Gene Transfer Format (.gtf) file must include records for all ORFs present in your SNP Report(s). If a single ORF has multiple segments with different coordinates, simply enter one line for each segment, using the same product name. SNPGenie for CLC can currently handle 2 segments per ORF. For more information about GTF, please visit <http://mblab.wustl.edu/GTF22.html>.
+
+## Options
+
+In case you want to alter the way snpgenie works, the following options (implemented using Perl's Getopt::Long module) may be used:
+
+* **--minfreq**: optional floating point parameter specifying the minimum allele (SNP) frequency to include. Default: 0.
+* **--snpreport**: optional string parameter specifying the (one) SNP report to analyze. Default: auto-detect .txt and .csv file(s).
+* **--fastafile**: optional string parameter specifying the (one) reference sequence. Default: auto-detect .fa and/or .fasta file(s).
+* **--gtffile**: optional string parameter specifying the one file with CDS annotations. Default: auto-detect the .gtf file.
+* **--sepfiles**: optional Boolean (flag) parameter specifying whether to product separate results (codon) files for each SNP report (all results already included together in the codon_results.txt file). Simply include in the command line to activate. Default: not included.
+* **--slidingwindow**: optional integer parameter specifying the length of the sliding (codon) window used in the analysis. Default: 9 codons.
+* **--ratiomode**: optional Boolean (flag) parameter specifying whether to include π values for each codon in the codon_results.txt file(s). This is usually inadvisable, as π values (especially πS) are subject to great stochastic error. Simply include in the command line to activate. Default: not included.
+* **--sitebasedmode**: optional Boolean (flag) parameter specifying whether to include π values derived using a site-based (reference codon context only) approach in the codon_results.txt file(s). This is usually inadvisable, as π values will not reflect the true population pairwise comparisons. Simply include in the command line to activate. Default: not included.
 
 ## How snpgenie works
 
