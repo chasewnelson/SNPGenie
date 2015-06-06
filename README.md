@@ -55,7 +55,7 @@ The Gene Transfer Format (.gtf) file must include records for all ORFs present i
 
 In case you want to alter the way snpgenie works, the following options (implemented using Perl's Getopt::Long module) may be used:
 
-* **--minfreq**: optional floating point parameter specifying the minimum allele (SNP) frequency to include. Default: 0.
+* **--minfreq**: optional floating point parameter specifying the minimum allele (SNP) frequency to include. Enter as a proportion/decimal (e.g., 0.01), **not** as a percentage (e.g., 1.0%). Default: 0.
 * **--snpreport**: optional string parameter specifying the (one) SNP report to analyze. Default: auto-detect .txt and .csv file(s).
 * **--fastafile**: optional string parameter specifying the (one) reference sequence. Default: auto-detect .fa and/or .fasta file(s).
 * **--gtffile**: optional string parameter specifying the one file with CDS annotations. Default: auto-detect the .gtf file.
@@ -63,6 +63,10 @@ In case you want to alter the way snpgenie works, the following options (impleme
 * **--slidingwindow**: optional integer parameter specifying the length of the sliding (codon) window used in the analysis. Default: 9 codons.
 * **--ratiomode**: optional Boolean (flag) parameter specifying whether to include π values for each codon in the codon_results.txt file(s). This is usually inadvisable, as π values (especially πS) are subject to great stochastic error. Simply include in the command line to activate. Default: not included.
 * **--sitebasedmode**: optional Boolean (flag) parameter specifying whether to include π values derived using a site-based (reference codon context only) approach in the codon_results.txt file(s). This is usually inadvisable, as π values will not reflect the true population pairwise comparisons. Simply include in the command line to activate. Default: not included.
+
+For example, if you wanted to turn on the **sepfiles** option, specify a minimum allele frequency of 0.1 and specify your input files, you could enter the command:
+
+perl snpgenie-1.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
 
 ## How snpgenie works
 
