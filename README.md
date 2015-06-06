@@ -20,14 +20,14 @@ Further details on input are below.
 
 At minimum, a CLC SNP report must include the following 8 default column selections, with the unaltered CLC column headers: 
 
-1. **Reference Position**, which refers to the start site of the polymorphism within the reference FASTA sequence;
-2. **Type**, which refers to the nature of the record, usually the type of polymorphism, e.g., “SNV”;
-3. **Reference**, the reference nucleotide(s) at that site(s);
-4. **Allele**, the variant nucleotide(s) at that site(s);
-5. **Count**, the number of reads containing the variant;
-6. **Coverage**, the total number of sequencing reads at the site(s);
-7. **Frequency**, the frequency of the variant as a percentage, e.g., “14.6” for 14.60%; and
-8. **Overlapping annotations**, containing the name of the protein product or open reading frame (ORF), e.g., “CDS: ORF1”.
+* **Reference Position**, which refers to the start site of the polymorphism within the reference FASTA sequence;
+* **Type**, which refers to the nature of the record, usually the type of polymorphism, e.g., “SNV”;
+* **Reference**, the reference nucleotide(s) at that site(s);
+* **Allele**, the variant nucleotide(s) at that site(s);
+* **Count**, the number of reads containing the variant;
+* **Coverage**, the total number of sequencing reads at the site(s);
+* **Frequency**, the frequency of the variant as a percentage, e.g., “14.6” for 14.60%; and
+* **Overlapping annotations**, containing the name of the protein product or open reading frame (ORF), e.g., “CDS: ORF1”.
 
 In addition to the aforementioned columns, the SNP report should also be free of thousand separators (,) in the Reference Position, Count, and Coverage columns (default format). The Variant Frequency must remain a percentage (default format). Finally, the user should verify that the reading frame in the CLC output is correct. SNPGenie will produce various errors to ensure that these things are so, e.g., by checking that all products begin with START and end with STOP codons, and checking for premature stop codons.
 
@@ -35,15 +35,14 @@ In addition to the aforementioned columns, the SNP report should also be free of
 
 At minimum, the Geneious SNP report must include the following default column selections, with the unaltered Geneious column headers:
 
-1. **Type**, which refers to the nature of the record entry, e.g., “Polymorphism”; 
-2. **Minimum** and 3. **Maximum**, which refer to the start and end sites of the polymorphism within the reference FASTA sequence, and will hold the same value for SNP records; 
-4. **product**, containing the name of the protein product or open reading frame, e.g., ORF1; 
-5. **Amino Acid Change**, which holds the single letter representations of the reference and variant amino acids, separated by spaces and a dash-greater-than (->) symbol, e.g., I -> V; N.B.: in the case of a synonymous SNP, this record is empty; 
-7. **Codon Change** and (8) **Change**, which contain the reference and variant nucleotides as full codons and single nucleotides, e.g., AUU -> GUU and A -> G, respectively, and are always populated for SNP records;
-9. **Coverage**, containing the number of sequencing reads that include the site; 
-10. **Protein Effect**, containing the word “Substitution” in the event of a nonsynonymous SNP, and “None” in the event of a synonymous SNP; and 
-11. **Variant Frequency**, which contains the frequency of the nucleotide variant as a percentage, e.g., 14.60%.
-12. 
+* **Type**, which refers to the nature of the record entry, e.g., “Polymorphism”; 
+* **Minimum** and **Maximum**, which refer to the start and end sites of the polymorphism within the reference FASTA sequence, and will hold the same value for SNP records; 
+* **product**, containing the name of the protein product or open reading frame, e.g., ORF1; 
+* **Amino Acid Change**, which holds the single letter representations of the reference and variant amino acids, separated by spaces and a dash-greater-than (->) symbol, e.g., I -> V; N.B.: in the case of a synonymous SNP, this record is empty; 
+* **Codon Change** and **Change**, which contain the reference and variant nucleotides as full codons and single nucleotides, e.g., AUU -> GUU and A -> G, respectively, and are always populated for SNP records;
+* **Coverage**, containing the number of sequencing reads that include the site; 
+* **Protein Effect**, containing the word “Substitution” in the event of a nonsynonymous SNP, and “None” in the event of a synonymous SNP; and 
+* **Variant Frequency**, which contains the frequency of the nucleotide variant as a percentage, e.g., 14.60%.
 
 ## Gene Transfer Input
 
