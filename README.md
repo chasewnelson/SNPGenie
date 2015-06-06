@@ -8,9 +8,10 @@ SNPGenie is Perl-based program for calculating evolutionary parameters such as n
 # Using snpgenie
 SNPGenie version 1.2 is a command-line interface application written in Perl and also available as an executable (.exe) file. As such, it is limited only by the memory and processing capabilities of the local hardware. It accepts one or more reference sequence files in FASTA format (.fa/.fasta), one file with ORF information in Gene Transfer Format (.gtf), and one or more tab-delimited (.txt) SNP Reports in CLC format (http://www.geneious.com/). 
 At minimum, the SNP report must include the following 8 default column selections, with the unaltered CLC labels: 
-1. Reference Position, which refers to the start site of the polymorphism within the reference FASTA sequence;
-2. Type, which refers to the nature of the record, usually the type of polymorphism, e.g., “SNV”;
-3. Reference, the reference nucleotide(s) at that site(s);
+
+	1. Reference Position, which refers to the start site of the polymorphism within the reference FASTA sequence;
+	2. Type, which refers to the nature of the record, usually the type of polymorphism, e.g., “SNV”;
+	3. Reference, the reference nucleotide(s) at that site(s);
 4. Allele, the variant nucleotide(s) at that site(s);
 5. Count, the number of reads containing the variant;
 6. Coverage, the total number of sequencing reads at the site(s);
