@@ -1,10 +1,10 @@
 # snpgenie
 
-SNPGenie is Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. 
+Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. 
 
 # Introduction
 
-SNPGenie is Perl-based program for calculating evolutionary parameters such as nonsynonymous and synonymous nucleotide diversities (πN and πS, respectively) from next-generation sequencing (NGS) SNP reports generated using CLC Genomics Workbench or Geneious. For the results to have biological meaning, the SNP report must contain SNPs called from the sequencing of a pooled nucleic acid sample that is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it would be appropriate to sequence the pooled nucleic acid content of the viruses in a blood sample from that host.
+New applications of next-generation sequencing (NGS) use pooled samples containing DNA from multiple individuals to perform population genetic analyses. SNPGenie is a Perl program which can analyze the single-nucleotide polymorphism (SNP) calls from such data to calculate evolutionary parameters such as nucleotide diversity (including its nonsynonymous and synonymous partitions, πN and πS) and gene diversity. These calls are typically present in annotation tables and assume that the pooled nucleic acid sample is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it would be appropriate to sequence the pooled nucleic acid content of the viruses in a blood sample from that host. Comparing πN and πS for, say, a gene product, or comparing gene diversity at sites of different types, may help to dicepher instances of positive (Darwinian) selection, negative (purifying) selection, and random genetic drift. For additional background, see Nelson & Hughes (2015).
 
 # Using snpgenie
 
@@ -15,6 +15,9 @@ SNPGenie version 1.2 is a command-line interface application written in Perl. As
 3. One or more tab-delimited (.txt) **SNP Reports** in CLC format (http://www.geneious.com/). 
 
 Further details on input are below.
+
+## Reference sequence
+The reference sequence must be present in a **FASTA** (.fa/.fasta) file. Providing only one reference sequence assumes...
 
 ## CLC Genomics Workbench Input
 
