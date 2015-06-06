@@ -1,11 +1,13 @@
 # snpgenie
 
-Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. 
+SNPGenie is Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. 
 
 # Introduction
+
 SNPGenie is Perl-based program for calculating evolutionary parameters such as nonsynonymous and synonymous nucleotide diversities (πN and πS, respectively) from next-generation sequencing (NGS) SNP reports generated using CLC Genomics Workbench or Geneious. For the results to have biological meaning, the SNP report must contain SNPs called from the sequencing of a pooled nucleic acid sample that is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it would be appropriate to sequence the pooled nucleic acid content of the viruses in a blood sample from that host.
 
 # Using snpgenie
+
 SNPGenie version 1.2 is a command-line interface application written in Perl. As such, it is limited only by the memory and processing capabilities of the local hardware. As input, it accepts:
 
 1. One or more **reference sequence** files in **FASTA** format (.fa/.fasta); 
@@ -15,6 +17,7 @@ SNPGenie version 1.2 is a command-line interface application written in Perl. As
 Further details on input are below.
 
 ## CLC Genomics Workbench Input
+
 At minimum, a CLC SNP report must include the following 8 default column selections, with the unaltered CLC column headers: 
 
 1. **Reference Position**, which refers to the start site of the polymorphism within the reference FASTA sequence;
@@ -29,6 +32,7 @@ At minimum, a CLC SNP report must include the following 8 default column selecti
 In addition to the aforementioned columns, the SNP report should also be free of thousand separators (,) in the Reference Position, Count, and Coverage columns (default format). The Variant Frequency must remain a percentage (default format). Finally, the user should verify that the reading frame in the CLC output is correct. SNPGenie will produce various errors to ensure that these things are so, e.g., by checking that all products begin with START and end with STOP codons, and checking for premature stop codons.
 
 ## Geneious Input
+
 At minimum, the Geneious SNP report must include the following default column selections, with the unaltered Geneious column headers:
 
 1. **Type**, which refers to the nature of the record entry, e.g., “Polymorphism”; 
@@ -42,6 +46,7 @@ At minimum, the Geneious SNP report must include the following default column se
 12. 
 
 ## Gene Transfer Input
+
 The Gene Transfer Format (.gtf) file must include records for all ORFs present in your SNP Report(s). If a single ORF has multiple segments with different coordinates, simply enter one line for each segment, using the same product name. SNPGenie for CLC can currently handle 2 segments per ORF. For more information about GTF, please visit <http://mblab.wustl.edu/GTF22.html>.
 
 Given the appropriate files, SNPGenie calculates nucleotide diversities for nonsynonymous and synonymous sites in a protein-coding sequence. Nucleotide diversity may be defined as the average number of nucleotide variants per nucleotide site for all pairwise comparisons. To distinguish between nonsynonymous and synonymous differences and sites, it is necessary to consider the codon context of each nucleotide in a sequence. This is why the user must submit the starting and ending sites of the coding regions in the .gtf file, along with the reference FASTA sequence file, to allow an accurate estimation of the number of nonsynonymous and synonymous sites for each codon by the Nei-Gojobori (1986) method. SNPGenie first splits the coding sequence into codons, each of which contains 3 sites. The software then determines the number of these sites which are nonsynonymous and synonymous by testing all possible changes at each site of every codon in the sequence. Because different nucleotide variants at the same site may lead to both nonsynonymous and synonymous polymorphisms, fractional sites occur frequently (e.g., only 2 of 3 possible nucleotide substitutions at the third position of AGA cause an amino acid change; thus, that site is considered 2/3 nonsynonymous and 1/3 synonymous). Next, the SNP report is consulted for the presence of variants to produce a revised estimate. Variants are incorporated through averaging weighted by their frequency. Although it is a rare occurrence, high levels of sequence variation may alter the number of nonsynonymous and synonymous sites in a particular codon, contributing to an altered picture of natural selection.
@@ -56,6 +61,7 @@ There are some situations in which multiple FASTA sequences may be necessary, e.
 Along with the aforementioned WARNINGS, SNPGenie will also alert you to such aberrations as missing FASTA files, incorrectly named ORFs, and reference sequences which do not match what is reported in the SNP Report. In most instances, SNPGenie will terminate. If this occurs, you may consult either the Terminal (command line) screen, or else the new SNPGenie_Results directory (created after running SNPGenie in your working directory) for the SNPGenie_WARNINGS.txt file. Also see section 5. Troubleshooting below.
 
 # Output
+
 SNPGenie creates a new folder called SNPGenie_Results within the working directory. This contains 3 TAB-delimited files:
 1. WARNINGS.txt. This file alerts you to peculiarities observed in your data or any indicators that your annotations might be incorrect. All warnings are also printed to the Terminal (Unix) window.
 
@@ -111,6 +117,7 @@ SNPGenie_DiffsCounter.exe MyRefSeq.fasta MySNPReport.csv start end
 Two files are produced: one containing the nonsynonymous and synonymous differences annotated by codon (file name suffix “_DiffsByCodon”), and another containing the sums of such differences for all codons (file name suffix “_SumDiffs”). After this is completed, the results from the Difference Counter must be divided by the number of sites from the Site Counter to obtain the average number of pairwise differences per site of each type (yielding πN and πS). In other words, divide the output of SNPGenie_DiffsCounter.exe by the corresponding output of SNPGenie_SitesCounter.exe.
 
 # Example
+
 Suppose a blood sample is taken from an animal infected with an known influenza virus inoculum. This inoculum reference sequence is present in the file fluRef.fasta. Suppose Illumina sequencing has been performed on the pooled viral sample present in the blood sample, and Geneious has been used to generate a SNP report, fluPopSNPs.csv. Suppose further that we are interested in examining πN and πS in a protein product that is encoded by nucleotides 112 through 949. After consulting the SNP report to ensure it meets all format requirements, the following operations are performed:
 
 SNPGenie_SitesCounter.exe fluRef.fasta fluPopSNPs.csv 112 949
@@ -119,6 +126,7 @@ SNPGenie_DiffsCounter.exe fluRef.fasta fluPopSNPs.csv 112 949
 Finally, the first output is divided by the appropriate second output to obtain πN and πS.
 
 # Citation
+
 When using this software, please refer to and cite:
 
 	Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: 
@@ -126,6 +134,7 @@ When using this software, please refer to and cite:
 	doi: 10.1016/j.meegid.2014.11.026
 
 # Troubleshooting
+
 * Are the files tab-delimited? (All SNP Report and FASTA files must end in .txt with columns separated by tabs [\t])
 * Are (end-of-line) newline characters in either Unix LF (\n; preferable) or Windows CRLF (\r\n) format?
 * Are there no commas in the integer fields (CDS Position, Coverage, Minimum, and Maximum)? This can be readily fixed by formatting only those columns as type “General” in Excel.
@@ -133,9 +142,9 @@ When using this software, please refer to and cite:
 * Is the FRAME correct (i.e., do the codons in the SNP report begin with ATG and end with TAA, TAG, or TGA)?
 
 # References
+
 * Knapp EW, Irausquin SJ, Friedman R, Hughes AL (2011) PolyAna: analyzing synonymous and nonsynonymous polymorphic sites. Conserv Genet Resour 3:429-431.
 * Nei M, Gojobori T (1986) Simple methods for estimating the numbers of synonymous and nonsynonymous nucleotide substitutions. Mol Biol Evol 3:418-26.
 * Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing. Infection, Genetics and Evolution 30:1-7.
-
 
 Copyright 2015
