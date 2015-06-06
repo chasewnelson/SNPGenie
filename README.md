@@ -1,7 +1,14 @@
-snpgenie version 1.2
+snpgenie
 ===================================
 
-Perl software for estimating evolutionary parameters from pooled next-generation sequencing SNP data. Here's a list:
+Perl software for estimating evolutionary parameters from pooled next-generation sequencing SNP data. 
+
+# Introduction
+SNPGenie is a suite of Perl-based scripts for calculating evolutionary parameters such as nonsynonymous and synonymous nucleotide diversities (πN and πS, respectively) from next-generation sequencing (NGS) SNP reports generated using CLC Genomics Workbench or Geneious. For the results to have biological meaning, the SNP report must contain SNPs called from the sequencing of a pooled nucleic acid sample that is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it would be appropriate to sequence the pooled nucleic acid content of the viruses in a blood sample from that host.
+
+
+
+Here's a list:
 
 - Collapsing Toolbar
 - FloatingActionButton
