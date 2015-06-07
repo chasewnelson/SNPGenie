@@ -85,13 +85,13 @@ Along with the aforementioned WARNINGS, SNPGenie will also alert you to such abe
 
 SNPGenie creates a new folder called SNPGenie_Results within the working directory. This contains the following TAB-delimited results files:
 
-1. SNPGenie_parameters.txt, containing the input parameters and file names.
+1. **SNPGenie_parameters.txt**, containing the input parameters and file names.
 
-2. SNPGenie_LOG.txt, documenting any peculiarities or errors encountered. Warnings are also printed to the Terminal (shell) window.
+2. **SNPGenie_LOG.txt**, documenting any peculiarities or errors encountered. Warnings are also printed to the Terminal (shell) window.
 
-3. site_results.txt, providing results for all polymorphic sites. Columns are:
-	* file. The SNP report analyzed.
-	* product. The CDS annotation to which the site belongs; "noncoding" if none.
+3. **site_results.txt**, providing results for all polymorphic sites. Columns are:
+	* *file*. The SNP report analyzed.
+	* *product*. The CDS annotation to which the site belongs; "noncoding" if none.
 	* site. The site coordinate of the nucleotide in the reference sequence.
 	* ref_nt. The identity of the nucleotide in the reference sequence.
 	* maj_nt. The most common nucleotide in the population at this site.
@@ -109,15 +109,15 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* G. For G (guanine), as for A.
 	* T. For T (thymine), as for A.
 
-4. codon_results.txt, ...
+4. **codon_results.txt**, ...
 
-5. <SNP report name(s)>_results.txt, containing the information present in the codon_results.txt file, but separated by SNP report.
+5. **<SNP report name(s)>_results.txt**, containing the information present in the codon_results.txt file, but separated by SNP report.
 
-6. product_results.txt, ..
+6. **product_results.txt**, ..
 
-7. population_summary.txt, ...
+7. **population_summary.txt**, ...
 
-8. sliding_window_length<Length>_results.txt, containing codon-based results over a sliding window.
+8. **sliding_window_length<Length>_results.txt**, containing codon-based results over a sliding window.
 
 
 
