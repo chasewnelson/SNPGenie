@@ -24,16 +24,15 @@ The reference sequence must be present in a **FASTA** (.fa/.fasta) file. Providi
 The Gene Transfer Format (.gtf) file is tab (\t)-delimited, and must include records for all CDS elements (i.e., open reading frames, or ORFs) present in your SNP Report(s). Note that SNPGenie expects every coding element to be labeled as type "CDS", and for its product name to follow the "gene_id" tag. (This name must match that present in the SNP report.) If a single coding element has multiple segments with different coordinates, simply enter one line for each segment, using the same product name. SNPGenie for CLC can currently handle 2 segments per ORF; if more are needed, just contact us! For more information about GTF, please visit <http://mblab.wustl.edu/GTF22.html>. A simple example follows:
 
 	reference.gbk	CLC	CDS	5694	8369	.	+	0	gene_id "ORF1";
-	reference.gbk	CLC	CDS	170	1684	.	+	0	gene_id "ORF2";
-	reference.gbk	CLC	CDS	8203	8772	.	+	0	gene_id "ORF3";
-	reference.gbk	CLC	CDS	1465	4485	.	+	0	gene_id "ORF4";
-	reference.gbk	CLC	CDS	5621	5687	.	+	0	gene_id "ORF5";
-	reference.gbk	CLC	CDS	7920	8167	.	+	0	gene_id "ORF5";
-	reference.gbk	CLC	CDS	5395	5687	.	+	0	gene_id "ORF6";
-	reference.gbk	CLC	CDS	7920	8016	.	+	0	gene_id "ORF6";
-	reference.gbk	CLC	CDS	4439	5080	.	+	0	gene_id "ORF7";
-	reference.gbk	CLC	CDS	5247	5549	.	+	0	gene_id "ORF8";
-	reference.gbk	CLC	CDS	4911	5246	.	+	0	gene_id "ORF9";
+	reference.gbk	CLC	CDS	8203	8772	.	+	0	gene_id "ORF2";
+	reference.gbk	CLC	CDS	1465	4485	.	+	0	gene_id "ORF3";
+	reference.gbk	CLC	CDS	5621	5687	.	+	0	gene_id "ORF4";
+	reference.gbk	CLC	CDS	7920	8167	.	+	0	gene_id "ORF4";
+	reference.gbk	CLC	CDS	5395	5687	.	+	0	gene_id "ORF5";
+	reference.gbk	CLC	CDS	7920	8016	.	+	0	gene_id "ORF5";
+	reference.gbk	CLC	CDS	4439	5080	.	+	0	gene_id "ORF6";
+	reference.gbk	CLC	CDS	5247	5549	.	+	0	gene_id "ORF7";
+	reference.gbk	CLC	CDS	4911	5246	.	+	0	gene_id "ORF8";
 
 ### CLC Genomics Workbench SNP Reports
 
