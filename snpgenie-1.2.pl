@@ -167,7 +167,7 @@ if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to ch
 	
 	chdir('SNPGenie_Results');
 	
-	open(PARAM_FILE,">>snpgenie\_parameters\.txt");
+	open(PARAM_FILE,">>SNPGenie\_parameters\.txt");
 	print PARAM_FILE "$param_file_contents";
 	close PARAM_FILE;
 	
