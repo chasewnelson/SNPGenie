@@ -80,7 +80,7 @@ In case you want to alter the way snpgenie works, the following options (impleme
 
 For example, if you wanted to turn on the **sepfiles** option, specify a minimum allele frequency of 0.1 and specify your input files, you could enter the command:
 
-	perl snpgenie-1.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
+	snpgenie-1.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
 
 ## How SNPGenie Works
 
