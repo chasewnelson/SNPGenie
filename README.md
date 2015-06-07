@@ -191,7 +191,7 @@ When using this software, please refer to and cite:
 * SNPGenie isn't executing? Try preceding the whole command line with "perl" to make sure SNPGenie is being treated as a script. For example:
 
 	perl snpgenie-1.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf	
-	** You might also try making the script executable at the command line, as follows:
+* SNPGenie still isn't executing? You might also try making the script executable at the command line, as follows:
 
 	chmod +x snpgenie-1.2.pl	
 
