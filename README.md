@@ -83,9 +83,45 @@ Along with the aforementioned WARNINGS, SNPGenie will also alert you to such abe
 
 # Output
 
-SNPGenie creates a new folder called SNPGenie_Results within the working directory. This contains 3 TAB-delimited files:
+SNPGenie creates a new folder called SNPGenie_Results within the working directory. This contains the following TAB-delimited results files:
 
-1. WARNINGS.txt. This file alerts you to peculiarities observed in your data or any indicators that your annotations might be incorrect. All warnings are also printed to the Terminal (Unix) window.
+1. SNPGenie_parameters.txt, containing the input parameters and file names.
+
+2. SNPGenie_LOG.txt, documenting any peculiarities or errors encountered. Warnings are also printed to the Terminal (shell) window.
+
+3. site_results.txt, providing results for all polymorphic sites. Columns are:
+	* file. The SNP report analyzed.
+	* product. The CDS annotation to which the site belongs; "noncoding" if none.
+	* site. The site coordinate of the nucleotide in the reference sequence.
+	* ref_nt. The identity of the nucleotide in the reference sequence.
+	* maj_nt. The most common nucleotide in the population at this site.
+	* position_in_codon. If present in a CDS annotation, the position of this site within its codon (1, 2, or 3).
+	* overlapping_ORFs. The number of CDS annotations overlapping this site. For example, if the site is part of only one open reading frame, the value will be 0. If the site is part of two open reading frames, the value will be 1.
+	* codon_start_site. The site coordinate of the relevant codon's first nucleotide in the reference sequence.
+	* codon. The identity of the relevant codon.
+	* pi. Nucleotide diversity at this site.
+	* gdiv. Gene diversity at this site.
+	* class_vs_ref. This site's classification, as compared to the reference sequence. For example, if the site contains only one SNP, and that SNP is synonymous, the site will be classified as Synonymous. Nonsynonymous or Synonymous.
+	* class. This site's classification as compared to all sequences present in the population. For example, if the population contains both A and G residues at the third site of a GAA (reference) codon, then the site will be Synonymous, because both GAA and GAG encode Glu. On the other hand, if the population also contains a C at this site, the site will be Ambiguous, because GAC encodes Asp, meaning both nonsynonymous and synonymous polymorphisms exist at the site. Nonsynonymous, Synonymous, or Ambiguous.
+	* coverage. The NGS read depth at the site.
+	* A. The number of reads containing an A (adenine) nucleotide at this site. N.B.: may be fractional if the coverage and variant frequency given in the SNP report do not imply a whole number.
+	* C. For C (cytosine), as for A.
+	* G. For G (guanine), as for A.
+	* T. For T (thymine), as for A.
+
+4. codon_results.txt, ...
+
+5. <SNP report name(s)>_results.txt, containing the information present in the codon_results.txt file, but separated by SNP report.
+
+6. product_results.txt, ..
+
+7. population_summary.txt, ...
+
+8. sliding_window_length<Length>_results.txt, containing codon-based results over a sliding window.
+
+
+
+OLD:
 
 2. Nucleotide_diversity_results.txt. This file contains the nucleotide diversity results for all SNP Reports processed. The columns are:
 	* File. The SNP Report analyzed.
@@ -104,30 +140,17 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* Mean dN vs. Ref. Each individual sequence read can be compared to the reference sequence to yield the number of nonsynonymous differences. The Jukes-Cantor correction is applied to account for multiple mutations at the same site, yielding dN. The mean of all such comparisons is the value given in this column.
 	* Mean dS vs. Ref. Each individual sequence read can be compared to the reference sequence to yield the number of synonymous differences. The Jukes-Cantor correction is applied to account for multiple mutations at the same site, yielding dS. The mean of all such comparisons is the value given in this column.
 
-3. Gene_diversity_results.txt. This file contains the gene diversity results for all SNP Reports processed. The columns are:
-	* File. The SNP Report analyzed.
-	* Product. The protein product or ORF.
-	* Site. The site of the nucleotide in the reference sequence.
-	* Nucleotide. The nucleotide to which this row applies.
-	* Position in Codon. The position (1, 2, or 3) of the nucleotide within its codon. 
-	* Overlapping ORFs. The number of other ORFs (besides the one for which the nucleotide is reported) which overlap this nucleotide site. For example, if ORF1, ORF2, and ORF3 all overlap at a site, the value of this column will be 2 each time it is reported (once for ORF1, once for ORF2, and once for ORF3).
-	* Codon Start Site. The position of the first nucleotide in the relevant codon within the reference sequence.
-	* Codon. The codon in which the nucleotide exists.
-	* Gene Diversity. The value of gene diversity (expected heterozygosity, HO) at this site, defined as 1-∑_(i=1)^4▒x_i^2 , where xi is the frequency of nucleotide i at the site (1=A, 2=C, 3=G, 4=T).
-	* Site Classification vs. Ref. Possible categories for polymorphic sites are 1=synonymous, 2=nonsynonymous, 3=ambiguous (Knapp et al. 2011) as compared to the reference.
-	* Site Classification vs. All Codons. Possible categories for polymorphic sites are 1=synonymous, 2=nonsynonymous, 3=ambiguous (Knapp et al. 2011). All codons present at the site, given the variant data in the SNP Report, are compared to determine this classification.
-	* Site Classification vs. Ref. Cha.
 
-In addition to the aforementioned columns, the SNP report must also be free of thousand separators (,) in the Minimum, Maximum, and Coverage columns. The Variant Frequency must be a percentage (default format). The line endings must be line feed (\n) or carriage return-line feed (\r\n) format. If an inappropriate line ending format is used, the program simply returns nucleotide diversities of zero. Mac OSX users may ensure an appropriate format by saving the SNP reports as Windows Comma Separated (.csv) files in Excel, or else manually changing the line ending format in an application such as TextWrangler. Finally, it is critically important for the user to verify that the reading frame in the Geneious output is correct by manually checking the START and STOP codons, as well as the intervening sequences for premature stop codons that may have been introduced by inaccurate data annotations.
 
 # Example
 
-Suppose a blood sample is taken from an animal infected with an known influenza virus inoculum. This inoculum reference sequence is present in the file fluRef.fasta. Suppose Illumina sequencing has been performed on the pooled viral sample present in the blood sample, and Geneious has been used to generate a SNP report, fluPopSNPs.csv. Suppose further that we are interested in examining πN and πS in a protein product that is encoded by nucleotides 112 through 949. After consulting the SNP report to ensure it meets all format requirements, the following operations are performed:
+Suppose a blood sample is taken from an animal infected with an known influenza virus inoculum. This inoculum reference sequence is present in the file fluRef.fasta. Suppose Illumina sequencing has been performed on the pooled viral sample present in the blood sample, and Geneious has been used to generate a SNP report, fluPopSNPs.csv. Suppose further that we are interested in examining πN and πS in a protein product that is encoded by nucleotides 112 through 949. After consulting the SNP report to ensure it meets all format requirements, the following command is performed:
 
-SNPGenie_SitesCounter.exe fluRef.fasta fluPopSNPs.csv 112 949
-SNPGenie_DiffsCounter.exe fluRef.fasta fluPopSNPs.csv 112 949
+...
 
-Finally, the first output is divided by the appropriate second output to obtain πN and πS.
+The sum of the mean number of nonsynonymous (or synonymous) pairwise differences may be divided by the sum of the number of nonsynonymous (or synonymous) sites to obtain πN (or πS).
+
+...
 
 # Citation
 
