@@ -1,4 +1,4 @@
-# snpgenie
+# SNPGenie
 
 Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. Just run **snpgenie-1.2.pl** in a directory containing the necessary input files, and we take care of the rest!
 
