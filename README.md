@@ -12,12 +12,28 @@ SNPGenie version 1.2 is a command-line interface application written in Perl. As
 
 1. One or more **reference sequence** files in **FASTA** format (.fa/.fasta); 
 2. One file with CDS information in **Gene Transfer Format** (.gtf); and 
-3. One or more tab-delimited (.txt) **SNP reports** in CLC format (http://www.geneious.com/). 
+3. One or more tab-delimited (.txt) **SNP reports** in CLC or Geneious format. If you want another format included, just ask! 
 
 Further details on input are below.
 
 ### Reference Sequence
 The reference sequence must be present in a **FASTA** (.fa/.fasta) file. Providing only one reference sequence assumes...
+
+### Gene Transfer Format
+
+The Gene Transfer Format (.gtf) file is tab (\t)-delimited, and must include records for all CDS elements (i.e., open reading frames, or ORFs) present in your SNP Report(s). Note that SNPGenie expects every coding element to be labeled as type "CDS". If a single coding element has multiple segments with different coordinates, simply enter one line for each segment, using the same product name. SNPGenie for CLC can currently handle 2 segments per ORF; if more are needed, just contact us! For more information about GTF, please visit <http://mblab.wustl.edu/GTF22.html>. A simple example follows:
+
+	reference.gbk	CLC	CDS	5694	8369	.	+	0	gene_id "ORF1";
+	reference.gbk	CLC	CDS	170	1684	.	+	0	gene_id "ORF2";
+	reference.gbk	CLC	CDS	8203	8772	.	+	0	gene_id "ORF3";
+	reference.gbk	CLC	CDS	1465	4485	.	+	0	gene_id "ORF4";
+	reference.gbk	CLC	CDS	5621	5687	.	+	0	gene_id "ORF5";
+	reference.gbk	CLC	CDS	7920	8167	.	+	0	gene_id "ORF5";
+	reference.gbk	CLC	CDS	5395	5687	.	+	0	gene_id "ORF6";
+	reference.gbk	CLC	CDS	7920	8016	.	+	0	gene_id "ORF6";
+	reference.gbk	CLC	CDS	4439	5080	.	+	0	gene_id "ORF7";
+	reference.gbk	CLC	CDS	5247	5549	.	+	0	gene_id "ORF8";
+	reference.gbk	CLC	CDS	4911	5246	.	+	0	gene_id "ORF9";
 
 ### CLC Genomics Workbench SNP Reports
 
@@ -48,22 +64,6 @@ At minimum, the Geneious SNP report must include the following default column se
 * **Variant Frequency**, which contains the frequency of the nucleotide variant as a percentage, e.g., 14.60%.
 
 As with CLC, the Geneious SNP report should ideally be free of extraneous characters such as thousand separators (,), but SNPGenie will do its best to adapt if they are present. Again, the Variant Frequency must remain a percentage (default format). Again, the user should verify that the reading frame in the Geneious output is correct. SNPGenie will produce various errors to indicate when these things are not so, e.g., by checking that all products begin with START and end with STOP codons, and checking for premature stop codons. Make sure to check the SNPGenie LOG file!
-
-### Gene Transfer Format
-
-The Gene Transfer Format (.gtf) file is tab (\t)-delimited, and must include records for all CDS elements (i.e., open reading frames, or ORFs) present in your SNP Report(s). Note that SNPGenie expects every coding element to be labeled as type "CDS". If a single coding element has multiple segments with different coordinates, simply enter one line for each segment, using the same product name. SNPGenie for CLC can currently handle 2 segments per ORF; if more are needed, just contact us! For more information about GTF, please visit <http://mblab.wustl.edu/GTF22.html>. A simple example follows:
-
-	reference.gbk	CLC	CDS	5694	8369	.	+	0	gene_id "ORF1";
-	reference.gbk	CLC	CDS	170	1684	.	+	0	gene_id "ORF2";
-	reference.gbk	CLC	CDS	8203	8772	.	+	0	gene_id "ORF3";
-	reference.gbk	CLC	CDS	1465	4485	.	+	0	gene_id "ORF4";
-	reference.gbk	CLC	CDS	5621	5687	.	+	0	gene_id "ORF5";
-	reference.gbk	CLC	CDS	7920	8167	.	+	0	gene_id "ORF5";
-	reference.gbk	CLC	CDS	5395	5687	.	+	0	gene_id "ORF6";
-	reference.gbk	CLC	CDS	7920	8016	.	+	0	gene_id "ORF6";
-	reference.gbk	CLC	CDS	4439	5080	.	+	0	gene_id "ORF7";
-	reference.gbk	CLC	CDS	5247	5549	.	+	0	gene_id "ORF8";
-	reference.gbk	CLC	CDS	4911	5246	.	+	0	gene_id "ORF9";
 
 ## Options
 
