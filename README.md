@@ -92,26 +92,26 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 3. **site_results.txt**, providing results for all polymorphic sites. Columns are:
 	* *file*. The SNP report analyzed.
 	* *product*. The CDS annotation to which the site belongs; "noncoding" if none.
-	* site. The site coordinate of the nucleotide in the reference sequence.
-	* ref_nt. The identity of the nucleotide in the reference sequence.
-	* maj_nt. The most common nucleotide in the population at this site.
-	* position_in_codon. If present in a CDS annotation, the position of this site within its codon (1, 2, or 3).
-	* overlapping_ORFs. The number of CDS annotations overlapping this site. For example, if the site is part of only one open reading frame, the value will be 0. If the site is part of two open reading frames, the value will be 1.
-	* codon_start_site. The site coordinate of the relevant codon's first nucleotide in the reference sequence.
-	* codon. The identity of the relevant codon.
-	* pi. Nucleotide diversity at this site.
-	* gdiv. Gene diversity at this site.
-	* class_vs_ref. This site's classification, as compared to the reference sequence. For example, if the site contains only one SNP, and that SNP is synonymous, the site will be classified as Synonymous. Nonsynonymous or Synonymous.
-	* class. This site's classification as compared to all sequences present in the population. For example, if the population contains both A and G residues at the third site of a GAA (reference) codon, then the site will be Synonymous, because both GAA and GAG encode Glu. On the other hand, if the population also contains a C at this site, the site will be Ambiguous, because GAC encodes Asp, meaning both nonsynonymous and synonymous polymorphisms exist at the site. Nonsynonymous, Synonymous, or Ambiguous.
-	* coverage. The NGS read depth at the site.
-	* A. The number of reads containing an A (adenine) nucleotide at this site. N.B.: may be fractional if the coverage and variant frequency given in the SNP report do not imply a whole number.
-	* C. For C (cytosine), as for A.
-	* G. For G (guanine), as for A.
-	* T. For T (thymine), as for A.
+	* *site*. The site coordinate of the nucleotide in the reference sequence.
+	* *ref_nt*. The identity of the nucleotide in the reference sequence.
+	* *maj_nt*. The most common nucleotide in the population at this site.
+	* *position_in_codon*. If present in a CDS annotation, the position of this site within its codon (1, 2, or 3).
+	* *overlapping_ORFs*. The number of CDS annotations overlapping this site. For example, if the site is part of only one open reading frame, the value will be 0. If the site is part of two open reading frames, the value will be 1.
+	* *codon_start_site*. The site coordinate of the relevant codon's first nucleotide in the reference sequence.
+	* *codon*. The identity of the relevant codon.
+	* *pi*. Nucleotide diversity at this site.
+	* *gdiv*. Gene diversity at this site.
+	* *class_vs_ref*. This site's classification, as compared to the reference sequence. For example, if the site contains only one SNP, and that SNP is synonymous, the site will be classified as Synonymous. Nonsynonymous or Synonymous.
+	* *class*. This site's classification as compared to all sequences present in the population. For example, if the population contains both A and G residues at the third site of a GAA (reference) codon, then the site will be Synonymous, because both GAA and GAG encode Glu. On the other hand, if the population also contains a C at this site, the site will be Ambiguous, because GAC encodes Asp, meaning both nonsynonymous and synonymous polymorphisms exist at the site. Nonsynonymous, Synonymous, or Ambiguous.
+	* *coverage*. The NGS read depth at the site.
+	* *A*. The number of reads containing an A (adenine) nucleotide at this site. N.B.: may be fractional if the coverage and variant frequency given in the SNP report do not imply a whole number.
+	* *C*. For C (cytosine), as for A.
+	* *G*. For G (guanine), as for A.
+	* *T*. For T (thymine), as for A.
 
 4. **codon_results.txt**, ...
 
-5. **<SNP report name(s)>_results.txt**, containing the information present in the codon_results.txt file, but separated by SNP report.
+5. **\<SNP report name(s)\>_results.txt**, containing the information present in the codon_results.txt file, but separated by SNP report.
 
 6. **product_results.txt**, ..
 
