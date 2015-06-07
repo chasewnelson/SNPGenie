@@ -188,6 +188,13 @@ When using this software, please refer to and cite:
 
 ## Troubleshooting
 
+* SNPGenie isn't executing? Try preceding the whole command line with "perl" to make sure SNPGenie is being treated as a script. For example:
+
+	perl snpgenie-1.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf	
+	** You might also try making the script executable at the command line, as follows:
+
+	chmod +x snpgenie-1.2.pl	
+
 * Are (end-of-line) newline characters in Unix LF (\n) format? Although SNPGenie was also designed to accept Windows CRLF (\r\n) or Mac CR (\r) formats, these can sometimes introduce problems causing SNPGenie to crash or return all 0 values. Trying changing the newline character to Unix LF using a free program such a [TextWrangler] (http://www.barebones.com/products/textwrangler/).
 * Are the FASTA files and/or CLC files tab (\t)-delimited?
 * Are the Geneious files comma-separated?
