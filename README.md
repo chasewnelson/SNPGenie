@@ -122,7 +122,23 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* *G*. For G (guanine), as for A.
 	* *T*. For T (thymine), as for A.
 
-4. **codon_results.txt**, ...
+4. **codon_results.txt**, , providing results for all polymorphic sites. Columns are:
+	* *file*. The SNP report analyzed.
+	* *product*. The CDS annotation to which the site belongs; "noncoding" if none.
+	* *site*. The site coordinate of the nucleotide in the reference sequence.
+	* *codon*. The identity of the relevant codon.
+	* *num_overlap_ORF_nts*. The number of nucleotides in this codon (up to 3) which overlap other ORFs (in addition to the current "product" annotation).
+	* *mean_nonsyn_diffs*. The mean number of pairwise nucleotide comparisons in this codon which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of πN.
+	* *mean_syn_diffs*. The mean number of pairwise nucleotide comparisons in this codon which are synonymous (i.e., amino acid-conserving) in the pooled sequence sample. The numerator of πS.
+	* *nonsyn_sites*. The mean number of sites in this codon which are nonsynonymous, given all sequences in the pooled sample. The denominator of πN and mean πN versus the reference.
+	* *syn_sites*. The mean number of sites in this codon which are synonymous, given all sequences in the pooled sample. The denominator of πS mean πS versus the reference.
+	* *nonsyn_sites_ref*. The number of sites in this codon which are nonsynonymous in the reference sequence.
+	* *syn_sites_ref*. The number of sites in this codon which are synonymous in the reference sequence.
+	* *mean_nonsyn_diffs_vs_ref*. This codon's mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean πN versus the reference.
+	* *mean_syn_diffs_vs_ref*. This codon's mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean πS versus the reference.
+	* *mean_gdiv*. Mean gene diversity (observed heterozygosity) for this codon's nucleotide sites.
+	* *mean_nonsyn_gdiv*. Mean gene diversity for this codon's nonsynonymous polymorphic sites.
+	* *mean_syn_gdiv*. Mean gene diversity for this codon's synonymous polymorphic sites.
 
 5. **\<SNP report name(s)\>_results.txt**, containing the information present in the codon_results.txt file, but separated by SNP report.
 
