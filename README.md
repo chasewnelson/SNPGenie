@@ -185,39 +185,6 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 
 8. **sliding_window_length<Length>_results.txt**, containing codon-based results over a sliding window, with a default length of 9 codons.
 
-
-
-OLD:
-
-2. Nucleotide_diversity_results.txt. This file contains the nucleotide diversity results for all SNP Reports processed. The columns are:
-	* File. The SNP Report analyzed.
-	* Product. The protein product or ORF.
-	* Site. The site of the first nucleotide in this row’s codon, relative to the reference sequence.
-	* Codon. The codon to which this row applies.
-	* Num Overlap ORF Nts. The number of nucleotides within this codon (ranging from 0 to 3) which overlap another ORF. For example, if a codon is contained within ORF1 and ORF2, this value will be 3.
-	* Nonsyn Diffs. For the codons observed at this site, determined using variant and coverage data, this column gives the mean number of pairwise differences per site which are nonsynonymous (amino acid-altering). For codon comparisons in which ≥2 nucleotides differ, all possible mutational pathways are considered via an adaptation of the Nei & Gojobori (1986) method (Nelson & Hughes 2015).
-	* Syn Diffs. For all possible codons observed at this site, determined using variant and coverage data, this column gives the mean number of pairwise differences per site which are synonymous (not amino acid-altering). For codon comparisons in which ≥2 nucleotides differ, all possible mutational pathways are considered via an adaptation of the Nei & Gojobori (1986) method (Nelson & Hughes 2015).
-	* Nonsyn Sites. The number of nucleotide sites in the current codon which are nonsynonymous, determined using an adaptation of the Nei & Gojobori (1986) method (Nelson & Hughes 2015) which considers codons frequencies. The sum of this value and the value of Syn Sites for a codon sum to 3, as there are 3 nucleotide sites per codon.
-	* Syn Sites. The number of nucleotide sites in the current codon which are synonymous, determined using an adaptation of the Nei & Gojobori (1986) method (Nelson & Hughes 2015) which considers codons frequencies. The sum of this value and the value of Nonsyn Sites for a codon sum to 3, as there are 3 nucleotide sites per codon. 
-	* Nonsyn Sites (Ref). The number of nucleotide sites in the reference sequence of the current codon which are nonsynonymous., determined using the methods of Nei & Gojobori (1986). The sum of this value and the value of Syn Sites (Ref) will be 3.
-	* Syn Sites (Ref). The number of nucleotide sites in the reference sequence of the current codon which are synonymous, determined using the methods of Nei & Gojobori (1986). The sum of this value and the value of Nonsyn Sites (Ref) will be 3.
-	* πN. The mean number of nonsynonymous differences per nonsynonymous site in the population of sequences.
-	* πS. The mean number of nonsynonymous differences per nonsynonymous site in the population of sequences.
-	* Mean dN vs. Ref. Each individual sequence read can be compared to the reference sequence to yield the number of nonsynonymous differences. The Jukes-Cantor correction is applied to account for multiple mutations at the same site, yielding dN. The mean of all such comparisons is the value given in this column.
-	* Mean dS vs. Ref. Each individual sequence read can be compared to the reference sequence to yield the number of synonymous differences. The Jukes-Cantor correction is applied to account for multiple mutations at the same site, yielding dS. The mean of all such comparisons is the value given in this column.
-
-
-
-## Example
-
-Suppose a blood sample is taken from an animal infected with an known influenza virus inoculum. This inoculum reference sequence is present in the file fluRef.fasta. Suppose Illumina sequencing has been performed on the pooled viral sample present in the blood sample, and Geneious has been used to generate a SNP report, fluPopSNPs.csv. Suppose further that we are interested in examining πN and πS in a protein product that is encoded by nucleotides 112 through 949. After consulting the SNP report to ensure it meets all format requirements, the following command is performed:
-
-...
-
-The sum of the mean number of nonsynonymous (or synonymous) pairwise differences may be divided by the sum of the number of nonsynonymous (or synonymous) sites to obtain πN (or πS).
-
-...
-
 ## Additional Scripts
 
 Some additional scripts are included to automate some common tasks when preparing SNPGenie input. These currently are:
@@ -234,9 +201,7 @@ Some additional scripts are included to automate some common tasks when preparin
 
 When using this software, please refer to and cite:
 
-	Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: 
-	Insights from next-generation sequencing. Infection, Genetics and Evolution 30:1-7. 
-	doi: 10.1016/j.meegid.2014.11.026
+	Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing. Infection, Genetics and Evolution 30:1-7. doi: 10.1016/j.meegid.2014.11.026
 
 ## Troubleshooting
 
