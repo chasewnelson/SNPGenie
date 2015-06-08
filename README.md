@@ -122,7 +122,7 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* *G*. For G (guanine), as for A.
 	* *T*. For T (thymine), as for A.
 
-4. **codon_results.txt**, , providing results for all polymorphic sites. Columns are:
+4. **codon_results.txt**, providing results for all polymorphic sites. Columns are:
 	* *file*. The SNP report analyzed.
 	* *product*. The CDS annotation to which the site belongs; "noncoding" if none.
 	* *site*. The site coordinate of the nucleotide in the reference sequence.
@@ -142,11 +142,48 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 
 5. **\<SNP report name(s)\>_results.txt**, containing the information present in the codon_results.txt file, but separated by SNP report.
 
-6. **product_results.txt**, ..
+6. **product_results.txt**, providing results for all CDS elements present in the GTF file. Columns are:
+	* *file*. The SNP report analyzed.
+	* *product*. The CDS annotation to which the site belongs; "noncoding" if none.
+	* *mean_nonsyn_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of πN.
+	* *mean_syn_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are synonymous (i.e., amino acid-conserving) in the pooled sequence sample. The numerator of πS.
+	* *mean_nonsyn_diffs_vs_ref*. The sum over all codons in this product of the mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean πN versus the reference.
+	* *mean_syn_diffs_vs_ref*. The sum over all codons in this product of the mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean πS versus the reference.
+	* *nonsyn_sites*. The mean number of sites in this product which are nonsynonymous, given all sequences in the pooled sample. The denominator of πN and mean πN versus the reference.
+	* *syn_sites*. The mean number of sites in this product which are synonymous, given all sequences in the pooled sample. The denominator of πS and mean πS versus the reference.
+	* *piN*. The mean number of pairwise nonsynonymous differences per nonsynonymous site in this product.
+	* *piS*. The mean number of pairwise synonymous differences per synonymous site in this product.
+	* *mean_dN_vs_ref*. The mean number of nonsynonymous differences from the reference per nonsynonymous site in this product.
+	* *mean_dS_vs_ref*. The mean number of synonymous differences from the reference per synonymous site in this product.
+	* *mean_gdiv_polymorphic*. Mean gene diversity (observed heterozygosity) at all polymorphic nucleotide sites in this product.
+	* *mean_gdiv_nonsyn*. Mean gene diversity at all nonsynonymous polymorphic nucleotide sites in this product.
+	* *mean_gdiv_syn*. Mean gene diversity at all synonymous polymorphic nucleotide sites in this product.
 
-7. **population_summary.txt**, ...
+7. **population_summary.txt**, providing summary results for each population's sample (SNP report). Columns are:
+	* *file*. The SNP report analyzed.
+	* *sites*. Total number of sites in the reference genome.
+	* *sites_coding*. Total number of sites in the reference genome which code for a protein product, given the CDS annotations in the GTF file.
+	* *sites_noncoding*. Total number of sites in the reference genome which do not code for a protein product, given the CDS annotations in the GTF file.
+	* *pi*. Mean number of pairwise differences per site in the pooled sample across the whole genome.
+	* *pi_coding*. Mean number of pairwise differences per site in the pooled sample across all coding sites in the genome.
+	* *pi_noncoding*. Mean number of pairwise differences per site in the pooled sample across all noncoding sites in the genome.
+	* *nonsyn_sites*. The mean number of sites in the genome which are nonsynonymous, given all sequences in the pooled sample. The denominator of πN and mean πN versus the reference.
+	* *syn_sites*. The mean number of sites in the genome which are synonymous, given all sequences in the pooled sample. The denominator of πS and mean πS versus the reference.
+	* *piN*. The mean number of pairwise nonsynonymous differences per nonsynonymous site across the genome of the pooled sample.
+	* *piS*. The mean number of pairwise synonymous differences per synonymous site across the genome of the pooled sample.
+	* *mean_dN_vs_ref*. The mean number of nonsynonymous differences from the reference per nonsynonymous site across the genome of the pooled sample.
+	* *mean_dS_vs_ref*. The mean number of synonymous differences from the reference per synonymous site across the genome of the pooled sample.
+	* *mean_gdiv_polymorphic*. Mean gene diversity (observed heterozygosity) at all polymorphic nucleotide sites in the genome of the pooled sample.
+	* *mean_gdiv_nonsyn*. Mean gene diversity at all nonsynonymous polymorphic nucleotide sites in the genome of the pooled sample.
+	* *mean_gdiv_syn*. Mean gene diversity at all synonymous polymorphic nucleotide sites in the genome of the pooled sample.
+	* *mean_gdiv*. Mean gene diversity at all nucleotide sites in the genome of the pooled sample.
+	* *sites_polymorphic*. The number of sites in the genome of the pooled sample which are polymorphic.
+	* *mean_gdiv_coding_poly*. Mean gene diversity at all polymorphic nucleotide sites in the genome of the pooled sample which code for a protein product, given the CDS annotations in the GTF file.
+	* *sites_coding_poly*. The number of sites in the genome of the pooled sample which are polymorphic and code for a protein product, given the CDS annotations in the GTF file.
+	* *mean_gdiv_noncoding_poly*. Mean gene diversity at all polymorphic nucleotide sites in the genome of the pooled sample which do not code for a protein product, given the CDS annotations in the GTF file.
+	* *sites_noncoding_poly*. The number of sites in the genome of the pooled sample which are polymorphic and do not code for a protein product, given the CDS annotations in the GTF file.
 
-8. **sliding_window_length<Length>_results.txt**, containing codon-based results over a sliding window.
+8. **sliding_window_length<Length>_results.txt**, containing codon-based results over a sliding window, with a default length of 9 codons.
 
 
 
