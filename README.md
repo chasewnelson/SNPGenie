@@ -223,8 +223,8 @@ When using this software, please refer to and cite:
 
 ## References
 
-* Knapp EW, Irausquin SJ, Friedman R, Hughes AL (2011) PolyAna: analyzing synonymous and nonsynonymous polymorphic sites. Conserv Genet Resour 3:429-431.
-* Nei M, Gojobori T (1986) Simple methods for estimating the numbers of synonymous and nonsynonymous nucleotide substitutions. Mol Biol Evol 3:418-26.
-* Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing. Infection, Genetics and Evolution 30:1-7.
+* Knapp EW, Irausquin SJ, Friedman R, Hughes AL (2011) PolyAna: analyzing synonymous and nonsynonymous polymorphic sites. *Conserv Genet Resour* **3**:429-431.
+* Nei M, Gojobori T (1986) Simple methods for estimating the numbers of synonymous and nonsynonymous nucleotide substitutions. *Mol Biol Evol* **3**:418-26.
+* Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing. *Infection, Genetics and Evolution* **30**:1-7.
 
 Copyright 2015
