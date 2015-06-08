@@ -4,20 +4,19 @@ Perl software for estimating evolutionary parameters from pooled next-generation
 
 ## Introduction
 
-New applications of next-generation sequencing (NGS) use pooled samples containing DNA from multiple individuals to perform population genetic analyses. SNPGenie is a Perl program which can analyze the single-nucleotide polymorphism (SNP) calls from such data to calculate evolutionary parameters such as nucleotide diversity (including its nonsynonymous and synonymous partitions, πN and πS) and gene diversity. These calls are typically present in annotation tables and assume that the pooled nucleic acid sample is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it would be appropriate to sequence the pooled nucleic acid content of the viruses in a blood sample from that host. Comparing πN and πS for, say, a gene product, or comparing gene diversity at sites of different types, may help to dicepher instances of positive (Darwinian) selection, negative (purifying) selection, and random genetic drift. For additional background, see Nelson & Hughes (2015).
+New applications of next-generation sequencing (NGS) use pooled samples containing DNA from multiple individuals to perform population genetic analyses. SNPGenie is a Perl program which can analyze the single-nucleotide polymorphism (SNP) caller results to calculate evolutionary parameters, such as nucleotide diversity (including its nonsynonymous and synonymous partitions, πN and πS) and gene diversity. These calls are typically present in annotation tables and assume that the pooled nucleic acid sample is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it would be appropriate to sequence the pooled nucleic acid content of the virus in a blood sample from that host. Comparing πN and πS for, say, a gene product, or comparing gene diversity at polymorphic sites of different types, may help to dicepher instances of positive (Darwinian) selection, negative (purifying) selection, and random genetic drift. For additional background, see Nelson & Hughes (2015).
 
 ## SNPGenie Input
 
-SNPGenie version 1.2 is a command-line interface application written in Perl. As such, it is limited only by the memory and processing capabilities of the local hardware. As input, it accepts:
+SNPGenie version 1.2 is a command-line interface application written in Perl, with no additional dependencies. As such, it is limited only by the memory and processing capabilities of the local hardware. As input, it accepts:
 
 1. One or more **reference sequence** files in **FASTA** format (.fa/.fasta); 
 2. One file with CDS information in **Gene Transfer Format** (.gtf); and 
 3. One or more tab-delimited (.txt) **SNP reports** in CLC or Geneious format. If you want another format included, just ask! 
-
-Further details on input are below.
+For ease and simplicity, one need only run SNPGenie in a directory containing the necessary input files, and SNPGenie takes care of the rest. Further details on input are below.
 
 ### Reference Sequence
-The reference sequence must be present in a **FASTA** (.fa/.fasta) file. Providing only one reference sequence assumes...
+The reference sequence must be present in a **FASTA** (.fa/.fasta) file. Providing only one reference sequence assumes that all SNP coordinates in the SNP reports are called relative to the single reference file. This ONE-SEQUENCE MODE allows the maximum number of estimations to be performed. Contrarily, if two or more FASTA files are present, each is assumed to refer to a different protein product, as might occur with a segmented viral genome. In this case, MULTI-SEQUENCE MODE is activated, and each FASTA file name must begin with the name of the product followed by an underscore. For example, if "ORF1" is the name of one of the products in the SNP report, its reference FASTA file must be named as in "ORF1_xxx.fasta". Each FASTA file must contain only one sequence; a script is provided to split a multi-FASTA file into its constitutent sequences; see [Additional Scripts](#additional-scripts) below.
 
 ### Gene Transfer Format
 
