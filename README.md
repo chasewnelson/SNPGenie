@@ -201,7 +201,7 @@ Some additional scripts are included to automate some common tasks when preparin
 
 When using this software, please refer to and cite:
 
-> Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing. Infection, Genetics and Evolution 30:1-7. doi: 10.1016/j.meegid.2014.11.026
+> Nelson CW, Hughes AL (2015) [Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing] (http://www.sciencedirect.com/science/article/pii/S1567134814004468). *Infection, Genetics and Evolution* **30**:1-7. doi: 10.1016/j.meegid.2014.11.026
 
 ## Troubleshooting
 
