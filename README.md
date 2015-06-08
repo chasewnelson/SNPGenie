@@ -191,11 +191,11 @@ Some additional scripts are included to automate some common tasks when preparin
 
 * **snpgenie-gbk2gtf.pl**. At the command line, provide this script with one argument: a GenBank (.gbk) file. It will extract the coding element annotations to produce a GTF file ready for SNPGenie. Not working? Let us know, and we'll improve it! Here's an example:
 
-	snpgenie-gbk2gtf.pl my_genbank_file.gbk
+        snpgenie-gbk2gtf.pl my_genbank_file.gbk
 
 * **snpgenie-split_fasta.pl**. At the command line, provide this script with one argument: a FASTA (.fa or .fasta) file containing multiple sequences. This script will create multiple files in the working directory, each containing one of the sequences. Here's an example:
 
-	snpgenie-split_fasta.pl my_multi_fasta_file.fasta
+        snpgenie-split_fasta.pl my_multi_fasta_file.fasta
 
 ## Citation
 
