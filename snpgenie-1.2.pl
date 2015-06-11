@@ -384,7 +384,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	
 	#print "\n\n$_\n\n";
 	
-	# Determine the index of each column
+	# Determine the index of each column -- this is CLC
 	for (my $i=0; $i<scalar(@header_names_arr); $i++) {
 		if ($header_names_arr[$i] =~ /Reference Position/) {
 			$index_ref_pos = $i;
@@ -3841,8 +3841,11 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				my $cov = $A + $C + $G + $T;
 				my $cov_old = $hh_nc_position_info{$position}->{cov};
 				
+				my $cov_for_comp = sprintf("%.3f",$cov);
+				my $cov_old_for_comp = sprintf("%.3f",$cov_old);
+				
 				# WARN if the coverage doesn't match the sum of nucleotide counts
-				if($cov != $cov_old) {
+				if($cov_for_comp != $cov_old_for_comp) {
 					chdir('SNPGenie_Results');
 					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 					# FILE | PRODUCT | SITE | WARNING
@@ -3853,6 +3856,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					
 					print "\n## WARNING: In $file_nm, at site $position,\n".
 						"## the coverage does not equal the nucleotide sum.\n";
+						#."\n\tSITE $position\nA $A\nC $C\nG $G\nT $T\nCOV $cov_old\nSUM $cov\n";
 				}
 				
 				my $A_prop = ($A / $cov);
@@ -3913,9 +3917,26 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		my $pi_coding = ($sum_mean_pw_diffs_coding / $num_coding_sites);
 		my $pi_nc = ($sum_mean_pw_diffs_nc / $num_nc_sites);
 		
-		my $mean_gdiv = ($sum_gdiv / $num_sites_total);
-		my $mean_gdiv_coding_poly = ($sum_gdiv_coding_poly / $num_coding_sites_polymorphic);
-		my $mean_gdiv_nc_poly = ($sum_gdiv_nc_poly / $num_nc_sites_polymorphic);
+		my $mean_gdiv;
+		if($num_sites_total > 0) {
+			$mean_gdiv = ($sum_gdiv / $num_sites_total);
+		} else {
+			$mean_gdiv = '*';
+		}
+		
+		my $mean_gdiv_coding_poly;
+		if($num_coding_sites_polymorphic > 0) {
+			$mean_gdiv_coding_poly = ($sum_gdiv_coding_poly / $num_coding_sites_polymorphic);
+		} else {
+			$mean_gdiv_coding_poly = '*';
+		}
+		
+		my $mean_gdiv_nc_poly;
+		if($num_nc_sites_polymorphic > 0) {
+			$mean_gdiv_nc_poly = ($sum_gdiv_nc_poly / $num_nc_sites_polymorphic);
+		} else {
+			$mean_gdiv_nc_poly = '*';
+		}
 		
 		$h_nc_results{num_poly_coding_sites} = $num_coding_sites_polymorphic;
 		$h_nc_results{num_poly_nc_sites} = $num_nc_sites_polymorphic;
