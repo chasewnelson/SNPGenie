@@ -4,7 +4,7 @@ Perl software for estimating evolutionary parameters from pooled next-generation
 
 ## Introduction
 
-New applications of next-generation sequencing (NGS) use pooled samples containing DNA from multiple individuals to perform population genetic analyses. SNPGenie is a Perl program which can analyze the single-nucleotide polymorphism (SNP) caller results to calculate evolutionary parameters, such as nucleotide diversity (including its nonsynonymous and synonymous partitions, πN and πS) and gene diversity. These calls are typically present in annotation tables and assume that the pooled nucleic acid sample is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it would be appropriate to sequence the pooled nucleic acid content of the virus in a blood sample from that host. Comparing πN and πS for, say, a gene product, or comparing gene diversity at polymorphic sites of different types, may help to dicepher instances of positive (Darwinian) selection, negative (purifying) selection, and random genetic drift. For additional background, see Nelson & Hughes (2015) in the [References](#references).
+New applications of next-generation sequencing (NGS) use pooled samples containing DNA from multiple individuals to perform population genetic analyses. SNPGenie is a Perl program which can analyze the single-nucleotide polymorphism (SNP) caller results to calculate evolutionary parameters, such as nucleotide diversity (including its nonsynonymous and synonymous partitions, πN and πS) and gene diversity. These calls are typically present in annotation tables and assume that the pooled nucleic acid sample is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it would be appropriate to sequence the pooled nucleic acid content of the virus in a blood sample from that host. Comparing πN and πS for, say, a gene product, or comparing gene diversity at polymorphic sites of different types, may help to dicepher instances of positive (Darwinian) selection, negative (purifying) selection, and random genetic drift. SNPGenie also includes such features as minimum allele frequency trimming (see [Options](#options)), and can be combined with upstream applications such as maximum-likelihood SNP calling techniques (*e.g.*, see Lynch *et al.* 2014). For additional background, see Nelson & Hughes (2015) in the [References](#references).
 
 ## SNPGenie Input
 
@@ -216,7 +216,8 @@ When using this software, please refer to and cite:
 
 ## References
 
-* Knapp EW, Irausquin SJ, Friedman R, Hughes AL (2011) PolyAna: analyzing synonymous and nonsynonymous polymorphic sites. *Conserv Genet Resour* **3**:429-431.
+* Knapp EW, *et al.* (2011) PolyAna: analyzing synonymous and nonsynonymous polymorphic sites. *Conserv Genet Resour* **3**:429-431.
+* Lynch M, *et al.* (2014) Population-genetic inference from pooled-sequencing data. *Genome Biol. Evol.* **6**(5):1210-1218.
 * Nei M, Gojobori T (1986) Simple methods for estimating the numbers of synonymous and nonsynonymous nucleotide substitutions. *Mol Biol Evol* **3**:418-26.
 * Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing. *Infection, Genetics and Evolution* **30**:1-7.
 
