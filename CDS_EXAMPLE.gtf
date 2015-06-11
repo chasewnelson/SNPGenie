@@ -1,0 +1,4 @@
+reference.gbk   CALLER CDS 153    857    .   +   0   gene_id "ORF1";
+reference.gbk   CALLER CDS 840    1178    .   +   0   gene_id "ORF2";
+reference.gbk   CALLER CDS 1465    4485    .   +   0   gene_id "ORF2";
+reference.gbk   CALLER CDS 5621    5687    .   +   0   gene_id "ORF3";
