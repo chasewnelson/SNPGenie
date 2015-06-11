@@ -190,12 +190,6 @@ Some additional scripts are included to automate some common tasks when preparin
 
         snpgenie-split_fasta.pl my_multi_fasta_file.fasta
 
-## Citation
-
-When using this software, please refer to and cite:
-
-> Nelson CW, Hughes AL (2015) [Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing] (http://www.sciencedirect.com/science/article/pii/S1567134814004468). *Infection, Genetics and Evolution* **30**:1-7. doi: 10.1016/j.meegid.2014.11.026
-
 ## Troubleshooting
 
 * SNPGenie isn't executing? Try preceding the whole command line with "perl" to make sure SNPGenie is being treated as a script. For example:
@@ -213,6 +207,18 @@ When using this software, please refer to and cite:
 * Does the Frequency (CLC) or Variant Frequency (Geneious) SNP report column contain a percentage, not a decimal (e.g., 11.0% rather than 0.11)?
 * Was the SNP calling frame correct (i.e., do the codons for a product in the SNP report begin with ATG and end with TAA, TAG, or TGA)?
 * Are the product coordinates in the gtf file correct? (You might use a free program such as [MEGA] (http://www.megasoftware.net/) to check that the CDS coordinates begin with ATG and end with TAA, TAG, or TGA.)
+
+## Citation
+
+When using this software, please refer to and cite:
+
+> Nelson CW, Hughes AL (2015) [Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing] (http://www.sciencedirect.com/science/article/pii/S1567134814004468). *Infection, Genetics and Evolution* **30**:1-7. doi: 10.1016/j.meegid.2014.11.026
+
+## Studies Using SNPGenie
+
+* Bailey AL, *et al.* (2014) High genetic diversity and adaptive potential of two simian hemorrhagic fever viruses in a wild primate population. *PLoS ONE* **9**(3):e90714.
+* Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing. *Infection, Genetics and Evolution* **30**:1-7.
+* Wilker PR, *et al.* (2013) Selection on haemagglutinin imposes a bottleneck during mammalian transmission of reassortant H5N1 influenza viruses. *Nature Communications* **4**:2636.
 
 ## References
 
