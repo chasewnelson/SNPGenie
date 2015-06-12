@@ -212,19 +212,19 @@ Some additional scripts are included to automate some common tasks when preparin
 
 When using this software, please refer to and cite:
 
-> Nelson CW, Hughes AL (2015) [Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing] (http://www.sciencedirect.com/science/article/pii/S1567134814004468). *Infection, Genetics and Evolution* **30**:1-7. doi: 10.1016/j.meegid.2014.11.026
+> Nelson CW, Hughes AL (2015) [Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing](http://www.sciencedirect.com/science/article/pii/S1567134814004468). *Infection, Genetics and Evolution* **30**:1-7. doi: 10.1016/j.meegid.2014.11.026
 
 ## Studies Using SNPGenie
 
-* Bailey AL, *et al.* (2014) High genetic diversity and adaptive potential of two simian hemorrhagic fever viruses in a wild primate population. *PLoS ONE* **9**(3):e90714.
-* Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing. *Infection, Genetics and Evolution* **30**:1-7.
-* Wilker PR, *et al.* (2013) Selection on haemagglutinin imposes a bottleneck during mammalian transmission of reassortant H5N1 influenza viruses. *Nature Communications* **4**:2636.
+* Bailey AL, *et al.* (2014) [High genetic diversity and adaptive potential of two simian hemorrhagic fever viruses in a wild primate population](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0090714). *PLoS ONE* **9**(3):e90714.
+* Nelson CW, Hughes AL (2015) [Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing](http://www.sciencedirect.com/science/article/pii/S1567134814004468). *Infection, Genetics and Evolution* **30**:1-7.
+* Wilker PR, *et al.* (2013) [Selection on haemagglutinin imposes a bottleneck during mammalian transmission of reassortant H5N1 influenza viruses](http://www.nature.com/ncomms/2013/131023/ncomms3636/abs/ncomms3636.html?message-global=remove). *Nature Communications* **4**:2636.
 
 ## References
 
-* Knapp EW, *et al.* (2011) PolyAna: analyzing synonymous and nonsynonymous polymorphic sites. *Conserv Genet Resour* **3**:429-431.
-* Lynch M, *et al.* (2014) Population-genetic inference from pooled-sequencing data. *Genome Biol. Evol.* **6**(5):1210-1218.
-* Nei M, Gojobori T (1986) Simple methods for estimating the numbers of synonymous and nonsynonymous nucleotide substitutions. *Mol Biol Evol* **3**:418-26.
-* Nelson CW, Hughes AL (2015) Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing. *Infection, Genetics and Evolution* **30**:1-7.
+* Knapp EW, *et al.* (2011) [PolyAna: analyzing synonymous and nonsynonymous polymorphic sites](http://link.springer.com/article/10.1007%2Fs12686-010-9372-5). *Conserv Genet Resour* **3**:429-431.
+* Lynch M, *et al.* (2014) [Population-genetic inference from pooled-sequencing data](http://gbe.oxfordjournals.org/content/early/2014/04/30/gbe.evu085). *Genome Biol. Evol.* **6**(5):1210-1218.
+* Nei M, Gojobori T (1986) [Simple methods for estimating the numbers of synonymous and nonsynonymous nucleotide substitutions](http://mbe.oxfordjournals.org/content/3/5/418.short?rss=1&ssource=mfc). *Mol Biol Evol* **3**:418-26.
+* Nelson CW, Hughes AL (2015) [Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing](http://www.sciencedirect.com/science/article/pii/S1567134814004468). *Infection, Genetics and Evolution* **30**:1-7.
 
 Copyright 2015
