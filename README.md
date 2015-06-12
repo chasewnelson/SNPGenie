@@ -1,6 +1,6 @@
 # SNPGenie
 
-Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. Just run **snpgenie-1.2.pl** in a directory containing the necessary input files, and we take care of the rest! For the earlier version, see [Hughes Lab Bioinformatics Resource](http://ww2.biol.sc.edu/~austin/).
+Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. Just run **snpgenie-1.2.pl** in a directory containing the necessary input files, and we take care of the rest! For the earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.
 
 ## Introduction
 
@@ -36,7 +36,7 @@ The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include
 
 ### CLC Genomics Workbench SNP Reports
 
-At minimum, a CLC SNP report must include the following 8 default column selections, with the unaltered CLC column headers: 
+At minimum, the <a target="_blank" href="http://www.clcbio.com/products/clc-genomics-workbench/">CLC Genomics Workbench</a> SNP report must include the following 8 default column selections, with the unaltered CLC column headers: 
 
 * **Reference Position**, which refers to the start site of the polymorphism within the reference FASTA sequence;
 * **Type**, which refers to the nature of the record, usually the type of polymorphism, e.g., "SNV” for single-nucleotide variants;
@@ -51,7 +51,7 @@ In addition to the aforementioned columns, the SNP report should ideally be free
 
 ### Geneious SNP Reports
 
-At minimum, the Geneious SNP report must include the following default column selections, with the unaltered Geneious column headers:
+At minimum, the <a target="_blank" href="http://www.geneious.com/">Geneious</a> SNP report must include the following default column selections, with the unaltered Geneious column headers:
 
 * **Minimum** and **Maximum**, which refer to the start and end sites of the polymorphism within the reference FASTA sequence, and will hold the same value for SNP records;
 * **CDS Position**, with the coordinate of the site relative to the start cite of the relevant CDS annotation;
@@ -200,33 +200,31 @@ Some additional scripts are included to automate some common tasks when preparin
 
         chmod +x snpgenie-1.2.pl	
 
-* Are (end-of-line) newline characters in Unix LF (\n) format? Although SNPGenie was also designed to accept Windows CRLF (\r\n) or Mac CR (\r) formats, these can sometimes introduce problems causing SNPGenie to crash or return all 0 values. Trying changing the newline character to Unix LF using a free program such a [TextWrangler](http://www.barebones.com/products/textwrangler/).
+* Are (end-of-line) newline characters in Unix LF (\n) format? Although SNPGenie was also designed to accept Windows CRLF (\r\n) or Mac CR (\r) formats, these can sometimes introduce problems causing SNPGenie to crash or return all 0 values. Trying changing the newline character to Unix LF using a free program such a <a target="_blank" href="http://www.barebones.com/products/textwrangler/">TextWrangler</a>.
 * Are the FASTA files and/or CLC files tab (\t)-delimited?
 * Are the Geneious files comma-separated?
 * Do the SNP reports contain all necessary columns? (See sections on Input above.)
 * Does the Frequency (CLC) or Variant Frequency (Geneious) SNP report column contain a percentage, not a decimal (e.g., 11.0% rather than 0.11)?
 * Was the SNP calling frame correct (i.e., do the codons for a product in the SNP report begin with ATG and end with TAA, TAG, or TGA)?
-* Are the product coordinates in the gtf file correct? (You might use a free program such as [MEGA] (http://www.megasoftware.net/) to check that the CDS coordinates begin with ATG and end with TAA, TAG, or TGA.)
+* Are the product coordinates in the gtf file correct? (You might use a free program such as <a target="_blank" href="http://www.megasoftware.net/">MEGA</a> to check that the CDS coordinates begin with ATG and end with TAA, TAG, or TGA.)
 
 ## Citation
 
 When using this software, please refer to and cite:
 
-> Nelson CW, Hughes AL (2015) [Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing](http://www.sciencedirect.com/science/article/pii/S1567134814004468). *Infection, Genetics and Evolution* **30**:1-7. doi: 10.1016/j.meegid.2014.11.026
-
-<a target="_blank" href="http://www.sciencedirect.com/science/article/pii/S1567134814004468">Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing</a>
+> Nelson CW, Hughes AL (2015) <a target="_blank" href="http://www.sciencedirect.com/science/article/pii/S1567134814004468">Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing</a>. *Infection, Genetics and Evolution* **30**:1-7. doi: 10.1016/j.meegid.2014.11.026
 
 ## Studies Using SNPGenie
 
-* Bailey AL, *et al.* (2014) [High genetic diversity and adaptive potential of two simian hemorrhagic fever viruses in a wild primate population](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0090714). *PLoS ONE* **9**(3):e90714.
-* Nelson CW, Hughes AL (2015) [Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing](http://www.sciencedirect.com/science/article/pii/S1567134814004468). *Infection, Genetics and Evolution* **30**:1-7.
-* Wilker PR, *et al.* (2013) [Selection on haemagglutinin imposes a bottleneck during mammalian transmission of reassortant H5N1 influenza viruses](http://www.nature.com/ncomms/2013/131023/ncomms3636/abs/ncomms3636.html?message-global=remove). *Nature Communications* **4**:2636.
+* Bailey AL, *et al.* (2014) <a target="_blank" href="http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0090714">High genetic diversity and adaptive potential of two simian hemorrhagic fever viruses in a wild primate population</a>. *PLoS ONE* **9**(3):e90714.
+* Nelson CW, Hughes AL (2015) <a target="_blank" href="http://www.sciencedirect.com/science/article/pii/S1567134814004468">Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing</a>. *Infection, Genetics and Evolution* **30**:1-7.
+* Wilker PR, *et al.* (2013) <a target="_blank" href="http://www.nature.com/ncomms/2013/131023/ncomms3636/abs/ncomms3636.html?message-global=remove">Selection on haemagglutinin imposes a bottleneck during mammalian transmission of reassortant H5N1 influenza viruses</a>. *Nature Communications* **4**:2636.
 
 ## References
 
-* Knapp EW, *et al.* (2011) [PolyAna: analyzing synonymous and nonsynonymous polymorphic sites](http://link.springer.com/article/10.1007%2Fs12686-010-9372-5). *Conserv Genet Resour* **3**:429-431.
-* Lynch M, *et al.* (2014) [Population-genetic inference from pooled-sequencing data](http://gbe.oxfordjournals.org/content/early/2014/04/30/gbe.evu085). *Genome Biol. Evol.* **6**(5):1210-1218.
-* Nei M, Gojobori T (1986) [Simple methods for estimating the numbers of synonymous and nonsynonymous nucleotide substitutions](http://mbe.oxfordjournals.org/content/3/5/418.short?rss=1&ssource=mfc). *Mol Biol Evol* **3**:418-26.
-* Nelson CW, Hughes AL (2015) [Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing](http://www.sciencedirect.com/science/article/pii/S1567134814004468). *Infection, Genetics and Evolution* **30**:1-7.
+* Knapp EW, *et al.* (2011) <a target="_blank" href="http://link.springer.com/article/10.1007%2Fs12686-010-9372-5">PolyAna: analyzing synonymous and nonsynonymous polymorphic sites</a>. *Conserv Genet Resour* **3**:429-431.
+* Lynch M, *et al.* (2014) <a target="_blank" href="http://gbe.oxfordjournals.org/content/early/2014/04/30/gbe.evu085">Population-genetic inference from pooled-sequencing data</a>. *Genome Biol. Evol.* **6**(5):1210-1218.
+* Nei M, Gojobori T (1986) <a target="_blank" href="http://mbe.oxfordjournals.org/content/3/5/418.short?rss=1&ssource=mfc">Simple methods for estimating the numbers of synonymous and nonsynonymous nucleotide substitutions</a>. *Mol Biol Evol* **3**:418-26.
+* Nelson CW, Hughes AL (2015) <a target="_blank" href="http://www.sciencedirect.com/science/article/pii/S1567134814004468">Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing</a>. *Infection, Genetics and Evolution* **30**:1-7.
 
 Copyright 2015
