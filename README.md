@@ -34,7 +34,9 @@ The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include
 	reference.gbk	CLC	CDS	5247	5549	.	+	0	gene_id "ORF7";
 	reference.gbk	CLC	CDS	4911	5246	.	+	0	gene_id "ORF8";
 
-### CLC Genomics Workbench SNP Reports
+### SNP Reports
+
+#### CLC Genomics Workbench
 
 At minimum, the <a target="_blank" href="http://www.clcbio.com/products/clc-genomics-workbench/">CLC Genomics Workbench</a> SNP report must include the following 8 default column selections, with the unaltered CLC column headers: 
 
@@ -49,7 +51,7 @@ At minimum, the <a target="_blank" href="http://www.clcbio.com/products/clc-geno
 
 In addition to the aforementioned columns, the SNP report should ideally be free of thousand separators (,) in the Reference Position, Count, and Coverage columns (default format). The Frequency must remain a percentage (default format). Finally, the user should verify that the reading frame in the CLC output is correct. SNPGenie will produce various errors to indicate when these conditions are not met, e.g., by checking that all products begin with START and end with STOP codons, and checking for premature stop codons. Make sure to check the SNPGenie LOG file!
 
-### Geneious SNP Reports
+#### Geneious
 
 At minimum, the <a target="_blank" href="http://www.geneious.com/">Geneious</a> SNP report must include the following default column selections, with the unaltered Geneious column headers:
 
