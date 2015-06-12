@@ -20,7 +20,6 @@ For ease and simplicity, one need only run SNPGenie in a directory containing th
 The reference sequence must be present in a **FASTA** (.fa/.fasta) file. Providing only one reference sequence assumes that all SNP coordinates in the SNP reports are called relative to the single reference file. This ONE-SEQUENCE MODE allows the maximum number of estimations to be performed. Contrarily, if two or more FASTA files are present, each is assumed to refer to a different protein product, as might occur with a segmented viral genome. In this case, MULTI-SEQUENCE MODE is activated, and each FASTA file name must begin with the name of the product followed by an underscore. For example, if "ORF1" is the name of one of the products in the SNP report, its reference FASTA file must be named as in "ORF1_xxx.fasta". Each FASTA file must contain only one sequence; a script is provided to split a multi-FASTA file into its constitutent sequences; see [Additional Scripts](#additional-scripts) below.
 
 ### Gene Transfer Format
-
 The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include records for all CDS elements (i.e., open reading frames, or ORFs) present in your SNP report(s). Note that SNPGenie expects every coding element to be labeled as type "CDS", and for its product name to follow the "gene_id" tag. This name must match that present in the SNP report. If a single coding element has multiple segments with different coordinates, simply enter one line for each segment, using the same product name. SNPGenie for CLC can currently handle 2 segments per ORF; if more are needed, just contact us, and we'll make the improvement! For more information about GTF, please visit <a target="_blank" href="http://mblab.wustl.edu/GTF22.html">The Brent Lab</a>. A simple example follows:
 
 	reference.gbk	CLC	CDS	5694	8369	.	+	0	gene_id "ORF1";
@@ -37,7 +36,6 @@ The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include
 ### SNP Reports
 
 #### CLC Genomics Workbench
-
 At minimum, the <a target="_blank" href="http://www.clcbio.com/products/clc-genomics-workbench/">CLC Genomics Workbench</a> SNP report must include the following 8 default column selections, with the unaltered CLC column headers: 
 
 * **Reference Position**, which refers to the start site of the polymorphism within the reference FASTA sequence;
@@ -52,7 +50,6 @@ At minimum, the <a target="_blank" href="http://www.clcbio.com/products/clc-geno
 In addition to the aforementioned columns, the SNP report should ideally be free of thousand separators (,) in the Reference Position, Count, and Coverage columns (default format). The Frequency must remain a percentage (default format). Finally, the user should verify that the reading frame in the CLC output is correct. SNPGenie will produce various errors to indicate when these conditions are not met, e.g., by checking that all products begin with START and end with STOP codons, and checking for premature stop codons. Make sure to check the SNPGenie LOG file!
 
 #### Geneious
-
 At minimum, the <a target="_blank" href="http://www.geneious.com/">Geneious</a> SNP report must include the following default column selections, with the unaltered Geneious column headers:
 
 * **Minimum** and **Maximum**, which refer to the start and end sites of the polymorphism within the reference FASTA sequence, and will hold the same value for SNP records;
