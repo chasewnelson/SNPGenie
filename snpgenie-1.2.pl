@@ -6754,10 +6754,15 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			if($this_codon_denominator_gene_diversity_S > 0) {
 				$this_codon_avg_gene_diversity_S = ($this_codon_numerator_gene_diversity_S /
 					$this_codon_denominator_gene_diversity_S);
+			} else {
+				$this_codon_avg_gene_diversity_S = '*';
 			}
+			
 			if($this_codon_denominator_gene_diversity_N > 0) {
 				$this_codon_avg_gene_diversity_N = ($this_codon_numerator_gene_diversity_N /
 					$this_codon_denominator_gene_diversity_N);
+			} else {
+				$this_codon_avg_gene_diversity_N = '*';
 			}
 			
 			# PRINT AVERAGE GENE DIVERSITY VALUES for this codon to the nucleotide 
