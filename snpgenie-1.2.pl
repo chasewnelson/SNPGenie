@@ -20,6 +20,9 @@ require File::Temp;
 use File::Temp qw(tempfile);
 use Getopt::Long;
 
+my $time1 = time;
+my $local_time1 = localtime;
+
 # Die if no arguments, explaining what they should be
 #unless (@ARGV) {
 #	die "\nThis program accepts arguments:\n[1] Blah;\n[2] Blah2;\n[3] Blah3.\n\n";
@@ -268,7 +271,7 @@ print "\n\n#####################################################################
 chdir('SNPGenie_Results');
 open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 print ERROR_FILE "NA\tNA\tNA\t".
-		"SNPGenie initiated\n";
+		"SNPGenie initiated at local time $local_time1\n";
 close ERROR_FILE;
 chdir('..');
 
@@ -25719,10 +25722,22 @@ sub sliding_window {
 #########################################################################################
 # End the program by notifying the screen at command line
 sub end_the_program {
+	my $time2 = time;
+	my $local_time2 = localtime;
+	
+	my $time_diff = ($time2 - $time1);
+	my $time_diff_rounded = sprintf("%.2f",$time_diff);
+	my $mins_elapsed = ($time_diff / 60);
+	my $whole_mins_elapsed = int($mins_elapsed);
+	my $whole_mins_in_secs = ($whole_mins_elapsed * 60);
+	my $secs_remaining = ($time_diff - $whole_mins_in_secs);
+	my $secs_remaining_rounded = sprintf("%.2f",$secs_remaining);
+	
 	chdir('SNPGenie_Results');
 	open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 	print ERROR_FILE "NA\tNA\tNA\t".
-			"SNPGenie completed\n";
+			"SNPGenie completed at local time $local_time2. The process took $time_diff_rounded secs, i.e., ".
+			"$whole_mins_elapsed mins and $secs_remaining_rounded secs\n";
 	close ERROR_FILE;
 	chdir('..');
 
