@@ -25,6 +25,8 @@ use Getopt::Long;
 #	die "\nThis program accepts arguments:\n[1] Blah;\n[2] Blah2;\n[3] Blah3.\n\n";
 #}
 
+# GET THE TIME
+
 # Initialize variables
 my $minfreq; # the min. allele freq. to be considered (prop., not percentage)
 my $snpreport;
@@ -256,11 +258,19 @@ my $warn_frequencies = 0;
 
 my $SNP_report_counter = 0;
 
-print "\n\n#############################################################################################".
-	"\n##                                                                                         ##".
-	"\n##                                   SNPGenie Initiated!                                   ##".
-	"\n##                                                                                         ##".
-	"\n#############################################################################################\n";
+print "\n\n################################################################################".
+	"\n##                                                                            ##".
+	"\n##                             SNPGenie Initiated!                            ##".
+	"\n##                                                                            ##".
+	"\n################################################################################\n";
+
+# GET THE TIME
+chdir('SNPGenie_Results');
+open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+print ERROR_FILE "NA\tNA\tNA\t".
+		"SNPGenie initiated\n";
+close ERROR_FILE;
+chdir('..');
 
 foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	my $file_nm = $curr_snp_report_name;
@@ -283,7 +293,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		print "\nYou have not selected a MIN. MINOR ALLELE FREQ. All variants in the SNP Report will be included...\n";
 	}
 	
-	print "\n\n##################################  CURRENTLY PROCESSING:  ##################################\n".
+	print "\n\n###########################  CURRENTLY PROCESSING:   ###########################\n".
 	"$file_nm... ";
 	
 	#print "\n\n$_\n\n";
@@ -5892,11 +5902,11 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			#############################################################################
 			
 			
-			if($progress_period_count < 90) {
+			if($progress_period_count < 80) {
 				print ".";
 				$progress_period_count++;
 			} else {
-				print "\n.";
+				print "\n";
 				$progress_period_count = 0;
 			}
 			
@@ -25709,10 +25719,16 @@ sub sliding_window {
 #########################################################################################
 # End the program by notifying the screen at command line
 sub end_the_program {
-	print "\n#############################################################################".
-		"################\n##                   SNPGenie for CLC Genomics completed ".
-		"successfully.                     ##\n##  Please find results in the SNPGenie_Results folder, located in".
-		" the current directory.  ##\n".
-		"###################################################################################".
-		"##########\n\n\n"; 
+	chdir('SNPGenie_Results');
+	open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+	print ERROR_FILE "NA\tNA\tNA\t".
+			"SNPGenie completed\n";
+	close ERROR_FILE;
+	chdir('..');
+
+	print "\n################################################################################".
+		"\n##              SNPGenie for CLC Genomics completed successfully.             ##".
+		"\n##             Please find results in the SNPGenie_Results folder.            ##\n".
+		"################################################################################".
+		"\n\n\n"; 
 }
