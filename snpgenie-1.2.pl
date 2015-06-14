@@ -604,7 +604,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		foreach my $curr_product (@product_names_arr) {			
 			$product_to_fasta_file{$curr_product} = $the_fasta_file;
 		}	
-		print "\n–All products are found in the file $the_fasta_file\n\n";
+		print "\n-All products are found in the file $the_fasta_file\n\n";
 	}
 	
 	# Now we have, for the current SNP Report we're examining, the fasta files to which
