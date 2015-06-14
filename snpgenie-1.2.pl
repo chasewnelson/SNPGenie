@@ -672,7 +672,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			#chomp;
 			
 			# CHOMP for 3 operating systems
-			if($_ =~ /\r\n$/) {
+			if($_ =~ /\r\n?/) {
 				$_ =~ s/\r\n//;
 			} elsif($_ =~ /\r$/) {
 				$_ =~ s/\r//;
@@ -4770,13 +4770,15 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							"$curr_product, near site $curr_site,\n## ".
 							"there is a stretch of ≥200 codons with zero ".
 							"SNPs called. If this was unexpected,\n## ".
-							"there may be an error with SNP calling in this region.\n";
+							"you may need to specify Unix (\\n) newline characters! See ".
+							"Troubleshooting.\n";
 							
 				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\t$curr_product\t$curr_site\t".
 					"No SNPs in >=200 contiguous codons. If this was unexpected, ".
-					"there may be an error with SNP calling in this region\n";
+					"you may need to specify Unix (\\n) newline characters! See ".
+					"Troubleshooting\n";
 				close ERROR_FILE;
 			}
 			
@@ -7045,7 +7047,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 
 # Perform a SLIDING WINDOW if asked
 if($slidingwindow) {
-	print "\n\nPerforming sliding window, length 9 codons...\n\n";
+	print "\n\nPerforming sliding window for all files, length $slidingwindow codons...\n\n";
 	&sliding_window($slidingwindow);
 }
 
@@ -7139,6 +7141,7 @@ sub get_header_names {
 			last;
 		}
 	}
+	seek(CURRINFILE,0,0);
 	close CURRINFILE;
 	#$/ = $old_newline;
 	return @line_arr;
