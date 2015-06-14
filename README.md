@@ -201,11 +201,17 @@ Some additional scripts are included to automate some common tasks when preparin
         chmod +x snpgenie-1.2.pl	
 
 * Are (end-of-line) newline characters in Unix LF (\n) format? Although SNPGenie was also designed to accept Windows CRLF (\r\n) or Mac CR (\r) formats, these can sometimes introduce problems causing SNPGenie to crash or return all 0 values. Trying changing the newline character to Unix LF using a free program such a <a target="_blank" href="http://www.barebones.com/products/textwrangler/">TextWrangler</a>.
+
 * Are the FASTA files and/or CLC files tab (\t)-delimited?
+
 * Are the Geneious files comma-separated?
+
 * Do the SNP reports contain all necessary columns? (See sections on Input above.)
+
 * Does the Frequency (CLC) or Variant Frequency (Geneious) SNP report column contain a percentage, not a decimal (e.g., 11.0% rather than 0.11)?
+
 * Was the SNP calling frame correct (i.e., do the codons for a product in the SNP report begin with ATG and end with TAA, TAG, or TGA)?
+
 * Are the product coordinates in the gtf file correct? (You might use a free program such as <a target="_blank" href="http://www.megasoftware.net/">MEGA</a> to check that the CDS coordinates begin with ATG and end with TAA, TAG, or TGA.)
 
 ## Citation
