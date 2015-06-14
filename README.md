@@ -191,7 +191,7 @@ Some additional scripts are included to automate some common tasks when preparin
 
 ## Troubleshooting
 
-* Using **Windows**? SNPGenie was written for Unix systems (including Mac) which have Perl installed by default. However, if you're using Windows, it's as simple as following these three-minute instructions from Microsoft, and you'll be good to go! Just open the Windows Command Prompt, and remember to type "perl" first when you run SNPGenie, *i.e.*, type "perl snpgenie-1.2.pl".
+* Using **Windows**? SNPGenie was written for Unix systems (including Mac), which have Perl installed by default. Windows doesn't, but getting Perl installed is as simple as following these <a target="_blank" href="http://learn.perl.org/installing/windows.html">three-minute download instructions</a>, and you'll be good to go! Just open the Windows Command Prompt, and remember to type "perl" first when you run SNPGenie, *i.e.*, type "perl snpgenie-1.2.pl".
 * SNPGenie isn't executing? Try preceding the whole command line with "perl" to make sure SNPGenie is being treated as a script. For example:
 
         perl snpgenie-1.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
