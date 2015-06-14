@@ -1,0 +1,35 @@
+Mapping	Reference Position	Type	Length	Reference	Allele	Zygosity	Count	Coverage	Frequency	Forward/reverse balance	Average quality	Overlapping annotations	Coding region change	Amino acid change
+reference mapping	498	SNV	1	A	G	Heterozygous	34	1178	2.886247878	0.25	38	CDS: ORF1	ORF1:c.346A>G	ORF1:p.Arg116Gly
+reference mapping	668	SNV	1	G	A	Heterozygous	69	2702	2.553663953	0.5	37	CDS: ORF1	ORF1:c.516G>A	
+reference mapping	731	SNV	1	T	C	Heterozygous	89	4890	1.8200409	0.333333333	38	CDS: ORF1	ORF1:c.579T>C	
+reference mapping	1142	SNV	1	A	G	Heterozygous	52	5410	0.961182994	0.333333333	38	CDS: ORF2	ORF2:c.282A>G	
+reference mapping	1391	SNV	1	T	C	Heterozygous	921	13344	6.901978417	0.2	37.6			
+reference mapping	1590	SNV	1	T	C	Heterozygous	336	14248	2.358225716	0.333333333	37.5	CDS: ORF2	ORF2:c.444T>C	
+reference mapping	1739	SNV	1	G	A	Heterozygous	3276	23633	13.86197267	0.333333333	38.91666667	CDS: ORF2	ORF2:c.593G>A	ORF2:p.Arg198His
+reference mapping	1775	SNV	1	G	A	Heterozygous	614	24896	2.46625964	0.47826087	37.08695652	CDS: ORF2	ORF2:c.629G>A	ORF2:p.Arg210Lys
+reference mapping	1998	SNV	1	C	A	Heterozygous	619	22648	2.733133168	0.5	36.875	CDS: ORF2	ORF2:c.852C>A	
+reference mapping	2358	SNV	1	C	T	Heterozygous	240	21038	1.140792851	0.5	38.1875	CDS: ORF2	ORF2:c.1212C>T	
+reference mapping	2388	SNV	1	C	T	Heterozygous	564	21198	2.660628361	0.461538462	38.05769231	CDS: ORF2	ORF2:c.1242C>T	
+reference mapping	2388	SNV	1	C	A	Heterozygous	344	21198	1.622794603	0.4	37.68333333	CDS: ORF2	ORF2:c.1242C>A	ORF2:p.S414Arg
+reference mapping	2456	SNV	1	A	G	Heterozygous	509	21285	2.391355415	0.5	38.5	CDS: ORF2	ORF2:c.1310A>G	ORF2:p.Q437Arg
+reference mapping	2637	SNV	1	T	C	Heterozygous	599	15939	3.758077671	0.5	38.2	CDS: ORF2	ORF2:c.1491T>C	
+reference mapping	2683	SNV	1	T	C	Heterozygous	681	17833	3.818762968	0.333333333	38.26666667	CDS: ORF2	ORF2:c.1537T>C	ORF2:p.Y513His
+reference mapping	2717	SNV	1	A	G	Heterozygous	84	13605	0.617420066	0.451672862	37.7070632	CDS: ORF2	ORF2:c.1571A>G	ORF2:p.E524Gly
+reference mapping	2878	SNV	1	C	T	Heterozygous	86	2385	3.605870021	0.285714286	36.34285714	CDS: ORF2	ORF2:c.1732C>T	
+reference mapping	2992	SNV	1	A	G	Heterozygous	12	1132	1.060070671	0.428571429	37.31428571	CDS: ORF2	ORF2:c.1846A>G	ORF2:p.Asn616Asp
+reference mapping	3004	SNV	1	C	A	Heterozygous	69	913	7.557502738	0.25	36.4	CDS: ORF2	ORF2:c.1858C>A	
+reference mapping	3303	SNV	1	G	A	Heterozygous	55	1577	3.48763475	0.5	37.75	CDS: ORF2	ORF2:c.2157G>A	
+reference mapping	3307	SNV	1	C	T	Heterozygous	86	5357	1.605376143	0.333333333	38.5	CDS: ORF2	ORF2:c.2161C>T	
+reference mapping	3482	SNV	1	A	G	Heterozygous	100	8565	1.167542323	0.5	39	CDS: ORF2	ORF2:c.2336A>G	ORF2:p.Asn779Ser
+reference mapping	3797	SNV	1	A	G	Heterozygous	738	14712	5.016313214	0.333333333	37	CDS: ORF2	ORF2:c.2651A>G	ORF2:p.Gln884Arg
+reference mapping	3798	SNV	1	G	A	Heterozygous	437	19468	2.244709266	0.5	38	CDS: ORF2	2652G>A	
+reference mapping	4252	SNV	1	G	A	Heterozygous	161	25345	0.635233774	0.333333333	38.66666667	CDS: ORF2	ORF2:c.3106G>A	ORF2:p.Val1036Ile
+reference mapping	4467	SNV	1	T	C	Heterozygous	169	20300	0.832512315	0.333333333	38.33333333	CDS: ORF2	ORF2:c.3321T>C	
+reference mapping	4482	SNV	1	T	C	Heterozygous	457	22689	2.014191899	0.333333333	38.16666667	"CDS: ORF2, CDS: ORF3"	ORF2:c.[3336T>C]; ORF3:c.[8T>C]	ORF3:p.[Phe3Ser]
+reference mapping	4790	SNV	1	C	T	Heterozygous	492	22742	2.163398118	0.5	38.83333333	CDS: ORF3	ORF3:c.316C>T	ORF3:p.His106Tyr
+reference mapping	5023	SNV	1	T	C	Heterozygous	662	24118	2.74483788	0.5	37.5	CDS: ORF3	ORF3:c.549T>C	
+reference mapping	5334	SNV	1	T	C	Heterozygous	316	19712	1.603084416	0.5	39	CDS: ORF3	ORF3:c.860T>C	ORF3:p.Phe287Ser
+reference mapping	5701	SNV	1	G	A	Heterozygous	63	1156	5.44982699	0.5	38.5	CDS: ORF3	ORF3:c.1227G>A	
+reference mapping	5866	SNV	1	C	T	Heterozygous	153	1888	8.103813559	0.333333333	38.47619048			
+reference mapping	6044	SNV	1	A	G	Heterozygous	623	8118	7.674304016	0.333333333	37.9047619			
+reference mapping	6175	SNV	1	G	A	Heterozygous	113	1232	9.172077922	0.428571429	38			
