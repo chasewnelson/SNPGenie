@@ -4,8 +4,22 @@
 # PROGRAM: Perl program to calculate evolutionary paramaters from NGS SNP Reports
 # generated from pooled DNA samples.
 
+# Copyright (C) 2015 Chase W. Nelson
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 # DATE CREATED: April 10, 2015
-# LAST UPDATE: May 26, 2015
 # AUTHOR: Chase W. Nelson
 # CONTACT1: nelsoncw@email.sc.edu
 # CONTACT2: cwnelson88@gmail.com
@@ -266,6 +280,14 @@ print "\n\n#####################################################################
 	"\n##                             SNPGenie Initiated!                            ##".
 	"\n##                                                                            ##".
 	"\n################################################################################\n";
+
+# Print LICENSE
+print "\n  ###############################  LICENSE:  #################################\n";
+print "  ##              SNPGenie Copyright (C) 2015 Chase W. Nelson               ##\n".
+	"  ##            This program comes with ABSOLUTELY NO WARRANTY;             ##\n".
+	"  ##     This is free software, and you are welcome to redistribute it      ##\n".
+	"  ##               under certain conditions; see LICENSE.txt.               ##";
+print "\n  ############################################################################\n";
 
 # GET THE TIME
 chdir('SNPGenie_Results');
