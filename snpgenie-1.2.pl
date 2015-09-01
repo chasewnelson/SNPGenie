@@ -8140,11 +8140,17 @@ sub populate_tempfile_geneious {
 						#}
 						
 						if(($max != 0) && ($max != $confirm_max)) {
-							die "\n\n## WARNING: In the SNP Report $curr_snp_report_name, site $min, variant $change,\n".
+							#die "\n\n## WARNING: In the SNP Report $curr_snp_report_name, site $min, variant $change,\n".
+							#	"## the Maximum should be $confirm_max but is $max. This error often accompanies\n".
+							#	"## mistakes in the site coordinate (Minimum) column, so you may wish to verify\n".
+							#	"## that the values in the Minimum column match those expected given the CDS Position.\n".
+							#	"## Please correct such Geneious errors before proceeding. SNPGENIE TERMINATED.\n\n";
+							
+							print "\n\n## WARNING: In the SNP Report $curr_snp_report_name, site $min, variant $change,\n".
 								"## the Maximum should be $confirm_max but is $max. This error often accompanies\n".
 								"## mistakes in the site coordinate (Minimum) column, so you may wish to verify\n".
 								"## that the values in the Minimum column match those expected given the CDS Position.\n".
-								"## Please correct such Geneious errors before proceeding. SNPGENIE TERMINATED.\n\n";
+								"## The latter has been used to determine the correct site; please verify these results.\n\n";
 						}
 						
 						my $product_print;
