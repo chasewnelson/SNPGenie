@@ -1,6 +1,6 @@
 #! /usr/bin/perl
 
-# Takes a Genbank file as its argument, and creates a GTF file for its products.
+# Takes a Genbank file as its 1 ARGV argument, and creates a GTF file for its products.
 # In this instantiation, we are concerned about CDS annotations only
 # If reverse complements exists, those annotations are put in another file
 
@@ -100,7 +100,7 @@ while(<GBK_FILE>) {
 	# Now find the name of the feature, in order of preference, as:
 	# [1] locus_tag; [2] label; and [3] product
 	if($seen_label == 0 && $curr_start != 0 && $curr_compl_start == 0) {
-		if($_ =~ /\s*\/locus_tag="([\w\s']+ [\w\s']+)"/) {
+		if($_ =~ /\s*\/locus_tag="([\w\s\.']+ [\w\s\.']+)"/) {
 			if($curr_start2 == 0) {
 				$curr_ORF = $1;
 				push(@ORF_arr,$curr_ORF);
@@ -128,7 +128,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/locus_tag="([\w\s']+)"/) {
+		} elsif($_ =~ /\s*\/locus_tag="([\w\s\.']+)"/) {
 			if($curr_start2 == 0) {
 				$curr_ORF = $1;
 				push(@ORF_arr,$curr_ORF);
@@ -156,7 +156,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/locus_tag=([\w\s']+)/) {
+		} elsif($_ =~ /\s*\/locus_tag=([\w\s\.']+)/) {
 			if($curr_start2 == 0) {
 				$curr_ORF = $1;
 				chomp($curr_ORF);
@@ -186,7 +186,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/label="([\w\s']+ [\w\s']+)"/) {
+		} elsif($_ =~ /\s*\/label="([\w\s\.']+ [\w\s\.']+)"/) {
 			if($curr_start2 == 0) {
 				$curr_ORF = $1;
 				push(@ORF_arr,$curr_ORF);
@@ -214,7 +214,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/label="([\w\s']+)"/) {
+		} elsif($_ =~ /\s*\/label="([\w\s\.']+)"/) {
 			if($curr_start2 == 0) {
 				$curr_ORF = $1;
 				push(@ORF_arr,$curr_ORF);
@@ -242,7 +242,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/label=([\w\s']+)/) {
+		} elsif($_ =~ /\s*\/label=([\w\s\.']+)/) {
 			if($curr_start2 == 0) {
 				$curr_ORF = $1;
 				chomp($curr_ORF);
@@ -272,7 +272,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/product="([\w\s']+ [\w\s']+)"/) {
+		} elsif($_ =~ /\s*\/product="([\w\s\.']+ [\w\s\.']+)"/) {
 			if($curr_start2 == 0) {
 				$curr_ORF = $1;
 				push(@ORF_arr,$curr_ORF);
@@ -300,7 +300,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/product="([\w\s']+)"/) {
+		} elsif($_ =~ /\s*\/product="([\w\s\.']+)"/) {
 			if($curr_start2 == 0) {
 				$curr_ORF = $1;
 				push(@ORF_arr,$curr_ORF);
@@ -328,7 +328,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/product=([\w\s']+)/) {
+		} elsif($_ =~ /\s*\/product=([\w\s\.']+)/) {
 			if($curr_start2 == 0) {
 				$curr_ORF = $1;
 				chomp($curr_ORF);
@@ -360,7 +360,7 @@ while(<GBK_FILE>) {
 			}
 		}
 	} elsif($seen_label == 0 && $curr_start == 0 && $curr_compl_start != 0) { # COMPLEMENT
-		if($_ =~ /\s*\/locus_tag="([\w\s']+ [\w\s']+)"/) {
+		if($_ =~ /\s*\/locus_tag="([\w\s\.']+ [\w\s\.']+)"/) {
 			if($curr_compl_start2 == 0) {
 				$curr_compl_ORF = $1;
 				push(@ORF_compl_arr,$curr_compl_ORF);
@@ -388,7 +388,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/locus_tag="([\w\s']+)"/) {
+		} elsif($_ =~ /\s*\/locus_tag="([\w\s\.']+)"/) {
 			if($curr_compl_start2 == 0) {
 				$curr_compl_ORF = $1;
 				push(@ORF_compl_arr,$curr_compl_ORF);
@@ -416,7 +416,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/locus_tag=([\w\s']+)/) {
+		} elsif($_ =~ /\s*\/locus_tag=([\w\s\.']+)/) {
 			if($curr_compl_start2 == 0) {
 				$curr_compl_ORF = $1;
 				chomp($curr_compl_ORF);
@@ -446,7 +446,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/label="([\w\s']+ [\w\s']+)"/) {
+		} elsif($_ =~ /\s*\/label="([\w\s\.']+ [\w\s\.']+)"/) {
 			if($curr_compl_start2 == 0) {
 				$curr_compl_ORF = $1;
 				push(@ORF_compl_arr,$curr_compl_ORF);
@@ -474,7 +474,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/label="([\w\s']+)"/) {
+		} elsif($_ =~ /\s*\/label="([\w\s\.']+)"/) {
 			if($curr_compl_start2 == 0) {
 				$curr_compl_ORF = $1;
 				push(@ORF_compl_arr,$curr_compl_ORF);
@@ -502,7 +502,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/label=([\w\s']+)/) {
+		} elsif($_ =~ /\s*\/label=([\w\s\.']+)/) {
 			if($curr_compl_start2 == 0) {
 				$curr_compl_ORF = $1;
 				chomp($curr_compl_ORF);
@@ -532,7 +532,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/product="([\w\s']+ [\w\s']+)"/) {
+		} elsif($_ =~ /\s*\/product="([\w\s\.']+ [\w\s\.']+)"/) {
 			if($curr_compl_start2 == 0) {
 				$curr_compl_ORF = $1;
 				push(@ORF_compl_arr,$curr_compl_ORF);
@@ -560,7 +560,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/product="([\w\s']+)"/) {
+		} elsif($_ =~ /\s*\/product="([\w\s\.']+)"/) {
 			if($curr_compl_start2 == 0) {
 				$curr_compl_ORF = $1;
 				push(@ORF_compl_arr,$curr_compl_ORF);
@@ -588,7 +588,7 @@ while(<GBK_FILE>) {
 				
 				$seen_label = 1;
 			}
-		} elsif($_ =~ /\s*\/product=([\w\s']+)/) {
+		} elsif($_ =~ /\s*\/product=([\w\s\.']+)/) {
 			if($curr_compl_start2 == 0) {
 				$curr_compl_ORF = $1;
 				chomp($curr_compl_ORF);
@@ -620,7 +620,7 @@ while(<GBK_FILE>) {
 			}
 		}
 	} # end of COMPLEMENT
-}
+} # end of current GenBank file line
 
 close GBK_FILE;
 
