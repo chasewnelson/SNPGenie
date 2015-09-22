@@ -645,34 +645,68 @@ foreach my $curr_product (@ORF_arr_sorted) {
 
 close OUTFILE;
 
+# ANTISENSE STRAND to GTF file, to a separate file as the + strand
+#if($is_compl == 1) {
+#	my $genbank_compl_file_name = $new_file_prefix . "_revcompl.gb";
+#	my @ORF_compl_arr_sorted = sort (@ORF_compl_arr);
+#	
+#	open(OUTFILE,">>$new_file_compl_name");
+#	
+#	foreach my $curr_product (@ORF_compl_arr_sorted) {
+#		my $this_start = $ORF_compl_info_hh{$curr_product}->{start};
+#		my $this_stop = $ORF_compl_info_hh{$curr_product}->{stop};
+#		my $feature_length = ($this_stop - $this_start + 1);
+#		
+#		my $offset = ($seq_length - $this_stop);
+#		my $rev_compl_start = ($offset + 1);
+#		my $rev_compl_stop = ($rev_compl_start + $feature_length - 1);
+#		
+#		print OUTFILE "$genbank_compl_file_name\tCLC\tCDS\t$rev_compl_start\t$rev_compl_stop\t\.\t\+\t0\tgene_id \"$curr_product\";\n";
+#		
+#		if (exists $ORF_compl_info_hh{$curr_product}->{start2}) {
+#			my $this_start2 = $ORF_compl_info_hh{$curr_product}->{start2};
+#			my $this_stop2 = $ORF_compl_info_hh{$curr_product}->{stop2};
+#			my $feature_length2 = ($this_stop2 - $this_start2 + 1);
+#			
+#			my $offset2 = ($seq_length - $this_stop2);
+#			my $rev_compl_start2 = ($offset2 + 1);
+#			my $rev_compl_stop2 = ($rev_compl_start2 + $feature_length2 - 1);
+#		
+#			print OUTFILE "$genbank_compl_file_name\tCLC\tCDS\t$rev_compl_start2\t$rev_compl_stop2\t\.\t\+\t0\tgene_id \"$curr_product\";\n";
+#		}
+#	}	
+#	
+#	close OUTFILE;
+#}
+
 # ANTISENSE STRAND to GTF file
 if($is_compl == 1) {
 	my $genbank_compl_file_name = $new_file_prefix . "_revcompl.gb";
 	my @ORF_compl_arr_sorted = sort (@ORF_compl_arr);
 	
-	open(OUTFILE,">>$new_file_compl_name");
+	open(OUTFILE,">>$new_file_name");
 	
 	foreach my $curr_product (@ORF_compl_arr_sorted) {
 		my $this_start = $ORF_compl_info_hh{$curr_product}->{start};
 		my $this_stop = $ORF_compl_info_hh{$curr_product}->{stop};
-		my $feature_length = ($this_stop - $this_start + 1);
+		#my $feature_length = ($this_stop - $this_start + 1);
 		
-		my $offset = ($seq_length - $this_stop);
-		my $rev_compl_start = ($offset + 1);
-		my $rev_compl_stop = ($rev_compl_start + $feature_length - 1);
+		#my $offset = ($seq_length - $this_stop);
+		#my $rev_compl_start = ($offset + 1);
+		#my $rev_compl_stop = ($rev_compl_start + $feature_length - 1);
 		
-		print OUTFILE "$genbank_compl_file_name\tCLC\tCDS\t$rev_compl_start\t$rev_compl_stop\t\.\t\+\t0\tgene_id \"$curr_product\";\n";
+		print OUTFILE "$genbank_file_name\tCLC\tCDS\t$this_start\t$this_stop\t\.\t\-\t0\tgene_id \"$curr_product\";\n";
 		
 		if (exists $ORF_compl_info_hh{$curr_product}->{start2}) {
 			my $this_start2 = $ORF_compl_info_hh{$curr_product}->{start2};
 			my $this_stop2 = $ORF_compl_info_hh{$curr_product}->{stop2};
-			my $feature_length2 = ($this_stop2 - $this_start2 + 1);
+			#my $feature_length2 = ($this_stop2 - $this_start2 + 1);
 			
-			my $offset2 = ($seq_length - $this_stop2);
-			my $rev_compl_start2 = ($offset2 + 1);
-			my $rev_compl_stop2 = ($rev_compl_start2 + $feature_length2 - 1);
+			#my $offset2 = ($seq_length - $this_stop2);
+			#my $rev_compl_start2 = ($offset2 + 1);
+			#my $rev_compl_stop2 = ($rev_compl_start2 + $feature_length2 - 1);
 		
-			print OUTFILE "$genbank_compl_file_name\tCLC\tCDS\t$rev_compl_start2\t$rev_compl_stop2\t\.\t\+\t0\tgene_id \"$curr_product\";\n";
+			print OUTFILE "$genbank_file_name\tCLC\tCDS\t$this_start2\t$this_stop2\t\.\t\-\t0\tgene_id \"$curr_product\";\n";
 		}
 	}	
 	
