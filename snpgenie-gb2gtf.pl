@@ -42,7 +42,7 @@ if($genbank_file_name =~/\.gbk/) {
 }
 
 my $new_file_name = $new_file_prefix . ".gtf";
-my $new_file_compl_name = $new_file_prefix . "_rev_compl.gtf";
+#my $new_file_compl_name = $new_file_prefix . "_rev_compl.gtf";
 my $seq_length = 0;
 
 # For the standard annotations
@@ -624,27 +624,6 @@ while(<GBK_FILE>) {
 
 close GBK_FILE;
 
-# SENSE STRAND to GTF file
-my @ORF_arr_sorted = sort (@ORF_arr);
-
-open(OUTFILE,">>$new_file_name");
-
-foreach my $curr_product (@ORF_arr_sorted) {
-	my $this_start = $ORF_info_hh{$curr_product}->{start};
-	my $this_stop = $ORF_info_hh{$curr_product}->{stop};
-	
-	print OUTFILE "$genbank_file_name\tCLC\tCDS\t$this_start\t$this_stop\t\.\t\+\t0\tgene_id \"$curr_product\";\n";
-	
-	if (exists $ORF_info_hh{$curr_product}->{start2}) {
-		my $this_start2 = $ORF_info_hh{$curr_product}->{start2};
-		my $this_stop2 = $ORF_info_hh{$curr_product}->{stop2};
-		
-		print OUTFILE "$genbank_file_name\tCLC\tCDS\t$this_start2\t$this_stop2\t\.\t\+\t0\tgene_id \"$curr_product\";\n";
-	}
-}	
-
-close OUTFILE;
-
 # ANTISENSE STRAND to GTF file, to a separate file as the + strand
 #if($is_compl == 1) {
 #	my $genbank_compl_file_name = $new_file_prefix . "_revcompl.gb";
@@ -679,38 +658,108 @@ close OUTFILE;
 #	close OUTFILE;
 #}
 
+my %ORF_all_info;
+
 # ANTISENSE STRAND to GTF file
 if($is_compl == 1) {
-	my $genbank_compl_file_name = $new_file_prefix . "_revcompl.gb";
+	#my $genbank_compl_file_name = $new_file_prefix . "_revcompl.gb";
 	my @ORF_compl_arr_sorted = sort (@ORF_compl_arr);
 	
-	open(OUTFILE,">>$new_file_name");
+#	open(OUTFILE,">>$new_file_name");
 	
 	foreach my $curr_product (@ORF_compl_arr_sorted) {
-		my $this_start = $ORF_compl_info_hh{$curr_product}->{start};
-		my $this_stop = $ORF_compl_info_hh{$curr_product}->{stop};
+		$ORF_all_info{$curr_product}->{start} = $ORF_compl_info_hh{$curr_product}->{start};
+		$ORF_all_info{$curr_product}->{stop} = $ORF_compl_info_hh{$curr_product}->{stop};
+		$ORF_all_info{$curr_product}->{strand} = '-';
+		
+#		my $this_start = $ORF_compl_info_hh{$curr_product}->{start};
+#		my $this_stop = $ORF_compl_info_hh{$curr_product}->{stop};
 		#my $feature_length = ($this_stop - $this_start + 1);
 		
 		#my $offset = ($seq_length - $this_stop);
 		#my $rev_compl_start = ($offset + 1);
 		#my $rev_compl_stop = ($rev_compl_start + $feature_length - 1);
 		
-		print OUTFILE "$genbank_file_name\tCLC\tCDS\t$this_start\t$this_stop\t\.\t\-\t0\tgene_id \"$curr_product\";\n";
+#		print OUTFILE "$genbank_file_name\tCLC\tCDS\t$this_start\t$this_stop\t\.\t\-\t0\tgene_id \"$curr_product\";\n";
 		
 		if (exists $ORF_compl_info_hh{$curr_product}->{start2}) {
-			my $this_start2 = $ORF_compl_info_hh{$curr_product}->{start2};
-			my $this_stop2 = $ORF_compl_info_hh{$curr_product}->{stop2};
+			$ORF_all_info{$curr_product}->{start2} = $ORF_compl_info_hh{$curr_product}->{start2};
+			$ORF_all_info{$curr_product}->{stop2} = $ORF_compl_info_hh{$curr_product}->{stop2};
+			$ORF_all_info{$curr_product}->{strand} = '-';
+			
+#			my $this_start2 = $ORF_compl_info_hh{$curr_product}->{start2};
+#			my $this_stop2 = $ORF_compl_info_hh{$curr_product}->{stop2};
 			#my $feature_length2 = ($this_stop2 - $this_start2 + 1);
 			
 			#my $offset2 = ($seq_length - $this_stop2);
 			#my $rev_compl_start2 = ($offset2 + 1);
 			#my $rev_compl_stop2 = ($rev_compl_start2 + $feature_length2 - 1);
 		
-			print OUTFILE "$genbank_file_name\tCLC\tCDS\t$this_start2\t$this_stop2\t\.\t\-\t0\tgene_id \"$curr_product\";\n";
+#			print OUTFILE "$genbank_file_name\tCLC\tCDS\t$this_start2\t$this_stop2\t\.\t\-\t0\tgene_id \"$curr_product\";\n";
 		}
 	}	
 	
-	close OUTFILE;
+#	close OUTFILE;
+	
 }
+
+# SENSE STRAND to GTF file
+my @ORF_arr_sorted = sort (@ORF_arr);
+
+#open(OUTFILE,">>$new_file_name");
+
+foreach my $curr_product (@ORF_arr_sorted) {
+	$ORF_all_info{$curr_product}->{start} = $ORF_info_hh{$curr_product}->{start};
+	$ORF_all_info{$curr_product}->{stop} = $ORF_info_hh{$curr_product}->{stop};
+	$ORF_all_info{$curr_product}->{strand} = '+';
+	
+#	my $this_start = $ORF_info_hh{$curr_product}->{start};
+#	my $this_stop = $ORF_info_hh{$curr_product}->{stop};
+	
+#	print OUTFILE "$genbank_file_name\tCLC\tCDS\t$this_start\t$this_stop\t\.\t\+\t0\tgene_id \"$curr_product\";\n";
+	
+	if (exists $ORF_info_hh{$curr_product}->{start2}) {
+		$ORF_all_info{$curr_product}->{start2} = $ORF_info_hh{$curr_product}->{start2};
+		$ORF_all_info{$curr_product}->{stop2} = $ORF_info_hh{$curr_product}->{stop2};
+		$ORF_all_info{$curr_product}->{strand} = '+';
+		
+#		my $this_start2 = $ORF_info_hh{$curr_product}->{start2};
+#		my $this_stop2 = $ORF_info_hh{$curr_product}->{stop2};
+		
+#		print OUTFILE "$genbank_file_name\tCLC\tCDS\t$this_start2\t$this_stop2\t\.\t\+\t0\tgene_id \"$curr_product\";\n";
+	}
+}	
+
+#close OUTFILE;
+
+# A second, interleaved take
+my @ORF_ordered_by_start_arr = sort { $ORF_all_info{$a}->{start} <=> $ORF_all_info{$b}->{start} } keys %ORF_all_info;
+open(OUTFILE2,">>$new_file_name");
+
+foreach my $curr_product (@ORF_ordered_by_start_arr) {
+	my $this_start = $ORF_all_info{$curr_product}->{start};
+	my $this_stop = $ORF_all_info{$curr_product}->{stop};
+	
+	if($ORF_all_info{$curr_product}->{strand} eq '+') {
+		print OUTFILE2 "$genbank_file_name\tSNPGenie\tCDS\t$this_start\t$this_stop\t\.\t\+\t0\tgene_id \"$curr_product\";\n";
+	} else {
+		print OUTFILE2 "$genbank_file_name\tSNPGenie\tCDS\t$this_start\t$this_stop\t\.\t\-\t0\tgene_id \"$curr_product\";\n";
+	}
+	
+	if (exists $ORF_info_hh{$curr_product}->{start2}) {
+		my $this_start2 = $ORF_all_info{$curr_product}->{start2};
+		my $this_stop2 = $ORF_all_info{$curr_product}->{stop2};
+		
+		if($ORF_all_info{$curr_product}->{strand} eq '+') {
+			print OUTFILE2 "$genbank_file_name\tSNPGenie\tCDS\t$this_start2\t$this_stop2\t\.\t\+\t0\tgene_id \"$curr_product\";\n";
+		} else {
+			print OUTFILE2 "$genbank_file_name\tSNPGenie\tCDS\t$this_start2\t$this_stop2\t\.\t\-\t0\tgene_id \"$curr_product\";\n";
+		}
+	}
+}	
+
+close OUTFILE2;
+
+print "\n### Results placed in the file $new_file_name\n\n";
 
 # END
