@@ -63,6 +63,24 @@ At minimum, the <a target="_blank" href="http://www.geneious.com/">Geneious</a> 
 
 As with CLC, the Geneious SNP report should ideally be free of extraneous characters such as thousand separators (,), but SNPGenie will do its best to adapt if they are present. Again, the Variant Frequency must remain a percentage (default format). Again, the user should verify that the reading frame in the Geneious output is correct. SNPGenie will produce various errors to indicate when these conditions are not met, e.g., by checking that all products begin with START and end with STOP codons, and checking for premature stop codons. Make sure to check the SNPGenie LOG file!
 
+#### Variant Call Format (VCF)
+At minimum, the <a target="_blank" href="https://github.com/samtools/hts-specs">VCF</a> SNP report must include (and at present does so by definition) the following columns, with the unaltered VCF column headers:
+
+* **CHROM**, the name of the reference genome;
+* **POS**, which refers to the start site of the polymorphism within the reference FASTA sequence;
+* **REF**, the reference nucleotide(s) at that site(s);
+* **ALT**, the variant nucleotide(s) at that site(s);
+* **QUAL**, the Phred quality score for the variant;
+* **FILTER**, the filter status, based on such metrics as minimum frequencies and minimum quality scores;
+* **INFO**, additional necessary information, including entries for:
+	* If a *pooled* VCF (*i.e.*, the SNPs are called from a pooled sequencing sample):
+		* **DP4**, containing the number of reference and variant reads on the forward and reverse strands (*e.g.*, "DP4=11,9,219,38"); or, alternatively,
+		* **DP**, the coverage (read depth), and **AF**, the allele frequency(-ies) for the variant alleles in the same order as listed in the ALT column (*e.g.*, "DP=26" and "AF=0.231") **(N.B.: not yet supported)**
+	* If a *summary* VCF (*i.e.*, the SNPs from multiple individual sequencing samples are being summarized):
+		* **NS**, the number of samples (*i.e.*, individual sequencing experiments) being summarized, and **AF**, the allele frequency(-ies) for the variant alleles in the same order as listed in the ALT column (*e.g.*, "NS=30" and "AF=0.200") **(N.B.: not yet supported)**
+
+Fortunately, VCF files typically follow more standard formatting conventions than CLC or Geneious, but you will want to make sure to maintain its features, such as TAB-delimited columns. Unlike some other formats, the allele frequency in VCF is a decimal.
+
 ## Options
 
 In case you want to alter the way SNPGenie works, the following options (implemented using Perl's Getopt::Long module) may be used:
