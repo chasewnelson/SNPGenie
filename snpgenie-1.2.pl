@@ -333,7 +333,7 @@ if($complementmode && ($multi_seq_mode == 0)) {
 	
 	open(GTF_FILE_AGAIN, "$cds_file") or die "\nCould not open the GTF file $cds_file - $!\n\n";
 	while(<GTF_FILE_AGAIN>) {
-		if($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.']+)\"/) { # Line is - strand
+		if($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"gene\:([\w\s\.']+)\"/) { # Line is - strand
 			my $rev_compl_start = $1; # Where the gene itself actually STOPS
 			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
 			my $this_product = $3;
@@ -344,6 +344,30 @@ if($complementmode && ($multi_seq_mode == 0)) {
 			#my $this_start = $seq_length - $rev_compl_stop + 1;
 			#my $this_stop = ($this_start + $feature_length - 1);
 			#my $this_stop = $seq_length - $rev_compl_start + 1;
+			
+			if(exists $hh_compl_position_info{$this_product}->{start}) {
+				$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+				$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+			} else {
+				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+			}
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
+			my $rev_compl_start = $1; # Where the gene itself actually STOPS
+			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+			my $this_product = $3;
+			
+			if(exists $hh_compl_position_info{$this_product}->{start}) {
+				$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+				$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+			} else {
+				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+			}
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.']+)\"/) {
+			my $rev_compl_start = $1; # Where the gene itself actually STOPS
+			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+			my $this_product = $3;
 			
 			if(exists $hh_compl_position_info{$this_product}->{start}) {
 				$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
@@ -6506,7 +6530,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					
 					open(GTF_FILE_AGAIN, "$cds_file") or die "\nCould not open the GTF file $cds_file - $!\n\n";
 					while(<GTF_FILE_AGAIN>) {
-						if($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.']+)\"/) { # Line is - strand
+						if($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"gene\:([\w\s\.']+)\"/) { # Line is - strand
 							my $rev_compl_start = $1; # Where the gene itself actually STOPS
 							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
 							my $this_product = $3;
@@ -6523,7 +6547,31 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
 								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
 							}
-						}
+						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
+							my $rev_compl_start = $1; # Where the gene itself actually STOPS
+							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+							my $this_product = $3;
+							
+							if(exists $hh_compl_position_info{$this_product}->{start}) {
+								$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+								$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+							} else {
+								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+							}
+						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"([\w\s\.']+)\"/) {
+							my $rev_compl_start = $1; # Where the gene itself actually STOPS
+							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+							my $this_product = $3;
+							
+							if(exists $hh_compl_position_info{$this_product}->{start}) {
+								$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+								$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+							} else {
+								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+							}
+						}		
 					}
 					close GTF_FILE_AGAIN;
 					
@@ -7507,10 +7555,14 @@ sub get_product_names_from_gtf {
 	my %products_hash;
 	open (CURRINFILE, $cds_file);
 	while (<CURRINFILE>) {
-		if($_ =~ /CDS\t\d+\t\d+\t\.\t\+/) { # Must be on the + strand
-			if ($_ =~/gene_id "([\w\s\.']+)"/) {
+		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
+			if($_ =~/gene_id \"gene\:([\w\s\.']+)\"/) {
 				$products_hash{$1} = 1;
-			}
+			} elsif($_ =~ /gene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
+				$products_hash{$1} = 1;
+			} elsif($_ =~/gene_id \"([\w\s\.']+)\"/) {
+				$products_hash{$1} = 1;
+			} 
 		}
 	}
 	close CURRINFILE;
@@ -7536,8 +7588,14 @@ sub get_product_names_vcf {
 		#	$_ =~ s/\n//;
 		#}
 		
-		if($_ =~ /CDS\t\d+\t\d+\t\.\t\+/) { # Must be on the + strand
-			if($_ =~ /gene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
+		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
+			if($_ =~/gene_id \"gene\:([\w\s\.']+)\"/) {
+				my $product = $1;
+				
+				if ((! exists $products_hash{$product}) && ($product ne '')) {
+					$products_hash{$product} = 1;
+				}
+			} elsif($_ =~ /gene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
 				my $product = $1;
 				
 				if ((! exists $products_hash{$product}) && ($product ne '')) {
@@ -7566,7 +7624,7 @@ sub determine_complement_mode {
 	while (<CURRINFILE>) {
 		chomp;
 		
-		if($_ =~ /CDS\t\d+\t\d+\t\.\t-/) {
+		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t-/) {
 			$complement_mode = 1;
 			last;
 		}
@@ -8232,7 +8290,7 @@ sub populate_tempfile_geneious {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"CDS Position\". SNPGenie terminated\n";
+			"Does not contain the column header \"CDS Position\". Proceed with extreme caution\n";
 		close ERROR_FILE;
 		chdir('..');
 		
@@ -8355,7 +8413,7 @@ sub populate_tempfile_geneious {
 				
 				#print "My percent: $percent\n";
 				
-				if(($poly_type =~ /SNP/) && ($percent > 0)) {
+				if(($poly_type =~ /SNP/ || $poly_type =~ /Substitution/) && ($percent > 0)) {
 					#print "Poly Type is SNP\n";
 					my $min = $line_arr[$index_min];					
 					my $max = $line_arr[$index_max];
@@ -8502,7 +8560,7 @@ sub populate_tempfile_geneious {
 						}
 					}
 					
-					if($is_change == 1) {
+					if($is_change == 1 && $reference_length == $variant_length) {
 						#print "We verified a change\n";
 						my $clc_type;
 						if($reference_length == 1) {
@@ -8546,14 +8604,14 @@ sub populate_tempfile_geneious {
 						# FREQ and COUNT
 						my $freq = $line_arr[$index_percent] / 100; # this automatically trims the "%"
 						my $count = ($line_arr[$index_cov] * $freq);
-				
+						
 						my $this_line = "$curr_snp_report_name\t$ref_pos\t$cds_position\t$clc_type\t$reference_nts\t".
 							"$variant_nts\t$count\t$coverage\t$percent\t$product_print\n";
 						
 						print OUTFILE "$this_line";
 						#print "$this_line";
 					} # If it's a change
-				} # If poly type contains 'SNP'
+				} # If poly type contains 'SNP' or 'Substitution'
 			} # If type contains 'Polymorphism'
 			
 			$line ++;
@@ -8603,7 +8661,8 @@ sub populate_tempfile_vcf {
 	my $index_filter;
 	my $index_info;
 	my $index_format;
-	my $index_sample1;
+	my $index_sample;
+	#my $index_sample1;
 	
 	my $seen_index_chrom;
 	my $seen_index_pos;
@@ -8614,7 +8673,8 @@ sub populate_tempfile_vcf {
 	my $seen_index_filter;
 	my $seen_index_info;
 	my $seen_index_format;
-	my $seen_index_sample1;
+	my $seen_index_sample;
+	#my $seen_index_sample1;
 	
 	#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample1
 	my $header_line;
@@ -8666,10 +8726,11 @@ sub populate_tempfile_vcf {
 		} elsif ($header_arr[$i] =~ /FORMAT/) {
 			$index_format = $i;
 			$seen_index_format = 1;
-		} elsif ($header_arr[$i] =~ /sample1/) {
-			$index_sample1 = $i;
-			$seen_index_sample1 = 1;
-		}
+			$index_sample = $i+1; # ASSUME the SAMPLE column follows the FORMAT column
+		} #elsif ($header_arr[$i] =~ /sample1/) {
+#			$index_sample1 = $i;
+#			$seen_index_sample1 = 1;
+#		}
 	}
 	
 	# DIE if one of the headers have not been seen
@@ -8772,18 +8833,18 @@ sub populate_tempfile_vcf {
 		#unlink $curr_snp_report_name;
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FORMAT\". SNPGenie terminated\n\n";	
-	} elsif ($seen_index_sample1 == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
-		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"sample1\". SNPGenie terminated\n";
-		close ERROR_FILE;
-		chdir('..');
-		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"sample1\". SNPGenie terminated\n\n";	
-	}
+	} #elsif ($seen_index_sample1 == 0) {
+#		chdir('SNPGenie_Results');
+#		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+#		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
+#			"Does not contain the column header \"sample1\". SNPGenie terminated\n";
+#		close ERROR_FILE;
+#		chdir('..');
+#		
+#		#unlink $curr_snp_report_name;
+#		
+#		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"sample1\". SNPGenie terminated\n\n";	
+#	}
 	
 	# Product names are not included directly in the VCF. Thus we must use the GTF file
 	my @product_names_arr = &get_product_names_vcf($gtf_file_nm);
@@ -8814,9 +8875,15 @@ sub populate_tempfile_vcf {
 		#	$_ =~ s/\n//;
 		#}
 		
-		if($_ =~ /CDS\t\d+\t\d+\t\.\t\+/) { # Make sure it's on the + strand
+		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Make sure it's on the + strand
 			my $product;
-			if($_ =~ /gene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
+			if($_ =~ /gene_id \"gene\:([\w\s\.']+)\"/) {
+				$product = $1;
+				
+				if ((! exists $products_hash{$product}) && ($product ne '')) {
+					$products_hash{$product} = 1;
+				}
+			} elsif($_ =~ /gene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
 				$product = $1;
 				
 				if ((! exists $products_hash{$product}) && ($product ne '')) {
@@ -8902,7 +8969,8 @@ sub populate_tempfile_vcf {
 			my $filter_value = $line_arr[$index_filter];
 			my $info_value = $line_arr[$index_info];
 			my $format_value = $line_arr[$index_format];
-			my $sample1_value = $line_arr[$index_sample1];
+			my $sample_value = $line_arr[$index_sample];
+			#my $sample1_value = $line_arr[$index_sample1];
 			
 			# Extract the needed values; the CLC ORDER will be:
 			# file_nm
@@ -8946,8 +9014,8 @@ sub populate_tempfile_vcf {
 				}
 			} elsif($reference_length > 1) {
 				$clc_type = 'MNV';
-				print "\nThere is a multi-nucleotide variant at $ref_pos;\n".
-					"this is not fully supported for VCF\n\n";
+				#print "\nThere is a multi-nucleotide variant at $ref_pos;\n".
+				#	"this is not fully supported for VCF\n\n";
 				# ELABORATE HERE for sites i+1, i+2, etc.
 				# Actually, we can add lines to those sites, IF VCF even does MNVs
 				if(exists $positions_with_product_hash{$ref_pos}) {
@@ -8990,37 +9058,61 @@ sub populate_tempfile_vcf {
 			# Let's also add to this the EXCLUSION of lines which have 0 variants;
 			# this should save a considerable amount of processing time later.
 			my $product_entry = '';
-			if($variant3) { # THERE ARE THREE VARIANTS -- ADD A FLAG!
-				if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
-					print "\n### FILE TYPE NOT FULLY SUPPORTED###\n";
-					my $num_samples;
-					$num_samples = $1;
-					
-					my $variant_freq1;
-					my $variant_freq2;
-					my $variant_freq3;
-					if($info_value =~ /AF=([\d\.]+),([\d\.]+),([\d\.]+)/) {
-						$variant_freq1 = $1;
-						$variant_freq2 = $2;
-						$variant_freq3 = $3;
-					}
-					
-					# COUNTS and PERCENTS
-					my $ref_freq = (1 - ($variant_freq1 + $variant_freq2 + $variant_freq3));
-					my $ref_count = ($ref_freq * $num_samples);
-					
-					my $variant_count1 = ($variant_freq1 * $num_samples);
-					my $variant_count2 = ($variant_freq2 * $num_samples);
-					my $variant_count3 = ($variant_freq3 * $num_samples);
-					
-					my $variant_pct1 = (100 * $variant_freq1);
-					my $variant_pct2 = (100 * $variant_freq2);
-					my $variant_pct3 = (100 * $variant_freq3);
-					
-					$product_entry = '';
-					if(@this_site_products) {
-						foreach my $product (@this_site_products) {
-							$product_entry = 'CDS: ' . $product;
+			if($equal_lengths_variants) {
+				if($variant3) { # THERE ARE THREE VARIANTS -- ADD A FLAG!
+					if($info_value =~ /NS=(\d+)/) { # We've got a VCF SUMMARIZING INDIVIDUALS
+						print "\n### FILE TYPE NOT FULLY SUPPORTED###\n";
+						my $num_samples;
+						$num_samples = $1;
+						
+						my $variant_freq1;
+						my $variant_freq2;
+						my $variant_freq3;
+						if($info_value =~ /AF=([\d\.]+),([\d\.]+),([\d\.]+)/) {
+							$variant_freq1 = $1;
+							$variant_freq2 = $2;
+							$variant_freq3 = $3;
+						}
+						
+						# COUNTS and PERCENTS
+						my $ref_freq = (1 - ($variant_freq1 + $variant_freq2 + $variant_freq3));
+						my $ref_count = ($ref_freq * $num_samples);
+						
+						my $variant_count1 = ($variant_freq1 * $num_samples);
+						my $variant_count2 = ($variant_freq2 * $num_samples);
+						my $variant_count3 = ($variant_freq3 * $num_samples);
+						
+						my $variant_pct1 = (100 * $variant_freq1);
+						my $variant_pct2 = (100 * $variant_freq2);
+						my $variant_pct3 = (100 * $variant_freq3);
+						
+						$product_entry = '';
+						if(@this_site_products) {
+							foreach my $product (@this_site_products) {
+								$product_entry = 'CDS: ' . $product;
+								# PRINT 3 LINES TO FILE
+								if($variant_freq1 > 0) {
+									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
+									
+									print TEMP_FILE "$this_line1";
+								}
+								
+								if($variant_freq2 > 0) {
+									my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant2\t$variant_count2\t$num_samples\t$variant_pct2\tCDS: $product_entry\n";
+									
+									print TEMP_FILE "$this_line2";
+								}
+								
+								if($variant_freq3 > 0) {
+									my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant3\t$variant_count3\t$num_samples\t$variant_pct3\tCDS: $product_entry\n";
+									
+									print TEMP_FILE "$this_line3";
+								}
+							}
+						} else {
 							# PRINT 3 LINES TO FILE
 							if($variant_freq1 > 0) {
 								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
@@ -9043,68 +9135,68 @@ sub populate_tempfile_vcf {
 								print TEMP_FILE "$this_line3";
 							}
 						}
-					} else {
-						# PRINT 3 LINES TO FILE
-						if($variant_freq1 > 0) {
-							my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-								"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
-							
-							print TEMP_FILE "$this_line1";
-						}
 						
-						if($variant_freq2 > 0) {
-							my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-								"$variant2\t$variant_count2\t$num_samples\t$variant_pct2\tCDS: $product_entry\n";
-							
-							print TEMP_FILE "$this_line2";
-						}
+					} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
+						chdir('SNPGenie_Results');
+						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						print ERROR_FILE "$curr_snp_report_name\t". $this_site_products[0] .
+							"\t$ref_pos\t".
+							"Site has three variants in a pooled VCF file. Variant frequencies".
+							" have been approximated\n";
+						close ERROR_FILE;
+						chdir('..');
 						
-						if($variant_freq3 > 0) {
-							my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-								"$variant3\t$variant_count3\t$num_samples\t$variant_pct3\tCDS: $product_entry\n";
-							
-							print TEMP_FILE "$this_line3";
-						}
-					}
-					
-				} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					print ERROR_FILE "$curr_snp_report_name\t". $this_site_products[0] .
-						"\t$ref_pos\t".
-						"Site has three variants in a pooled VCF file. Variant frequencies".
-						" have been approximated\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					# These are high-quality reads, so may be less that the actual coverage
-					my $fwd_ref_reads = $1;
-					my $rev_ref_reads = $2;
-					my $fwd_alt_reads = $3;
-					my $rev_alt_reads = $4;
-					
-					# COUNTS and FREQS
-					my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
-					my $alt_count = ($fwd_alt_reads + $rev_alt_reads);
-					my $coverage = ($ref_count + $alt_count);
-					
-					my $variant_count1 = ($alt_count / 3);
-					my $variant_count2 = ($alt_count / 3);
-					my $variant_count3 = ($alt_count / 3);
-					
-					my $variant_freq1 = ($variant_count1 / $coverage);
-					my $variant_freq2 = ($variant_count2 / $coverage);
-					my $variant_freq3 = ($variant_count3 / $coverage);
-					
-					my $variant_pct1 = (100 * $variant_freq1);
-					my $variant_pct2 = (100 * $variant_freq2);
-					my $variant_pct3 = (100 * $variant_freq3);
-					
-					$product_entry = '';
-					if(@this_site_products) {
-						foreach my $product (@this_site_products) {
-							$product_entry = 'CDS: ' . $product;
-							
+						# These are high-quality reads, so may be less that the actual coverage
+						my $fwd_ref_reads = $1;
+						my $rev_ref_reads = $2;
+						my $fwd_alt_reads = $3;
+						my $rev_alt_reads = $4;
+						
+						# COUNTS and FREQS
+						my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
+						my $alt_count = ($fwd_alt_reads + $rev_alt_reads);
+						my $coverage = ($ref_count + $alt_count);
+						
+						my $variant_count1 = ($alt_count / 3);
+						my $variant_count2 = ($alt_count / 3);
+						my $variant_count3 = ($alt_count / 3);
+						
+						my $variant_freq1 = ($variant_count1 / $coverage);
+						my $variant_freq2 = ($variant_count2 / $coverage);
+						my $variant_freq3 = ($variant_count3 / $coverage);
+						
+						my $variant_pct1 = (100 * $variant_freq1);
+						my $variant_pct2 = (100 * $variant_freq2);
+						my $variant_pct3 = (100 * $variant_freq3);
+						
+						$product_entry = '';
+						if(@this_site_products) {
+							foreach my $product (@this_site_products) {
+								$product_entry = 'CDS: ' . $product;
+								
+								# PRINT 3 LINES TO FILE
+								if($variant_freq1 > 0) {
+									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line1";
+								}
+								
+								if($variant_freq2 > 0) {
+									my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line2";
+								}
+								
+								if($variant_freq3 > 0) {
+									my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line3";
+								}
+							}
+						} else {
 							# PRINT 3 LINES TO FILE
 							if($variant_freq1 > 0) {
 								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
@@ -9127,60 +9219,187 @@ sub populate_tempfile_vcf {
 								print TEMP_FILE "$this_line3";
 							}
 						}
-					} else {
-						# PRINT 3 LINES TO FILE
-						if($variant_freq1 > 0) {
-							my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-								"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+						
+					} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
+						# Find out how many ":" appear before AD, if any
+						my $prior_to_AD = $`;
+						my @colons_prior_to_AD = $prior_to_AD =~ /"\:"/g;
+						# my @numbers = m/(\d+)/g;
+						my $colon_count_before_AD = @colons_prior_to_AD;
+						
+						
+						my $prior_to_DP;
+						my @colons_prior_to_DP;
+						my $colon_count_before_DP;
 							
-							print TEMP_FILE "$this_line1";
+						if($format_value =~ /DP/) {
+							$prior_to_DP = $`;
+							@colons_prior_to_DP = $prior_to_DP =~ /"\:"/g;
+							$colon_count_before_DP = @colons_prior_to_DP;
+						} else {
+							chdir('SNPGenie_Results');
+							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
+								"VCF file $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n";
+							close ERROR_FILE;
+							chdir('..');
+							
+							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n\n";	 
 						}
 						
-						if($variant_freq2 > 0) {
-							my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-								"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
-							
-							print TEMP_FILE "$this_line2";
+						# GENERATE a regex for what comes before the VALUE of AD
+						my $prior_to_AD_regex;
+						for (my $i=0; $i<$colon_count_before_AD; $i++) {
+							$prior_to_AD_regex .= "[\d\w\/\,]+\:";
 						}
 						
-						if($variant_freq3 > 0) {
-							my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-								"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
-							
-							print TEMP_FILE "$this_line3";
+						# GENERATE a regex for what comes before the VALUE of DP
+						my $prior_to_DP_regex;
+						for (my $i=0; $i<$colon_count_before_DP; $i++) {
+							$prior_to_DP_regex .= "[\d\w\/\,]+\:";
 						}
+						
+						# EXTRACT the VALUE of AD
+						my $AD1;
+						my $AD2;
+						my $AD3;
+						if($sample_value =~ /$prior_to_AD_regex(\d+)\,(\d+)\,(\d+)/) { # NEED A FOURTH-> ref and 3 others
+							$AD1 = $1;
+							$AD2 = $2;
+							$AD3 = $3;
+						}
+						
+						# EXTRACT the VALUE of DP (coverage)
+						my $DP;
+						if($sample_value =~ /$prior_to_DP_regex(\d+)/) {
+							#my $prior_to_match = $`;
+							#if($prior_to_match =~ /\:+?/) { # non-greedy; at least 1 match
+							$DP = $1;	
+							#}
+						}
+						
+						
+						
+	#					# These are high-quality reads, so may be less that the actual coverage
+	#					my $fwd_ref_reads = $1;
+	#					my $rev_ref_reads = $2;
+	#					my $fwd_alt_reads = $3;
+	#					my $rev_alt_reads = $4;			
+	#					
+	#					# COUNTS and FREQS
+	#					my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
+	#					my $alt_count = ($fwd_alt_reads + $rev_alt_reads);
+	#					my $coverage = ($ref_count + $alt_count);
+	#					
+	#					my $variant_count1 = ($alt_count / 3);
+	#					my $variant_count2 = ($alt_count / 3);
+	#					my $variant_count3 = ($alt_count / 3);
+	#					
+	#					my $variant_freq1 = ($variant_count1 / $coverage);
+	#					my $variant_freq2 = ($variant_count2 / $coverage);
+	#					my $variant_freq3 = ($variant_count3 / $coverage);
+	#					
+	#					my $variant_pct1 = (100 * $variant_freq1);
+	#					my $variant_pct2 = (100 * $variant_freq2);
+	#					my $variant_pct3 = (100 * $variant_freq3);
+	#					
+	#					$product_entry = '';
+	#					if(@this_site_products) {
+	#						foreach my $product (@this_site_products) {
+	#							$product_entry = 'CDS: ' . $product;
+	#							
+	#							# PRINT 3 LINES TO FILE
+	#							if($variant_freq1 > 0) {
+	#								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+	#									"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+	#								
+	#								print TEMP_FILE "$this_line1";
+	#							}
+	#							
+	#							if($variant_freq2 > 0) {
+	#								my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+	#									"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+	#								
+	#								print TEMP_FILE "$this_line2";
+	#							}
+	#							
+	#							if($variant_freq3 > 0) {
+	#								my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+	#									"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
+	#								
+	#								print TEMP_FILE "$this_line3";
+	#							}
+	#						}
+	#					} else {
+	#						# PRINT 3 LINES TO FILE
+	#						if($variant_freq1 > 0) {
+	#							my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+	#								"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+	#							
+	#							print TEMP_FILE "$this_line1";
+	#						}
+	#						
+	#						if($variant_freq2 > 0) {
+	#							my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+	#								"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+	#							
+	#							print TEMP_FILE "$this_line2";
+	#						}
+	#						
+	#						if($variant_freq3 > 0) {
+	#							my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+	#								"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
+	#							
+	#							print TEMP_FILE "$this_line3";
+	#						}
+	#					}
+						
 					}
 					
-				}
-				
-			} elsif($variant2) { # THERE ARE TWO VARIANTS -- ADD A FLAG!
-				if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
-					print "\n### FILE TYPE NOT FULLY SUPPORTED###\n";
-					my $num_samples;
-					$num_samples = $1;
-					
-					my $variant_freq1;
-					my $variant_freq2;
-					if($info_value =~ /AF=([\d\.]+),([\d\.]+)/) {
-						$variant_freq1 = $1;
-						$variant_freq2 = $2;
-					}
-					
-					# COUNTS and PERCENTS
-					my $ref_freq = (1 - ($variant_freq1 + $variant_freq2));
-					my $ref_count = ($ref_freq * $num_samples);
-					
-					my $variant_count1 = ($variant_freq1 * $num_samples);
-					my $variant_count2 = ($variant_freq2 * $num_samples);
-					
-					my $variant_pct1 = (100 * $variant_freq1);
-					my $variant_pct2 = (100 * $variant_freq2);
-					
-					$product_entry = '';
-					if(@this_site_products) {
-						foreach my $product (@this_site_products) {
-							$product_entry = 'CDS: ' . $product;
-							
+				} elsif($variant2) { # THERE ARE TWO VARIANTS -- ADD A FLAG!
+					if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
+						print "\n### FILE TYPE NOT FULLY SUPPORTED###\n";
+						my $num_samples;
+						$num_samples = $1;
+						
+						my $variant_freq1;
+						my $variant_freq2;
+						if($info_value =~ /AF=([\d\.]+),([\d\.]+)/) {
+							$variant_freq1 = $1;
+							$variant_freq2 = $2;
+						}
+						
+						# COUNTS and PERCENTS
+						my $ref_freq = (1 - ($variant_freq1 + $variant_freq2));
+						my $ref_count = ($ref_freq * $num_samples);
+						
+						my $variant_count1 = ($variant_freq1 * $num_samples);
+						my $variant_count2 = ($variant_freq2 * $num_samples);
+						
+						my $variant_pct1 = (100 * $variant_freq1);
+						my $variant_pct2 = (100 * $variant_freq2);
+						
+						$product_entry = '';
+						if(@this_site_products) {
+							foreach my $product (@this_site_products) {
+								$product_entry = 'CDS: ' . $product;
+								
+								# PRINT 2 LINES TO FILE
+								if($variant_freq1 > 0) {
+									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
+									
+									print TEMP_FILE "$this_line1";
+								}
+								
+								if($variant_freq2 > 0) {
+									my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant2\t$variant_count2\t$num_samples\t$variant_pct2\tCDS: $product_entry\n";
+									
+									print TEMP_FILE "$this_line2";
+								}
+							}
+						} else {
 							# PRINT 2 LINES TO FILE
 							if($variant_freq1 > 0) {
 								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
@@ -9196,58 +9415,58 @@ sub populate_tempfile_vcf {
 								print TEMP_FILE "$this_line2";
 							}
 						}
-					} else {
-						# PRINT 2 LINES TO FILE
-						if($variant_freq1 > 0) {
-							my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-								"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
-							
-							print TEMP_FILE "$this_line1";
-						}
 						
-						if($variant_freq2 > 0) {
-							my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-								"$variant2\t$variant_count2\t$num_samples\t$variant_pct2\tCDS: $product_entry\n";
-							
-							print TEMP_FILE "$this_line2";
-						}
-					}
-					
-				} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					print ERROR_FILE "$curr_snp_report_name\t". $this_site_products[0] .
-						"\t$ref_pos\t".
-						"Site has two variants in a pooled VCF file. Variant frequencies".
-						" have been approximated\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					# These are high-quality reads, so may be less that the actual coverage
-					my $fwd_ref_reads = $1;
-					my $rev_ref_reads = $2;
-					my $fwd_alt_reads = $3;
-					my $rev_alt_reads = $4;
-					
-					# COUNTS and FREQS
-					my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
-					my $alt_count = ($fwd_alt_reads + $rev_alt_reads);
-					my $coverage = ($ref_count + $alt_count);
-					
-					my $variant_count1 = ($alt_count / 2);
-					my $variant_count2 = ($alt_count / 2);
-					
-					my $variant_freq1 = ($variant_count1 / $coverage);
-					my $variant_freq2 = ($variant_count2 / $coverage);
-					
-					my $variant_pct1 = (100 * $variant_freq1);
-					my $variant_pct2 = (100 * $variant_freq2);
-					
-					$product_entry = '';
-					if(@this_site_products) {
-						foreach my $product (@this_site_products) {
-							$product_entry = 'CDS: ' . $product;
-							
+					} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
+						chdir('SNPGenie_Results');
+						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						print ERROR_FILE "$curr_snp_report_name\t". $this_site_products[0] .
+							"\t$ref_pos\t".
+							"Site has two variants in a pooled VCF file. Variant frequencies".
+							" have been approximated\n";
+						close ERROR_FILE;
+						chdir('..');
+						
+						# These are high-quality reads, so may be less that the actual coverage
+						my $fwd_ref_reads = $1;
+						my $rev_ref_reads = $2;
+						my $fwd_alt_reads = $3;
+						my $rev_alt_reads = $4;
+						
+						# COUNTS and FREQS
+						my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
+						my $alt_count = ($fwd_alt_reads + $rev_alt_reads);
+						my $coverage = ($ref_count + $alt_count);
+						
+						my $variant_count1 = ($alt_count / 2);
+						my $variant_count2 = ($alt_count / 2);
+						
+						my $variant_freq1 = ($variant_count1 / $coverage);
+						my $variant_freq2 = ($variant_count2 / $coverage);
+						
+						my $variant_pct1 = (100 * $variant_freq1);
+						my $variant_pct2 = (100 * $variant_freq2);
+						
+						$product_entry = '';
+						if(@this_site_products) {
+							foreach my $product (@this_site_products) {
+								$product_entry = 'CDS: ' . $product;
+								
+								# PRINT 2 LINES TO FILE
+								if($variant_freq1 > 0) {
+									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line1";
+								}
+								
+								if($variant_freq2 > 0) {
+									my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line2";
+								}
+							}
+						} else {
 							# PRINT 2 LINES TO FILE
 							if($variant_freq1 > 0) {
 								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
@@ -9255,7 +9474,7 @@ sub populate_tempfile_vcf {
 								
 								print TEMP_FILE "$this_line1";
 							}
-							
+								
 							if($variant_freq2 > 0) {
 								my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
 									"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
@@ -9263,110 +9482,232 @@ sub populate_tempfile_vcf {
 								print TEMP_FILE "$this_line2";
 							}
 						}
-					} else {
-						# PRINT 2 LINES TO FILE
-						if($variant_freq1 > 0) {
-							my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-								"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+						
+					} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
+						# Find out how many ":" appear before AD, if any
+						my $prior_to_AD = $`;
+						my @colons_prior_to_AD = $prior_to_AD =~ /"\:"/g;
+						# my @numbers = m/(\d+)/g;
+						my $colon_count_before_AD = @colons_prior_to_AD;
+						
+						my $prior_to_DP;
+						my @colons_prior_to_DP;
+						my $colon_count_before_DP;
 							
-							print TEMP_FILE "$this_line1";
+						if($format_value =~ /DP/) {
+							$prior_to_DP = $`;
+							@colons_prior_to_DP = $prior_to_DP =~ /"\:"/g;
+							$colon_count_before_DP = @colons_prior_to_DP;
+						} else {
+							chdir('SNPGenie_Results');
+							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
+								"VCF file $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n";
+							close ERROR_FILE;
+							chdir('..');
+							
+							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n\n";	 
 						}
-							
-						if($variant_freq2 > 0) {
-							my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-								"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
-							
-							print TEMP_FILE "$this_line2";
+						
+						# GENERATE a regex for what comes before the VALUE of AD
+						my $prior_to_AD_regex;
+						for (my $i=0; $i<$colon_count_before_AD; $i++) {
+							$prior_to_AD_regex .= "[\d\w\/\,]+\:";
 						}
+						
+						# GENERATE a regex for what comes before the VALUE of DP
+						my $prior_to_DP_regex;
+						for (my $i=0; $i<$colon_count_before_DP; $i++) {
+							$prior_to_DP_regex .= "[\d\w\/\,]+\:";
+						}
+						
+						# EXTRACT the VALUE of AD
+						my $AD1;
+						my $AD2;
+						my $AD3;
+						if($sample_value =~ /$prior_to_AD_regex(\d+)\,(\d+)\,(\d+)/) { # REF and 2 ALTS
+							$AD1 = $1;
+							$AD2 = $2;
+							$AD3 = $3;
+						}
+						
+						# EXTRACT the VALUE of DP (coverage)
+						my $DP;
+						if($sample_value =~ /$prior_to_DP_regex(\d+)/) {
+							#my $prior_to_match = $`;
+							#if($prior_to_match =~ /\:+?/) { # non-greedy; at least 1 match
+							$DP = $1;	
+							#}
+						}
+						
+						print "\nPrior to AD regex is: " . $prior_to_AD_regex . "\n";
+						print "Colon count before AD is: $colon_count_before_AD\n";
+						print "Prior to DP regex is: $prior_to_DP_regex\n";
+						print "AD's are: $AD1\, $AD2\, and $AD3\nDP is: $DP\n\n";
+						
+						
+	#					# These are high-quality reads, so may be less that the actual coverage
+	#					my $fwd_ref_reads = $1;
+	#					my $rev_ref_reads = $2;
+	#					my $fwd_alt_reads = $3;
+	#					my $rev_alt_reads = $4;			
+	#					
+	#					# COUNTS and FREQS
+	#					my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
+	#					my $alt_count = ($fwd_alt_reads + $rev_alt_reads);
+	#					my $coverage = ($ref_count + $alt_count);
+	#					
+	#					my $variant_count1 = ($alt_count / 3);
+	#					my $variant_count2 = ($alt_count / 3);
+	#					my $variant_count3 = ($alt_count / 3);
+	#					
+	#					my $variant_freq1 = ($variant_count1 / $coverage);
+	#					my $variant_freq2 = ($variant_count2 / $coverage);
+	#					my $variant_freq3 = ($variant_count3 / $coverage);
+	#					
+	#					my $variant_pct1 = (100 * $variant_freq1);
+	#					my $variant_pct2 = (100 * $variant_freq2);
+	#					my $variant_pct3 = (100 * $variant_freq3);
+	#					
+	#					$product_entry = '';
+	#					if(@this_site_products) {
+	#						foreach my $product (@this_site_products) {
+	#							$product_entry = 'CDS: ' . $product;
+	#							
+	#							# PRINT 3 LINES TO FILE
+	#							if($variant_freq1 > 0) {
+	#								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+	#									"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+	#								
+	#								print TEMP_FILE "$this_line1";
+	#							}
+	#							
+	#							if($variant_freq2 > 0) {
+	#								my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+	#									"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+	#								
+	#								print TEMP_FILE "$this_line2";
+	#							}
+	#							
+	#							if($variant_freq3 > 0) {
+	#								my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+	#									"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
+	#								
+	#								print TEMP_FILE "$this_line3";
+	#							}
+	#						}
+	#					} else {
+	#						# PRINT 3 LINES TO FILE
+	#						if($variant_freq1 > 0) {
+	#							my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+	#								"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+	#							
+	#							print TEMP_FILE "$this_line1";
+	#						}
+	#						
+	#						if($variant_freq2 > 0) {
+	#							my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+	#								"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+	#							
+	#							print TEMP_FILE "$this_line2";
+	#						}
+	#						
+	#						if($variant_freq3 > 0) {
+	#							my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+	#								"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
+	#							
+	#							print TEMP_FILE "$this_line3";
+	#						}
+	#					}
+						
 					}
 					
-				}
-				
-			} elsif($variant1) { # THERE IS ONE VARIANT -- no flag needed
-				if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
-					print "\n### FILE TYPE NOT FULLY SUPPORTED###\n";
-					my $num_samples;
-					$num_samples = $1;
-					
-					my $variant_freq1;
-					if($info_value =~ /AF=([\d\.]+)/) {
-						$variant_freq1 = $1;
-					}
-					
-					# COUNTS and PERCENTS
-					my $ref_freq = (1 - $variant_freq1);
-					my $ref_count = ($ref_freq * $num_samples);
-					
-					my $variant_count1 = ($variant_freq1 * $num_samples);
-					
-					my $variant_pct1 = (100 * $variant_freq1);
-					
-					$product_entry = '';
-					if(@this_site_products) {
-						foreach my $product (@this_site_products) {
-							$product_entry = 'CDS: ' . $product;
+				} elsif($variant1) { # THERE IS ONE VARIANT -- no flag needed
+					if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
+						print "\n### FILE TYPE NOT FULLY SUPPORTED###\n";
+						my $num_samples;
+						$num_samples = $1;
+						
+						my $variant_freq1;
+						if($info_value =~ /AF=([\d\.]+)/) {
+							$variant_freq1 = $1;
+						}
+						
+						# COUNTS and PERCENTS
+						my $ref_freq = (1 - $variant_freq1);
+						my $ref_count = ($ref_freq * $num_samples);
+						
+						my $variant_count1 = ($variant_freq1 * $num_samples);
+						
+						my $variant_pct1 = (100 * $variant_freq1);
+						
+						$product_entry = '';
+						if(@this_site_products) {
+							foreach my $product (@this_site_products) {
+								$product_entry = 'CDS: ' . $product;
+								
+								# PRINT 1 LINE TO FILE
+								if($variant_freq1 > 0) {
+									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
 							
+									print TEMP_FILE "$this_line1";
+								}
+							}
+						} else {
 							# PRINT 1 LINE TO FILE
 							if($variant_freq1 > 0) {
 								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
 									"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
-						
+							
 								print TEMP_FILE "$this_line1";
 							}
 						}
-					} else {
-						# PRINT 1 LINE TO FILE
-						if($variant_freq1 > 0) {
-							my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-								"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
 						
-							print TEMP_FILE "$this_line1";
-						}
-					}
-					
-				} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
-					# These are high-quality reads, so may be less that the actual coverage
-					my $fwd_ref_reads = $1;
-					my $rev_ref_reads = $2;
-					my $fwd_alt_reads = $3;
-					my $rev_alt_reads = $4;
-					
-					# COUNTS and FREQS
-					my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
-					my $alt_count = ($fwd_alt_reads + $rev_alt_reads);
-					my $coverage = ($ref_count + $alt_count);
-					
-					my $variant_count1 = $alt_count;
-					
-					my $variant_freq1 = ($variant_count1 / $coverage);
-					
-					my $variant_pct1 = (100 * $variant_freq1);
-					
-					$product_entry = '';
-					if(@this_site_products) {
-						foreach my $product (@this_site_products) {
-							$product_entry = 'CDS: ' . $product;
-							
-							# PRINT 1 LINE TO FILE
+					} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
+						# These are high-quality reads, so may be less that the actual coverage
+						my $fwd_ref_reads = $1;
+						my $rev_ref_reads = $2;
+						my $fwd_alt_reads = $3;
+						my $rev_alt_reads = $4;
+						
+						# COUNTS and FREQS
+						my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
+						my $alt_count = ($fwd_alt_reads + $rev_alt_reads);
+						my $coverage = ($ref_count + $alt_count);
+						
+						my $variant_count1 = $alt_count;
+						
+						my $variant_freq1 = ($variant_count1 / $coverage);
+						
+						my $variant_pct1 = (100 * $variant_freq1);
+						
+						$product_entry = '';
+						if(@this_site_products) {
+							foreach my $product (@this_site_products) {
+								$product_entry = 'CDS: ' . $product;
+								
+								# PRINT 1 LINE TO FILE
+								if($variant_freq1 > 0) {
+									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+								
+									print TEMP_FILE "$this_line1";
+								}
+							}
+						} else {
+							# PRINT 1 LINE TO FILE; $product_entry remains BLANK
 							if($variant_freq1 > 0) {
 								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
 									"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
-							
+								
 								print TEMP_FILE "$this_line1";
 							}
 						}
-					} else {
-						# PRINT 1 LINE TO FILE; $product_entry remains BLANK
-						if($variant_freq1 > 0) {
-							my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-								"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
-							
-							print TEMP_FILE "$this_line1";
-						}
 					}
 				}
+	#			}
 			}
-#			}
 		}
 	}
 	close ORIGINAL_SNP_REPORT;
@@ -9491,7 +9832,7 @@ sub get_product_coordinates {
 	
 	open (CURRINFILE, $cds_file);
 	while (<CURRINFILE>) {
-		if($_ =~ /CDS\t\d+\t\d+\t\.\t\+/) { # Must be on the + strand
+		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
 			chomp;
 			
 			# CHOMP for 3 operating systems
@@ -9511,9 +9852,20 @@ sub get_product_coordinates {
 						$start_site_1 = $1;
 						$stop_site_1 = $2;
 					}
+				} elsif($_ =~/gene_id "gene\:$product";/) {
+					if ($_ =~/CDS\t(\d+)\t(\d+)/) {
+						$start_site_1 = $1;
+						$stop_site_1 = $2;
+					}
 				}
 			} else {
 				if ($_ =~/gene_id "$product";/) {
+					if ($_ =~/CDS\t(\d+)\t(\d+)/) {
+						$start_site_2 = $1;
+						$stop_site_2 = $2;
+						last; # This might be changed if we go on to add more segments
+					}
+				} elsif($_ =~/gene_id "gene\:$product";/) {
 					if ($_ =~/CDS\t(\d+)\t(\d+)/) {
 						$start_site_2 = $1;
 						$stop_site_2 = $2;
