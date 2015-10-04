@@ -112,7 +112,7 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 
 2. **SNPGenie_LOG.txt**, documenting any peculiarities or errors encountered. Warnings are also printed to the Terminal (shell) window.
 
-3. **site_results.txt**, providing results for all polymorphic sites. Columns are:
+3. **site_results.txt**, providing results for all polymorphic sites. (Note that, if the population is genetically homogenous at a site, even if it differs from the reference or ancestral sequence, it will not be considered polymorphic.) Columns are:
 	* *file*. The SNP report analyzed.
 	* *product*. The CDS annotation to which the site belongs; "noncoding" if none.
 	* *site*. The site coordinate of the nucleotide in the reference sequence.
