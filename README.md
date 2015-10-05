@@ -74,12 +74,13 @@ At minimum, the <a target="_blank" href="https://github.com/samtools/hts-specs">
 * **FILTER**, the filter status, based on such metrics as minimum frequencies and minimum quality scores;
 * **INFO**, additional necessary information, including entries for:
 	* If a *pooled* VCF (*i.e.*, the SNPs are called from a pooled sequencing sample):
-		* **DP4**, containing the number of reference and variant reads on the forward and reverse strands (*e.g.*, "DP4=11,9,219,38"); or, alternatively,
-		* **DP**, the coverage (read depth), and **AF**, the allele frequency(-ies) for the variant alleles in the same order as listed in the ALT column (*e.g.*, "DP=26" and "AF=0.231") **(N.B.: not yet supported)**
+		* **DP4**, containing the number of reference and variant reads on the forward and reverse strands (*e.g.*, "DP4=11,9,219,38")
 	* If a *summary* VCF (*i.e.*, the SNPs from multiple individual sequencing samples are being summarized):
 		* **NS**, the number of samples (*i.e.*, individual sequencing experiments) being summarized, and **AF**, the allele frequency(-ies) for the variant alleles in the same order as listed in the ALT column (*e.g.*, "NS=30" and "AF=0.200") **(N.B.: not yet supported)**
+* **FORMAT** and **SAMPLE** as an alternative to INFO for the *pooled* VCF approach (*i.e.*, the SNPs are called from a pooled sequencing sample), with data entries for:
+	* **AD**, the allele depth for the reference, followed by that for the variant allele(s) in the same order as listed in the ALT column (*e.g.*, "AD" in the FORMAT column and "75,77" in the SAMPLE column), and **DP**, the coverage or total read depth (*e.g.*, "DP" in the FORMAT column and "152" in the SAMPLE column)
 
-Fortunately, VCF files typically follow more standard formatting conventions than CLC or Geneious, but you will want to make sure to maintain its features, such as TAB-delimited columns. Unlike some other formats, the allele frequency in VCF is a decimal.
+As usual, you will want to make sure to maintain the VCF file's features, such as TAB-delimited columns. Unlike some other formats, the allele frequency in VCF is a decimal.
 
 ## Options
 
@@ -112,9 +113,9 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 
 2. **SNPGenie_LOG.txt**, documenting any peculiarities or errors encountered. Warnings are also printed to the Terminal (shell) window.
 
-3. **site_results.txt**, providing results for all polymorphic sites. (Note that, if the population is genetically homogenous at a site, even if it differs from the reference or ancestral sequence, it will not be considered polymorphic.) Columns are:
+3. **site_results.txt**, providing results for all polymorphic sites. Note that, if the population is genetically homogenous at a site, even if it differs from the reference or ancestral sequence, it will not be considered polymorphic. Also keep in mind that columns are sorted by product first, then site number, with noncoding sites at the end of the file. Columns are:
 	* *file*. The SNP report analyzed.
-	* *product*. The CDS annotation to which the site belongs; "noncoding" if none.
+	* *product*. The CDS annotation to which the site belongs; "noncoding" if none on this strand.
 	* *site*. The site coordinate of the nucleotide in the reference sequence.
 	* *ref_nt*. The identity of the nucleotide in the reference sequence.
 	* *maj_nt*. The most common nucleotide in the population at this site.
