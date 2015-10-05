@@ -333,7 +333,7 @@ if($complementmode && ($multi_seq_mode == 0)) {
 	
 	open(GTF_FILE_AGAIN, "$cds_file") or die "\nCould not open the GTF file $cds_file - $!\n\n";
 	while(<GTF_FILE_AGAIN>) {
-		if($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"gene\:([\w\s\.']+)\"/) { # Line is - strand
+		if($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"gene\:([\w\s\.\:']+)\"/) { # Line is - strand
 			my $rev_compl_start = $1; # Where the gene itself actually STOPS
 			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
 			my $this_product = $3;
@@ -352,7 +352,7 @@ if($complementmode && ($multi_seq_mode == 0)) {
 				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
 				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
 			}
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
 			my $rev_compl_start = $1; # Where the gene itself actually STOPS
 			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
 			my $this_product = $3;
@@ -364,7 +364,44 @@ if($complementmode && ($multi_seq_mode == 0)) {
 				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
 				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
 			}
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.\:']+)\"/) {
+			my $rev_compl_start = $1; # Where the gene itself actually STOPS
+			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+			my $this_product = $3;
+			
+			if(exists $hh_compl_position_info{$this_product}->{start}) {
+				$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+				$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+			} else {
+				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+			}
+		# NOW, IN CASE transcript_id comes first
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"gene\:([\w\s\.\:']+)\"/) {
+			my $rev_compl_start = $1; # Where the gene itself actually STOPS
+			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+			my $this_product = $3;
+			
+			if(exists $hh_compl_position_info{$this_product}->{start}) {
+				$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+				$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+			} else {
+				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+			}
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
+			my $rev_compl_start = $1; # Where the gene itself actually STOPS
+			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+			my $this_product = $3;
+			
+			if(exists $hh_compl_position_info{$this_product}->{start}) {
+				$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+				$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+			} else {
+				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+			}
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+)\"/) {
 			my $rev_compl_start = $1; # Where the gene itself actually STOPS
 			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
 			my $this_product = $3;
@@ -6530,7 +6567,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					
 					open(GTF_FILE_AGAIN, "$cds_file") or die "\nCould not open the GTF file $cds_file - $!\n\n";
 					while(<GTF_FILE_AGAIN>) {
-						if($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"gene\:([\w\s\.']+)\"/) { # Line is - strand
+						if($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"gene\:([\w\s\.\:']+)\"/) { # Line is - strand
 							my $rev_compl_start = $1; # Where the gene itself actually STOPS
 							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
 							my $this_product = $3;
@@ -6547,7 +6584,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
 								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
 							}
-						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
+						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
 							my $rev_compl_start = $1; # Where the gene itself actually STOPS
 							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
 							my $this_product = $3;
@@ -6559,7 +6596,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
 								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
 							}
-						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"([\w\s\.']+)\"/) {
+						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"([\w\s\.\:']+)\"/) {
 							my $rev_compl_start = $1; # Where the gene itself actually STOPS
 							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
 							my $this_product = $3;
@@ -6571,7 +6608,44 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
 								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
 							}
-						}		
+						# NOW, IN CASE transcript_id comes first
+						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"gene\:([\w\s\.\:']+)\"/) {
+							my $rev_compl_start = $1; # Where the gene itself actually STOPS
+							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+							my $this_product = $3;
+							
+							if(exists $hh_compl_position_info{$this_product}->{start}) {
+								$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+								$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+							} else {
+								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+							}
+						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
+							my $rev_compl_start = $1; # Where the gene itself actually STOPS
+							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+							my $this_product = $3;
+							
+							if(exists $hh_compl_position_info{$this_product}->{start}) {
+								$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+								$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+							} else {
+								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+							}
+						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+)\"/) {
+							my $rev_compl_start = $1; # Where the gene itself actually STOPS
+							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+							my $this_product = $3;
+							
+							if(exists $hh_compl_position_info{$this_product}->{start}) {
+								$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+								$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+							} else {
+								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+							}
+						}	
 					}
 					close GTF_FILE_AGAIN;
 					
@@ -7224,15 +7298,15 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		$pop_sum_A_gdiv += $sum_gene_diversity_A;
 	} # END LOOP THROUGH ALL PRODUCTS
 	
-	# DEAL WITH NONCODING SITES for site file and population summary file
+	# DEAL WITH NONCODING SITES for site file and population summary file	
 	chdir('SNPGenie_Results');
 	open(OUTFILE_GENE_DIV,">>site\_results\.txt");
 	foreach my $curr_site (sort {$a <=> $b} (keys %hh_nc_position_info)) {
 		if($hh_nc_position_info{$curr_site}->{polymorphic} == 1) { # poly
 			if($hh_nc_position_info{$curr_site}->{coding} != 1) { # poly-noncoding
-				
 				my $ref_nt = $hh_nc_position_info{$curr_site}->{reference};
 				my $maj_nt = $hh_nc_position_info{$curr_site}->{maj_nt};
+				my $overlapping_ORFs = 0;
 				my $pi = $hh_nc_position_info{$curr_site}->{pi};
 				my $gdiv = $hh_nc_position_info{$curr_site}->{gdiv};
 				my $cov = $hh_nc_position_info{$curr_site}->{cov};
@@ -7242,9 +7316,144 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				my $G = $hh_nc_position_info{$curr_site}->{G};
 				my $T = $hh_nc_position_info{$curr_site}->{T};
 				
+				# If REVERSE COMPLEMENT MODE, we include these products as overlapping
+				if($complementmode) {
+					if($multi_seq_mode == 0) {
+						foreach my $other_product (@curr_compl_products_ordered_by_start) {
+							my $other_start = $hh_compl_position_info{$other_product}->{start};
+							my $other_stop = $hh_compl_position_info{$other_product}->{stop};
+							
+							if(($curr_site >= $other_start) && ($curr_site <= $other_stop)) {
+								$overlapping_ORFs += 1;
+							}
+							
+							if(exists $hh_compl_position_info{$other_product}->{start_2}) {
+								my $other_start2 = $hh_compl_position_info{$other_product}->{start_2};
+								my $other_stop2 = $hh_compl_position_info{$other_product}->{stop_2};
+								
+								if(($curr_site >= $other_start2) && ($curr_site <= $other_stop2)) {
+									$overlapping_ORFs += 1;
+								}
+							}
+							
+							if($other_start > $curr_site) {
+								last;
+							}
+						}
+					} else { # MULTI-SEQ MODE
+						# Look through the GTF file for the - strand entries
+						# translate the start and stop sites to + strand sites using $fasta_length
+						
+						my %hh_compl_position_info; # saved with respect to the + strand
+						
+						open(GTF_FILE_AGAIN, "$cds_file") or die "\nCould not open the GTF file $cds_file - $!\n\n";
+						while(<GTF_FILE_AGAIN>) {
+							if($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"gene\:([\w\s\.\:']+)\"/) { # Line is - strand
+								my $rev_compl_start = $1; # Where the gene itself actually STOPS
+								my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+								my $this_product = $3;
+								
+								if(exists $hh_compl_position_info{$this_product}->{start}) {
+									$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+									$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+								} else {
+									$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+									$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+								}
+							} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
+								my $rev_compl_start = $1; # Where the gene itself actually STOPS
+								my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+								my $this_product = $3;
+								
+								if(exists $hh_compl_position_info{$this_product}->{start}) {
+									$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+									$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+								} else {
+									$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+									$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+								}
+							} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"([\w\s\.\:']+)\"/) {
+								my $rev_compl_start = $1; # Where the gene itself actually STOPS
+								my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+								my $this_product = $3;
+								
+								if(exists $hh_compl_position_info{$this_product}->{start}) {
+									$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+									$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+								} else {
+									$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+									$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+								}
+							# NOW, IN CASE transcript_id comes first
+							} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"gene\:([\w\s\.\:']+)\"/) {
+								my $rev_compl_start = $1; # Where the gene itself actually STOPS
+								my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+								my $this_product = $3;
+								
+								if(exists $hh_compl_position_info{$this_product}->{start}) {
+									$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+									$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+								} else {
+									$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+									$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+								}
+							} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
+								my $rev_compl_start = $1; # Where the gene itself actually STOPS
+								my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+								my $this_product = $3;
+								
+								if(exists $hh_compl_position_info{$this_product}->{start}) {
+									$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+									$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+								} else {
+									$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+									$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+								}
+							} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+)\"/) {
+								my $rev_compl_start = $1; # Where the gene itself actually STOPS
+								my $rev_compl_stop = $2; # Where the gene itself actually STARTS
+								my $this_product = $3;
+								
+								if(exists $hh_compl_position_info{$this_product}->{start}) {
+									$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
+									$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
+								} else {
+									$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
+									$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
+								}
+							}	
+						}
+						close GTF_FILE_AGAIN;
+						
+						my @curr_compl_products_ordered_by_start = sort { $hh_compl_position_info{$a}->{start} <=> $hh_compl_position_info{$b}->{start} } keys %hh_compl_position_info;
+						
+						foreach my $other_product (@curr_compl_products_ordered_by_start) {
+							my $other_start = $hh_compl_position_info{$other_product}->{start};
+							my $other_stop = $hh_compl_position_info{$other_product}->{stop};
+							
+							if(($curr_site >= $other_start) && ($curr_site <= $other_stop)) {
+								$overlapping_ORFs += 1;
+							}
+							
+							if(exists $hh_compl_position_info{$other_product}->{start_2}) {
+								my $other_start2 = $hh_compl_position_info{$other_product}->{start_2};
+								my $other_stop2 = $hh_compl_position_info{$other_product}->{stop_2};
+								
+								if(($curr_site >= $other_start2) && ($curr_site <= $other_stop2)) {
+									$overlapping_ORFs += 1;
+								}
+							}
+							
+							if($other_start > $curr_site) {
+								last;
+							}
+						}
+					}
+				}
+
 				print OUTFILE_GENE_DIV "$file_nm\tnoncoding\t$curr_site\t".
 					"$ref_nt\t$maj_nt\t".
-					"NA\t0\tNA\tNA\t".
+					"NA\t$overlapping_ORFs\tNA\tNA\t".
 					#"$this_codon_site3_polymorphic\t".
 					"$pi\t$gdiv\tnoncoding\tnoncoding\t".
 					"$cov\t".
@@ -9223,10 +9432,9 @@ sub populate_tempfile_vcf {
 					} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
 						# Find out how many ":" appear before AD, if any
 						my $prior_to_AD = $`;
-						my @colons_prior_to_AD = $prior_to_AD =~ /"\:"/g;
-						# my @numbers = m/(\d+)/g;
+						my @colons_prior_to_AD = $prior_to_AD =~ /\:/g; 
 						my $colon_count_before_AD = @colons_prior_to_AD;
-						
+						#print "\n\nColon count before AD: $colon_count_before_AD\n";
 						
 						my $prior_to_DP;
 						my @colons_prior_to_DP;
@@ -9234,8 +9442,9 @@ sub populate_tempfile_vcf {
 							
 						if($format_value =~ /DP/) {
 							$prior_to_DP = $`;
-							@colons_prior_to_DP = $prior_to_DP =~ /"\:"/g;
+							@colons_prior_to_DP = $prior_to_DP =~ /\:/g;
 							$colon_count_before_DP = @colons_prior_to_DP;
+							#print "\n\nColon count before DP: $colon_count_before_DP\n";
 						} else {
 							chdir('SNPGenie_Results');
 							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
@@ -9247,113 +9456,105 @@ sub populate_tempfile_vcf {
 							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n\n";	 
 						}
 						
-						# GENERATE a regex for what comes before the VALUE of AD
-						my $prior_to_AD_regex;
-						for (my $i=0; $i<$colon_count_before_AD; $i++) {
-							$prior_to_AD_regex .= "[\d\w\/\,]+\:";
-						}
-						
-						# GENERATE a regex for what comes before the VALUE of DP
-						my $prior_to_DP_regex;
-						for (my $i=0; $i<$colon_count_before_DP; $i++) {
-							$prior_to_DP_regex .= "[\d\w\/\,]+\:";
-						}
-						
 						# EXTRACT the VALUE of AD
+						my @sample_value_arr = split(/\:/,$sample_value);
 						my $AD1;
 						my $AD2;
 						my $AD3;
-						if($sample_value =~ /$prior_to_AD_regex(\d+)\,(\d+)\,(\d+)/) { # NEED A FOURTH-> ref and 3 others
+						my $AD4;
+						
+						if($sample_value_arr[$colon_count_before_AD] =~ /(\d+)\,(\d+)\,(\d+)\,(\d+)/) { # REF and 2 ALTS
 							$AD1 = $1;
 							$AD2 = $2;
 							$AD3 = $3;
+							$AD4 = $4;
 						}
 						
 						# EXTRACT the VALUE of DP (coverage)
-						my $DP;
-						if($sample_value =~ /$prior_to_DP_regex(\d+)/) {
-							#my $prior_to_match = $`;
-							#if($prior_to_match =~ /\:+?/) { # non-greedy; at least 1 match
-							$DP = $1;	
-							#}
+						my $DP = $sample_value_arr[$colon_count_before_DP];
+				
+						# COUNTS and FREQS
+						my $ref_count = $AD1;
+						my $variant_count1 = $AD2;
+						my $variant_count2 = $AD3;
+						my $variant_count3 = $AD4;
+						my $coverage = ($AD1+$AD2+$AD3+$AD4);
+						
+						# Warn if the total reads don't equal the coverage
+						if ($DP != $coverage) {
+							print "\n## WARNING: In $curr_snp_report_name site $ref_pos".
+									",\n## the reads total should ".
+									"equal the coverage ($DP) but is instead: $coverage.".
+									"\n## The reads total has been used. Please verify your data.\n";
+							
+							chdir('SNPGenie_Results');
+							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+							# FILE | PRODUCT | SITE | CODON | WARNING
+							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
+								"The reads total should equal the coverage ($DP) but is instead: ".
+								"$coverage. The reads total has been used. Please verify your data.\n";
+							close ERROR_FILE;
+							chdir('..');
 						}
+								
+						my $variant_freq1 = ($variant_count1 / $coverage);
+						my $variant_freq2 = ($variant_count2 / $coverage);
+						my $variant_freq3 = ($variant_count3 / $coverage);
 						
+						my $variant_pct1 = (100 * $variant_freq1);
+						my $variant_pct2 = (100 * $variant_freq2);
+						my $variant_pct3 = (100 * $variant_freq3);
 						
-						
-	#					# These are high-quality reads, so may be less that the actual coverage
-	#					my $fwd_ref_reads = $1;
-	#					my $rev_ref_reads = $2;
-	#					my $fwd_alt_reads = $3;
-	#					my $rev_alt_reads = $4;			
-	#					
-	#					# COUNTS and FREQS
-	#					my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
-	#					my $alt_count = ($fwd_alt_reads + $rev_alt_reads);
-	#					my $coverage = ($ref_count + $alt_count);
-	#					
-	#					my $variant_count1 = ($alt_count / 3);
-	#					my $variant_count2 = ($alt_count / 3);
-	#					my $variant_count3 = ($alt_count / 3);
-	#					
-	#					my $variant_freq1 = ($variant_count1 / $coverage);
-	#					my $variant_freq2 = ($variant_count2 / $coverage);
-	#					my $variant_freq3 = ($variant_count3 / $coverage);
-	#					
-	#					my $variant_pct1 = (100 * $variant_freq1);
-	#					my $variant_pct2 = (100 * $variant_freq2);
-	#					my $variant_pct3 = (100 * $variant_freq3);
-	#					
-	#					$product_entry = '';
-	#					if(@this_site_products) {
-	#						foreach my $product (@this_site_products) {
-	#							$product_entry = 'CDS: ' . $product;
-	#							
-	#							# PRINT 3 LINES TO FILE
-	#							if($variant_freq1 > 0) {
-	#								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-	#									"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
-	#								
-	#								print TEMP_FILE "$this_line1";
-	#							}
-	#							
-	#							if($variant_freq2 > 0) {
-	#								my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-	#									"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
-	#								
-	#								print TEMP_FILE "$this_line2";
-	#							}
-	#							
-	#							if($variant_freq3 > 0) {
-	#								my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-	#									"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
-	#								
-	#								print TEMP_FILE "$this_line3";
-	#							}
-	#						}
-	#					} else {
-	#						# PRINT 3 LINES TO FILE
-	#						if($variant_freq1 > 0) {
-	#							my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-	#								"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
-	#							
-	#							print TEMP_FILE "$this_line1";
-	#						}
-	#						
-	#						if($variant_freq2 > 0) {
-	#							my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-	#								"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
-	#							
-	#							print TEMP_FILE "$this_line2";
-	#						}
-	#						
-	#						if($variant_freq3 > 0) {
-	#							my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-	#								"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
-	#							
-	#							print TEMP_FILE "$this_line3";
-	#						}
-	#					}
-						
+						$product_entry = '';
+						if(@this_site_products) {
+							foreach my $product (@this_site_products) {
+								$product_entry = 'CDS: ' . $product;
+								
+								# PRINT 3 LINES TO FILE
+								if($variant_freq1 > 0) {
+									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line1";
+								}
+								
+								if($variant_freq2 > 0) {
+									my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line2";
+								}
+								
+								if($variant_freq3 > 0) {
+									my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line3";
+								}
+							}
+						} else {
+							# PRINT 3 LINES TO FILE
+							if($variant_freq1 > 0) {
+								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+									"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+								
+								print TEMP_FILE "$this_line1";
+							}
+							
+							if($variant_freq2 > 0) {
+								my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+									"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+								
+								print TEMP_FILE "$this_line2";
+							}
+							
+							if($variant_freq3 > 0) {
+								my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+									"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
+								
+								print TEMP_FILE "$this_line3";
+							}
+						}
 					}
 					
 				} elsif($variant2) { # THERE ARE TWO VARIANTS -- ADD A FLAG!
@@ -9486,9 +9687,9 @@ sub populate_tempfile_vcf {
 					} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
 						# Find out how many ":" appear before AD, if any
 						my $prior_to_AD = $`;
-						my @colons_prior_to_AD = $prior_to_AD =~ /"\:"/g;
-						# my @numbers = m/(\d+)/g;
+						my @colons_prior_to_AD = $prior_to_AD =~ /\:/g; 
 						my $colon_count_before_AD = @colons_prior_to_AD;
+						#print "\n\nColon count before AD: $colon_count_before_AD\n";
 						
 						my $prior_to_DP;
 						my @colons_prior_to_DP;
@@ -9496,8 +9697,9 @@ sub populate_tempfile_vcf {
 							
 						if($format_value =~ /DP/) {
 							$prior_to_DP = $`;
-							@colons_prior_to_DP = $prior_to_DP =~ /"\:"/g;
+							@colons_prior_to_DP = $prior_to_DP =~ /\:/g;
 							$colon_count_before_DP = @colons_prior_to_DP;
+							#print "\n\nColon count before DP: $colon_count_before_DP\n";
 						} else {
 							chdir('SNPGenie_Results');
 							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
@@ -9510,116 +9712,91 @@ sub populate_tempfile_vcf {
 						}
 						
 						# GENERATE a regex for what comes before the VALUE of AD
-						my $prior_to_AD_regex;
-						for (my $i=0; $i<$colon_count_before_AD; $i++) {
-							$prior_to_AD_regex .= "[\d\w\/\,]+\:";
-						}
-						
-						# GENERATE a regex for what comes before the VALUE of DP
-						my $prior_to_DP_regex;
-						for (my $i=0; $i<$colon_count_before_DP; $i++) {
-							$prior_to_DP_regex .= "[\d\w\/\,]+\:";
-						}
+						#my $prior_to_AD_regex;
+						#for (my $i=0; $i<$colon_count_before_AD; $i++) {
+						#	$prior_to_AD_regex .= "[\d\w\/\,]+\:";
+						#}
 						
 						# EXTRACT the VALUE of AD
+						my @sample_value_arr = split(/\:/,$sample_value);
 						my $AD1;
 						my $AD2;
 						my $AD3;
-						if($sample_value =~ /$prior_to_AD_regex(\d+)\,(\d+)\,(\d+)/) { # REF and 2 ALTS
+						
+						if($sample_value_arr[$colon_count_before_AD] =~ /(\d+)\,(\d+)\,(\d+)/) { # REF and 2 ALTS
 							$AD1 = $1;
 							$AD2 = $2;
 							$AD3 = $3;
 						}
 						
 						# EXTRACT the VALUE of DP (coverage)
-						my $DP;
-						if($sample_value =~ /$prior_to_DP_regex(\d+)/) {
-							#my $prior_to_match = $`;
-							#if($prior_to_match =~ /\:+?/) { # non-greedy; at least 1 match
-							$DP = $1;	
-							#}
+						my $DP = $sample_value_arr[$colon_count_before_DP];
+				
+						# COUNTS and FREQS
+						my $ref_count = $AD1;
+						my $variant_count1 = $AD2;
+						my $variant_count2 = $AD3;
+						my $coverage = ($AD1+$AD2+$AD3);
+						
+						# Warn if the total reads don't equal the coverage
+						if ($DP != $coverage) {
+							print "\n## WARNING: In $curr_snp_report_name site $ref_pos".
+									",\n## the reads total should ".
+									"equal the coverage ($DP) but is instead: $coverage.".
+									"\n## The reads total has been used. Please verify your data.\n";
+							
+							chdir('SNPGenie_Results');
+							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+							# FILE | PRODUCT | SITE | CODON | WARNING
+							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
+								"The reads total should equal the coverage ($DP) but is instead: ".
+								"$coverage. The reads total has been used. Please verify your data.\n";
+							close ERROR_FILE;
+							chdir('..');
 						}
+								
+						my $variant_freq1 = ($variant_count1 / $coverage);
+						my $variant_freq2 = ($variant_count2 / $coverage);
 						
-						print "\nPrior to AD regex is: " . $prior_to_AD_regex . "\n";
-						print "Colon count before AD is: $colon_count_before_AD\n";
-						print "Prior to DP regex is: $prior_to_DP_regex\n";
-						print "AD's are: $AD1\, $AD2\, and $AD3\nDP is: $DP\n\n";
+						my $variant_pct1 = (100 * $variant_freq1);
+						my $variant_pct2 = (100 * $variant_freq2);
 						
-						
-	#					# These are high-quality reads, so may be less that the actual coverage
-	#					my $fwd_ref_reads = $1;
-	#					my $rev_ref_reads = $2;
-	#					my $fwd_alt_reads = $3;
-	#					my $rev_alt_reads = $4;			
-	#					
-	#					# COUNTS and FREQS
-	#					my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
-	#					my $alt_count = ($fwd_alt_reads + $rev_alt_reads);
-	#					my $coverage = ($ref_count + $alt_count);
-	#					
-	#					my $variant_count1 = ($alt_count / 3);
-	#					my $variant_count2 = ($alt_count / 3);
-	#					my $variant_count3 = ($alt_count / 3);
-	#					
-	#					my $variant_freq1 = ($variant_count1 / $coverage);
-	#					my $variant_freq2 = ($variant_count2 / $coverage);
-	#					my $variant_freq3 = ($variant_count3 / $coverage);
-	#					
-	#					my $variant_pct1 = (100 * $variant_freq1);
-	#					my $variant_pct2 = (100 * $variant_freq2);
-	#					my $variant_pct3 = (100 * $variant_freq3);
-	#					
-	#					$product_entry = '';
-	#					if(@this_site_products) {
-	#						foreach my $product (@this_site_products) {
-	#							$product_entry = 'CDS: ' . $product;
-	#							
-	#							# PRINT 3 LINES TO FILE
-	#							if($variant_freq1 > 0) {
-	#								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-	#									"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
-	#								
-	#								print TEMP_FILE "$this_line1";
-	#							}
-	#							
-	#							if($variant_freq2 > 0) {
-	#								my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-	#									"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
-	#								
-	#								print TEMP_FILE "$this_line2";
-	#							}
-	#							
-	#							if($variant_freq3 > 0) {
-	#								my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-	#									"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
-	#								
-	#								print TEMP_FILE "$this_line3";
-	#							}
-	#						}
-	#					} else {
-	#						# PRINT 3 LINES TO FILE
-	#						if($variant_freq1 > 0) {
-	#							my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-	#								"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
-	#							
-	#							print TEMP_FILE "$this_line1";
-	#						}
-	#						
-	#						if($variant_freq2 > 0) {
-	#							my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-	#								"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
-	#							
-	#							print TEMP_FILE "$this_line2";
-	#						}
-	#						
-	#						if($variant_freq3 > 0) {
-	#							my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-	#								"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
-	#							
-	#							print TEMP_FILE "$this_line3";
-	#						}
-	#					}
-						
+						$product_entry = '';
+						if(@this_site_products) {
+							foreach my $product (@this_site_products) {
+								$product_entry = 'CDS: ' . $product;
+								
+								# PRINT 2 LINES TO FILE
+								if($variant_freq1 > 0) {
+									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line1";
+								}
+								
+								if($variant_freq2 > 0) {
+									my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line2";
+								}
+							}
+						} else {
+							# PRINT 2 LINES TO FILE
+							if($variant_freq1 > 0) {
+								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+									"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+								
+								print TEMP_FILE "$this_line1";
+							}
+							
+							if($variant_freq2 > 0) {
+								my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+									"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+								
+								print TEMP_FILE "$this_line2";
+							}
+						}
 					}
 					
 				} elsif($variant1) { # THERE IS ONE VARIANT -- no flag needed
@@ -9704,9 +9881,96 @@ sub populate_tempfile_vcf {
 								print TEMP_FILE "$this_line1";
 							}
 						}
-					}
-				}
-	#			}
+					} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
+						# Find out how many ":" appear before AD, if any
+						my $prior_to_AD = $`;
+						my @colons_prior_to_AD = $prior_to_AD =~ /\:/g; 
+						my $colon_count_before_AD = @colons_prior_to_AD;
+						#print "\n\nColon count before AD: $colon_count_before_AD\n";
+						
+						my $prior_to_DP;
+						my @colons_prior_to_DP;
+						my $colon_count_before_DP;
+							
+						if($format_value =~ /DP/) {
+							$prior_to_DP = $`;
+							@colons_prior_to_DP = $prior_to_DP =~ /\:/g;
+							$colon_count_before_DP = @colons_prior_to_DP;
+							#print "\n\nColon count before DP: $colon_count_before_DP\n";
+						} else {
+							chdir('SNPGenie_Results');
+							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
+								"VCF file $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n";
+							close ERROR_FILE;
+							chdir('..');
+							
+							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n\n";	 
+						}
+						
+						# EXTRACT the VALUE of AD
+						my @sample_value_arr = split(/\:/,$sample_value);
+						my $AD1;
+						my $AD2;
+						
+						if($sample_value_arr[$colon_count_before_AD] =~ /(\d+)\,(\d+)/) { # REF and 1 ALT
+							$AD1 = $1;
+							$AD2 = $2;
+						}
+						
+						# EXTRACT the VALUE of DP (coverage)
+						my $DP = $sample_value_arr[$colon_count_before_DP];
+				
+						# COUNTS and FREQS
+						my $ref_count = $AD1;
+						my $variant_count1 = $AD2;
+						my $coverage = ($AD1+$AD2);
+						
+						# Warn if the total reads don't equal the coverage
+						if ($DP != $coverage) {
+							print "\n## WARNING: In $curr_snp_report_name site $ref_pos".
+									",\n## the reads total should ".
+									"equal the coverage ($DP) but is instead: $coverage.".
+									"\n## The reads total has been used. Please verify your data.\n";
+							
+							chdir('SNPGenie_Results');
+							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+							# FILE | PRODUCT | SITE | CODON | WARNING
+							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
+								"The reads total should equal the coverage ($DP) but is instead: ".
+								"$coverage. The reads total has been used. Please verify your data.\n";
+							close ERROR_FILE;
+							chdir('..');
+						}
+								
+						my $variant_freq1 = ($variant_count1 / $coverage);
+						
+						my $variant_pct1 = (100 * $variant_freq1);
+						
+						$product_entry = '';
+						if(@this_site_products) {
+							foreach my $product (@this_site_products) {
+								$product_entry = 'CDS: ' . $product;
+								
+								# PRINT 1 LINE TO FILE
+								if($variant_freq1 > 0) {
+									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line1";
+								}
+							}
+						} else {
+							# PRINT 1 LINE TO FILE
+							if($variant_freq1 > 0) {
+								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+									"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+								
+								print TEMP_FILE "$this_line1";
+							}
+						}
+					} # End of AD format
+				} # End of 1 variant
 			}
 		}
 	}
