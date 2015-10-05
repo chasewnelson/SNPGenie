@@ -20,7 +20,7 @@ For ease and simplicity, one need only run SNPGenie in a directory containing th
 The reference sequence must be present in a **FASTA** (.fa/.fasta) file. Providing only one reference sequence assumes that all SNP coordinates in the SNP reports are called relative to the single reference file. This ONE-SEQUENCE MODE allows the maximum number of estimations to be performed. Contrarily, if two or more FASTA files are present, each is assumed to refer to a different protein product, as might occur with a segmented viral genome. In this case, MULTI-SEQUENCE MODE is activated, and each FASTA file name must begin with the name of the product followed by an underscore. For example, if "ORF1" is the name of one of the products in the SNP report, its reference FASTA file must be named as in "ORF1_xxx.fasta". Each FASTA file must contain only one sequence; a script is provided to split a multi-FASTA file into its constitutent sequences; see [Additional Scripts](#additional-scripts) below.
 
 ### Gene Transfer Format
-The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include records for all CDS elements (i.e., open reading frames, or ORFs) present in your SNP report(s). Note that SNPGenie expects every coding element to be labeled as type "CDS", and for its product name to follow the "gene\_id" tag. This name must match that present in the SNP report. If a single coding element has multiple segments with different coordinates, simply enter one line for each segment, using the same product name. SNPGenie for CLC can currently handle 2 segments per ORF; if more are needed, just contact us, and we'll make the improvement! For more information about GTF, please visit <a target="_blank" href="http://mblab.wustl.edu/GTF22.html">The Brent Lab</a>. A simple example follows:
+The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include records for all CDS elements (i.e., open reading frames, or ORFs) present in your SNP report(s). Note that SNPGenie expects every coding element to be labeled as type "CDS", and for its product name to follow a "gene\_id" tag. In the case of CLC and Geneious SNP reports, this name must match that present in the SNP report. If a single coding element has multiple segments with different coordinates, simply enter one line for each segment, using the same product name. SNPGenie for CLC can currently handle 2 segments per ORF; if more are needed, please contact us, and we'll be happy to make the improvement! Finally, for cases with reverse '–' strand features, SNPGenie must be run twice, once for each strand, with that strand's own set of input files (i.e., the '–' strand FASTA, GTF, and SNP report). For more information about GTF, please visit <a target="_blank" href="http://mblab.wustl.edu/GTF22.html">The Brent Lab</a>. A simple example follows:
 
 	reference.gbk	CLC	CDS	5694	8369	.	+	0	gene_id "ORF1";
 	reference.gbk	CLC	CDS	8203	8772	.	+	0	gene_id "ORF2";
@@ -153,7 +153,7 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 
 5. **\<SNP report name(s)\>_results.txt**, containing the information present in the codon_results.txt file, but separated by SNP report.
 
-6. **product_results.txt**, providing results for all CDS elements present in the GTF file. Columns are:
+6. **product_results.txt**, providing results for all CDS elements present in the GTF file for the '+' strand. Columns are:
 	* *file*. The SNP report analyzed.
 	* *product*. The CDS annotation to which the site belongs; "noncoding" if none.
 	* *mean_nonsyn_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of πN.
@@ -170,7 +170,7 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* *mean_gdiv_nonsyn*. Mean gene diversity at all nonsynonymous polymorphic nucleotide sites in this product.
 	* *mean_gdiv_syn*. Mean gene diversity at all synonymous polymorphic nucleotide sites in this product.
 
-7. **population_summary.txt**, providing summary results for each population's sample (SNP report). Columns are:
+7. **population_summary.txt**, providing summary results for each population's sample (SNP report) with respect to the '+' strand. Columns are:
 	* *file*. The SNP report analyzed.
 	* *sites*. Total number of sites in the reference genome.
 	* *sites_coding*. Total number of sites in the reference genome which code for a protein product, given the CDS annotations in the GTF file.
