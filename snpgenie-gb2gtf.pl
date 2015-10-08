@@ -31,6 +31,12 @@ use IO::Handle;
 
 my $genbank_file_name = $ARGV[0];
 
+if(scalar @ARGV != 1) {
+	die "\n\n## WARNING: The SNPGenie script gb2gtf needs exactly 1 ".
+		"argument:\n## A GenBank (.gbk) file.\n\n## For example: ".
+		"snpgenie-gbk2gtf.pl my_genbank_file.gbk\n\n";
+}
+
 # Generate new file name prefix
 my $new_file_prefix;
 if($genbank_file_name =~/\.gbk/) { 
@@ -38,7 +44,8 @@ if($genbank_file_name =~/\.gbk/) {
 } elsif($genbank_file_name =~/\.gb/) { 
 	$new_file_prefix = $`;
 } else {
-	$new_file_prefix = "inFile";
+	#$new_file_prefix = "inFile";
+	die "\n## Argument must be a GenBank (.gb or .gbk) file\n\n";
 }
 
 my $new_file_name = $new_file_prefix . ".gtf";
@@ -93,6 +100,18 @@ while(<GBK_FILE>) {
 	} elsif($_ =~ /^\s*CDS\s+complement\((\d+)\.\.(\d+)\)/) { # for complement
 		$curr_compl_start = $1;
 		$curr_compl_stop = $2;
+		$seen_label = 0;
+		$is_compl = 1;
+	} elsif($_ =~ /^\s*CDS\s+complement\(<(\d+)\.\.(\d+)\)/) { # for complement
+		$curr_compl_start = $1;
+		$curr_compl_stop = $2;
+		$seen_label = 0;
+		$is_compl = 1;
+	} elsif($_ =~ /^\s*CDS\s+complement\(join\((\d+)\.\.(\d+)\)\)/) { # for complement
+		$curr_compl_start = $1;
+		$curr_compl_stop = $2;
+		$curr_compl_start2 = $3;
+		$curr_compl_stop2 = $4;
 		$seen_label = 0;
 		$is_compl = 1;
 	} 
