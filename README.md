@@ -82,6 +82,9 @@ At minimum, the <a target="_blank" href="https://github.com/samtools/hts-specs">
 
 As usual, you will want to make sure to maintain the VCF file's features, such as TAB-delimited columns. Unlike some other formats, the allele frequency in VCF is a decimal.
 
+### Reverse Complement ('–' Strand) Files
+Many large genomes have coding products on both strands. In this case, SNPGenie must be run twice: once for the '+' strand, and once for the '-' strand. This requires FASTA, GTF, and SNP report input for the '–' strand. Check out **snpgenie-vcf2revcom.pl**, describe in the [Additional Scripts](#additional-scripts) below, which automatically creates these files for you. Note that, regardless of the original SNP report format, the reverse complement SNP report is in a CLC-like format that SNPGenie will recognize. For both runs, the GTF should include all products for both strands, with the products on that strand being analyzed classified as '+' and having coordinates defined with reference to the beginning of that strand.
+
 ## Options
 
 In case you want to alter the way SNPGenie works, the following options (implemented using Perl's Getopt::Long module) may be used:
@@ -207,6 +210,15 @@ Some additional scripts are included to automate some common tasks when preparin
 * **snpgenie-split_fasta.pl**. At the command line, provide this script with one argument: a FASTA (.fa or .fasta) file containing multiple sequences. This script will create multiple files in the working directory, each containing one of the sequences. Here's an example:
 
         snpgenie-split_fasta.pl my_multi_fasta_file.fasta
+
+* **snpgenie-vcf2revcom.pl**. This script automates the creation of the reverse complement input files. At the command line, provide this script with three arguments, in the following order: 
+	1. A '+' strand FASTA (.fa or .fasta) file containing the reference sequence against which SNPs were called;
+	2. A '+' strand GTF file containing both '+' and '–' strand products from the '+' strand point of view; and 
+	3. A '+' strand SNP report in VCF format.
+
+	This script will then create a '-' strand (reverse complement) version of each file in the working directory, with "_revcom" concatenated to the original file name. Here's an example:
+
+        snpgenie-vcf2revcom.pl my_snp_report.vcf my_reference_sequence.fasta my_cds_file.gtf
 
 ## Troubleshooting
 
