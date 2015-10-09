@@ -176,7 +176,7 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 7. **population_summary.txt**, providing summary results for each population's sample (SNP report) with respect to the '+' strand. Columns are:
 	* *file*. The SNP report analyzed.
 	* *sites*. Total number of sites in the reference genome.
-	* *sites_coding*. Total number of sites in the reference genome which code for a protein product, given the CDS annotations in the GTF file.
+	* *sites_coding*. Total number of sites in the reference genome which code for a protein product on the analyzed '+' strand, given the CDS annotations in the GTF file.
 	* *sites_noncoding*. Total number of sites in the reference genome which do not code for a protein product, given the CDS annotations in the GTF file.
 	* *pi*. Mean number of pairwise differences per site in the pooled sample across the whole genome.
 	* *pi_coding*. Mean number of pairwise differences per site in the pooled sample across all coding sites in the genome.
