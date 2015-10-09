@@ -885,6 +885,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				my $ref_prop_key = "$reference_nt\_prop";
 				my $var_prop_key = "$variant_nt\_prop";
 				
+				#print "\nSNV site $position\. ref_prop_key: ref_prop_key: $ref_prop_key | ref_prop: $ref_prop | var_prop_key: $var_prop_key | var_prop: $var_prop";
+				
 				if(length($reference_nt) == length($variant_nt)) {
 					# Now, syn. and nonsyn. nucleotide diversity for coding variants
 					if($line_arr[$index_over_annot] =~/CDS/) { 
@@ -1258,7 +1260,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									$hh_nc_position_info{$position}->{$reference_nt} -= ($count);
 		
 									$hh_nc_position_info{$position}->{$var_prop_key} += $var_prop;
-									$hh_nc_position_info{$position}->{$ref_prop_key} -= $ref_prop;
+									$hh_nc_position_info{$position}->{$ref_prop_key} -= $var_prop;
 								} # NO ACTION REQUIRED if the ref and var are the same
 								
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
@@ -3674,6 +3676,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		}
 		close INFILE;
 		
+		
+		
+		
+		
 		# NONCODING: CALCULATE AVERAGE COVERAGE at each of the sites in this product.
 		# We are REPLACING the coverage currently stored with this.
 		# FIRST, extract the positions that have already been stored, i.e., were present
@@ -3681,116 +3687,200 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		my @stored_positions_sorted = sort {$a <=> $b} (keys %hh_nc_position_info);
 		#print "\n\nSo far, we have stored: @stored_positions_sorted\n";
 		foreach my $curr_spot (@stored_positions_sorted) {
-				my $cov_sum = 0;
-				my $cov_denom = 0;
+			my $cov_sum = 0;
+			my $cov_denom = 0;
+			
+			foreach my $cov_mm (@{$hh_nc_position_info{$curr_spot}->{cov_arr}}) {
+				$cov_sum += $cov_mm;
+				$cov_denom += 1;
+			}
+			
+			my $this_avg_cov = ($cov_sum / $cov_denom);
+			$hh_nc_position_info{$curr_spot}->{cov} = $this_avg_cov;
+			
+			# DETERMINE THE MAJORITY NUCLEOTIDE, TOO
+			my $A = $hh_nc_position_info{$curr_spot}->{A};
+			my $C = $hh_nc_position_info{$curr_spot}->{C};
+			my $G = $hh_nc_position_info{$curr_spot}->{G};
+			my $T = $hh_nc_position_info{$curr_spot}->{T};
+			
+			my $majority_nucleotide; # a variant nucleotide may have fixed
+			my $curr_majority_count = 0;
+			if($A > $curr_majority_count) {
+				$curr_majority_count = $A;
+				$majority_nucleotide = 'A';
+			}
+			if($C > $curr_majority_count) {
+				$curr_majority_count = $C;
+				$majority_nucleotide = 'C';
+			} 
+			if($G > $curr_majority_count) {
+				$curr_majority_count = $G;
+				$majority_nucleotide = 'G';
+			} 
+			if($T > $curr_majority_count) {
+				$curr_majority_count = $T;
+				$majority_nucleotide = 'T';
+			}
+			
+			$hh_nc_position_info{$curr_spot}->{maj_nt} = $majority_nucleotide;
+			
+			#print "\n\nAt site $curr_spot, the majority nucleotide is $majority_nucleotide and ".
+			#	"the average coverage is $this_avg_cov\n";
+
+			# WARNING if there is a negative number of sites because of conflicting
+			# coverages; round negative nucleotide counts to 0
+			if($A < 0) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative number of A nucleotides: $A. This most often results from variants ".
+					"which are assigned to the wrong site in the SNP Report. Results at this site ".
+					"are unreliable; A count set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
 				
-				foreach my $cov_mm (@{$hh_nc_position_info{$curr_spot}->{cov_arr}}) {
-					$cov_sum += $cov_mm;
-					$cov_denom += 1;
-				}
+				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative number of A nucleotides: $A. This most often results from\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## are unreliable; A count set to 0; proceed with caution.\n";
+				$hh_nc_position_info{$curr_spot}->{A} = 0;
+			}
+			if($C < 0) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative number of C nucleotides: $C. This most often results from variants ".
+					"which are assigned to the wrong site in the SNP Report. Results at this site ".
+					"are unreliable; C count set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
 				
-				my $this_avg_cov = ($cov_sum / $cov_denom);
-				$hh_nc_position_info{$curr_spot}->{cov} = $this_avg_cov;
+				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative number of C nucleotides: $C. This most often results from\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## are unreliable; C count set to 0; proceed with caution.\n";
+				$hh_nc_position_info{$curr_spot}->{C} = 0;
+			}
+			if($G < 0) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative number of G nucleotides: $G. This most often results from variants ".
+					"which are assigned to the wrong site in the SNP Report. Results at this site ".
+					"are unreliable; G count set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
 				
-				# DETERMINE THE MAJORITY NUCLEOTIDE, TOO
-				my $A = $hh_nc_position_info{$curr_spot}->{A};
-				my $C = $hh_nc_position_info{$curr_spot}->{C};
-				my $G = $hh_nc_position_info{$curr_spot}->{G};
-				my $T = $hh_nc_position_info{$curr_spot}->{T};
+				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative number of G nucleotides: $G. This most often results from\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## are unreliable; G count set to 0; proceed with caution.\n";
+				$hh_nc_position_info{$curr_spot}->{G} = 0;
+			}
+			if($T < 0) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative number of T nucleotides: $T. This most often results from variants ".
+					"which are assigned to the wrong site in the SNP Report. Results at this site ".
+					"are unreliable; T count set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
 				
-				my $majority_nucleotide; # a variant nucleotide may have fixed
-				my $curr_majority_count = 0;
-				if($A > $curr_majority_count) {
-					$curr_majority_count = $A;
-					$majority_nucleotide = 'A';
-				}
-				if($C > $curr_majority_count) {
-					$curr_majority_count = $C;
-					$majority_nucleotide = 'C';
-				} 
-				if($G > $curr_majority_count) {
-					$curr_majority_count = $G;
-					$majority_nucleotide = 'G';
-				} 
-				if($T > $curr_majority_count) {
-					$curr_majority_count = $T;
-					$majority_nucleotide = 'T';
-				}
+				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative number of T nucleotides: $T. This most often results from\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## are unreliable; T count set to 0; proceed with caution.\n";
+				$hh_nc_position_info{$curr_spot}->{T} = 0;
+			}
+			
+			# Do the same warning and correction for the proportion data
+			my $A_prop = $hh_nc_position_info{$curr_spot}->{A_prop};
+			my $C_prop = $hh_nc_position_info{$curr_spot}->{C_prop};
+			my $G_prop = $hh_nc_position_info{$curr_spot}->{G_prop};
+			my $T_prop = $hh_nc_position_info{$curr_spot}->{T_prop};
+			
+			if($A_prop < 0) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative proportion of A nucleotides of $A_prop. This may result from rounding error, ".
+					"in which case the number will be very small in magnitude, or variants ".
+					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+					"are unreliable. In either case, A prop has set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
 				
-				$hh_nc_position_info{$curr_spot}->{maj_nt} = $majority_nucleotide;
+				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative proportion of A nucleotides: $A_prop.\n".
+					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## may be unreliable; A prop set to 0; proceed with caution.\n";
+				$hh_nc_position_info{$curr_spot}->{A_prop} = 0;
+			}
+			if($C_prop < 0) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative proportion of C nucleotides of $C_prop. This may result from rounding error, ".
+					"in which case the number will be very small in magnitude, or variants ".
+					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+					"are unreliable. In either case, C prop has set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
 				
-				#print "\n\nAt site $curr_spot, the majority nucleotide is $majority_nucleotide and ".
-				#	"the average coverage is $this_avg_cov\n";
+				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative proportion of C nucleotides: $C_prop.\n".
+					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## may be unreliable; C prop set to 0; proceed with caution.\n";
+				$hh_nc_position_info{$curr_spot}->{C_prop} = 0;
+			}
+			if($G_prop < 0) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative proportion of G nucleotides of $G_prop. This may result from rounding error, ".
+					"in which case the number will be very small in magnitude, or variants ".
+					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+					"are unreliable. In either case, G prop has set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
 				
-				# WARNING if there is a negative number of sites; re-set to 0.
-				if($A < 0) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-						"imply a negative number of A nucleotides. This most often results from variants ".
-						"which are assigned to the wrong site in the SNP Report. Results at this site ".
-						"are unreliable; A count set to 0; proceed with caution.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-						"## the variant data imply a negative number of A nucleotides. This most often results from\n".
-						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-						"## are unreliable; A count set to 0; proceed with caution.\n";
-					$A = 0;
-				}
-				if($C < 0) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-						"imply a negative number of C nucleotides. This most often results from variants ".
-						"which are assigned to the wrong site in the SNP Report. Results at this site ".
-						"are unreliable; C count set to 0; proceed with caution.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-						"## the variant data imply a negative number of C nucleotides. This most often results from\n".
-						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-						"## are unreliable; C count set to 0; proceed with caution.\n";
-					$C = 0;
-				}
-				if($G < 0) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-						"imply a negative number of G nucleotides. This most often results from variants ".
-						"which are assigned to the wrong site in the SNP Report. Results at this site ".
-						"are unreliable; G count set to 0; proceed with caution.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-						"## the variant data imply a negative number of G nucleotides. This most often results from\n".
-						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-						"## are unreliable; G count set to 0; proceed with caution.\n";
-					$G = 0;
-				}
-				if($T < 0) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-						"imply a negative number of T nucleotides. This most often results from variants ".
-						"which are assigned to the wrong site in the SNP Report. Results at this site ".
-						"are unreliable; T count set to 0; proceed with caution.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-						"## the variant data imply a negative number of T nucleotides. This most often results from\n".
-						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-						"## are unreliable; T count set to 0; proceed with caution.\n";
-					$T = 0;
-				}
+				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative proportion of G nucleotides: $G_prop.\n".
+					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## may be unreliable; G prop set to 0; proceed with caution.\n";
+				$hh_nc_position_info{$curr_spot}->{G_prop} = 0;
+			}
+			if($T_prop < 0) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative proportion of T nucleotides of $T_prop. This may result from rounding error, ".
+					"in which case the number will be very small in magnitude, or variants ".
+					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+					"are unreliable. In either case, T prop has set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative proportion of T nucleotides: $T_prop.\n".
+					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## may be unreliable; T prop set to 0; proceed with caution.\n";
+				$hh_nc_position_info{$curr_spot}->{T_prop} = 0;
+			}
 		} # finish calculating mean coverage for noncoding sites
 		
 		# EXCLUDE sites with 0 actual variants, or else exclude variants BELOW MAF
@@ -4241,74 +4331,157 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$hh_product_position_info{$curr_product}->{$curr_spot}->{maj_nt} = $majority_nucleotide;
 				
 				# WARNING if there is a negative number of sites because of conflicting
-				# coverages; re-set to 0.
+				# coverages; round negative nucleotide counts to 0
 				if($A < 0) {
 					chdir('SNPGenie_Results');
 					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 					# FILE | PRODUCT | SITE | WARNING
 					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
-						"imply a negative number of A nucleotides. This most often results from variants ".
+						"imply a negative number of A nucleotides: $A. This most often results from variants ".
 						"which are assigned to the wrong site in the SNP Report. Results at this site ".
 						"are unreliable; A count set to 0; proceed with caution.\n";
 					close ERROR_FILE;
 					chdir('..');
 					
 					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
-						"## the variant data imply a negative number of A nucleotides. This most often results from\n".
+						"## the variant data imply a negative number of A nucleotides: $A. This most often results from\n".
 						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
 						"## are unreliable; A count set to 0; proceed with caution.\n";
-					$A = 0;
+					$hh_product_position_info{$curr_product}->{$curr_spot}->{A} = 0;
 				}
 				if($C < 0) {
 					chdir('SNPGenie_Results');
 					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 					# FILE | PRODUCT | SITE | WARNING
 					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
-						"imply a negative number of C nucleotides. This most often results from variants ".
+						"imply a negative number of C nucleotides: $C. This most often results from variants ".
 						"which are assigned to the wrong site in the SNP Report. Results at this site ".
 						"are unreliable; C count set to 0; proceed with caution.\n";
 					close ERROR_FILE;
 					chdir('..');
 					
 					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
-						"## the variant data imply a negative number of C nucleotides. This most often results from\n".
+						"## the variant data imply a negative number of C nucleotides: $C. This most often results from\n".
 						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
 						"## are unreliable; C count set to 0; proceed with caution.\n";
-					$C = 0;
+					$hh_product_position_info{$curr_product}->{$curr_spot}->{C} = 0;
 				}
 				if($G < 0) {
 					chdir('SNPGenie_Results');
 					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 					# FILE | PRODUCT | SITE | WARNING
 					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
-						"imply a negative number of G nucleotides. This most often results from variants ".
+						"imply a negative number of G nucleotides: $G. This most often results from variants ".
 						"which are assigned to the wrong site in the SNP Report. Results at this site ".
 						"are unreliable; G count set to 0; proceed with caution.\n";
 					close ERROR_FILE;
 					chdir('..');
 					
 					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
-						"## the variant data imply a negative number of G nucleotides. This most often results from\n".
+						"## the variant data imply a negative number of G nucleotides: $G. This most often results from\n".
 						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
 						"## are unreliable; G count set to 0; proceed with caution.\n";
-					$G = 0;
+					$hh_product_position_info{$curr_product}->{$curr_spot}->{G} = 0;
 				}
 				if($T < 0) {
 					chdir('SNPGenie_Results');
 					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 					# FILE | PRODUCT | SITE | WARNING
 					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
-						"imply a negative number of T nucleotides. This most often results from variants ".
+						"imply a negative number of T nucleotides: $T. This most often results from variants ".
 						"which are assigned to the wrong site in the SNP Report. Results at this site ".
 						"are unreliable; T count set to 0; proceed with caution.\n";
 					close ERROR_FILE;
 					chdir('..');
 					
 					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
-						"## the variant data imply a negative number of T nucleotides. This most often results from\n".
+						"## the variant data imply a negative number of T nucleotides: $T. This most often results from\n".
 						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
 						"## are unreliable; T count set to 0; proceed with caution.\n";
-					$T = 0;
+					$hh_product_position_info{$curr_product}->{$curr_spot}->{T} = 0;
+				}
+				
+				# Do the same warning and correction for the proportion data
+				my $A_prop = $hh_product_position_info{$curr_product}->{$curr_spot}->{A_prop};
+				my $C_prop = $hh_product_position_info{$curr_product}->{$curr_spot}->{C_prop};
+				my $G_prop = $hh_product_position_info{$curr_product}->{$curr_spot}->{G_prop};
+				my $T_prop = $hh_product_position_info{$curr_product}->{$curr_spot}->{T_prop};
+				
+				if($A_prop < 0) {
+					chdir('SNPGenie_Results');
+					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+					# FILE | PRODUCT | SITE | WARNING
+					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
+						"imply a negative proportion of A nucleotides of $A_prop. This may result from rounding error, ".
+						"in which case the number will be very small in magnitude, or variants ".
+						"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+						"are unreliable. In either case, A prop has set to 0; proceed with caution.\n";
+					close ERROR_FILE;
+					chdir('..');
+					
+					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
+						"## the variant data imply a negative proportion of A nucleotides: $A_prop.\n".
+						"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+						"## may be unreliable; A prop set to 0; proceed with caution.\n";
+					$hh_product_position_info{$curr_product}->{$curr_spot}->{A_prop} = 0;
+				}
+				if($C_prop < 0) {
+					chdir('SNPGenie_Results');
+					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+					# FILE | PRODUCT | SITE | WARNING
+					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
+						"imply a negative proportion of C nucleotides of $C_prop. This may result from rounding error, ".
+						"in which case the number will be very small in magnitude, or variants ".
+						"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+						"are unreliable. In either case, C prop has set to 0; proceed with caution.\n";
+					close ERROR_FILE;
+					chdir('..');
+					
+					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
+						"## the variant data imply a negative proportion of C nucleotides: $C_prop.\n".
+						"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+						"## may be unreliable; C prop set to 0; proceed with caution.\n";
+					$hh_product_position_info{$curr_product}->{$curr_spot}->{C_prop} = 0;
+				}
+				if($G_prop < 0) {
+					chdir('SNPGenie_Results');
+					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+					# FILE | PRODUCT | SITE | WARNING
+					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
+						"imply a negative proportion of G nucleotides of $G_prop. This may result from rounding error, ".
+						"in which case the number will be very small in magnitude, or variants ".
+						"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+						"are unreliable. In either case, G prop has set to 0; proceed with caution.\n";
+					close ERROR_FILE;
+					chdir('..');
+					
+					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
+						"## the variant data imply a negative proportion of G nucleotides: $G_prop.\n".
+						"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+						"## may be unreliable; G prop set to 0; proceed with caution.\n";
+					$hh_product_position_info{$curr_product}->{$curr_spot}->{G_prop} = 0;
+				}
+				if($T_prop < 0) {
+					chdir('SNPGenie_Results');
+					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+					# FILE | PRODUCT | SITE | WARNING
+					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
+						"imply a negative proportion of T nucleotides of $T_prop. This may result from rounding error, ".
+						"in which case the number will be very small in magnitude, or variants ".
+						"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+						"are unreliable. In either case, T prop has set to 0; proceed with caution.\n";
+					close ERROR_FILE;
+					chdir('..');
+					
+					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
+						"## the variant data imply a negative proportion of T nucleotides: $T_prop.\n".
+						"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+						"## may be unreliable; T prop set to 0; proceed with caution.\n";
+					$hh_product_position_info{$curr_product}->{$curr_spot}->{T_prop} = 0;
 				}
 			}
 		}
@@ -6955,6 +7128,20 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				
 				my $pi = $hh_nc_position_info{$site_pos_1}->{pi};
 				
+				# Round nucleotide counts to 0 for rounding error to the 9th decimal
+#				if($num_1_A < 0.000000001 && $num_1_A > -0.000000001) {
+#					$num_1_A = 0;
+#				}
+#				if($num_1_C < 0.000000001 && $num_1_C > -0.000000001) {
+#					$num_1_C = 0;
+#				}
+#				if($num_1_G < 0.000000001 && $num_1_G > -0.000000001) {
+#					$num_1_G = 0;
+#				}
+#				if($num_1_T < 0.000000001 && $num_1_T > -0.000000001) {
+#					$num_1_T = 0;
+#				}
+				
 				print OUTFILE_GENE_DIV "$file_nm\t$curr_product\t$site_pos_1\t".
 					"$curr_nt_1\t$maj_nt\t".
 					"1\t$site1_num_overlap\t$curr_site\t$curr_codon\t$pi\t".
@@ -6997,6 +7184,20 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				
 				my $pi = $hh_nc_position_info{$site_pos_2}->{pi};
 				
+				# Round nucleotide counts to 0 for rounding error to the 9th decimal
+#				if($num_2_A < 0.000000001 && $num_2_A > -0.000000001) {
+#					$num_2_A = 0;
+#				}
+#				if($num_2_C < 0.000000001 && $num_2_C > -0.000000001) {
+#					$num_2_C = 0;
+#				}
+#				if($num_2_G < 0.000000001 && $num_2_G > -0.000000001) {
+#					$num_2_G = 0;
+#				}
+#				if($num_2_T < 0.000000001 && $num_2_T > -0.000000001) {
+#					$num_2_T = 0;
+#				}
+				
 				print OUTFILE_GENE_DIV "$file_nm\t$curr_product\t$site_pos_2\t".
 					"$curr_nt_2\t$maj_nt\t".
 					"2\t$site2_num_overlap\t$curr_site\t$curr_codon\t$pi\t".
@@ -7038,6 +7239,20 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				}
 				
 				my $pi = $hh_nc_position_info{$site_pos_3}->{pi};
+				
+				# Round nucleotide counts to 0 for rounding error to the 9th decimal
+#				if($num_3_A < 0.000000001 && $num_3_A > -0.000000001) {
+#					$num_3_A = 0;
+#				}
+#				if($num_3_C < 0.000000001 && $num_3_C > -0.000000001) {
+#					$num_3_C = 0;
+#				}
+#				if($num_3_G < 0.000000001 && $num_3_G > -0.000000001) {
+#					$num_3_G = 0;
+#				}
+#				if($num_3_T < 0.000000001 && $num_3_T > -0.000000001) {
+#					$num_3_T = 0;
+#				}
 				
 				print OUTFILE_GENE_DIV "$file_nm\t$curr_product\t$site_pos_3\t".
 					"$curr_nt_3\t$maj_nt\t".
@@ -7454,7 +7669,21 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						}
 					}
 				}
-
+				
+				# Round nucleotide counts to 0 for rounding error to the 9th decimal
+				if($A < 0.000000001 && $A > -0.000000001) {
+					$A = 0;
+				}
+				if($C < 0.000000001 && $C > -0.000000001) {
+					$C = 0;
+				}
+				if($G < 0.000000001 && $G > -0.000000001) {
+					$G = 0;
+				}
+				if($T < 0.000000001 && $T > -0.000000001) {
+					$T = 0;
+				}
+				
 				print OUTFILE_GENE_DIV "$file_nm\tnoncoding\t$curr_site\t".
 					"$ref_nt\t$maj_nt\t".
 					"NA\t$overlapping_ORFs\tNA\tNA\t".
