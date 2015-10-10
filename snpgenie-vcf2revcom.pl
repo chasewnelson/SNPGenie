@@ -450,6 +450,10 @@ while (<ORIGINAL_SNP_REPORT>) {
 					}
 					
 				} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
+					# Warn
+					print "\n## File $curr_snp_report_name site $ref_pos has three variants ".
+					"in a pooled (DP4-tag) VCF file.\n## Variant frequencies have been approximated\n";
+					
 					# These are high-quality reads, so may be less that the actual coverage
 					my $fwd_ref_reads = $1;
 					my $rev_ref_reads = $2;
@@ -696,6 +700,10 @@ while (<ORIGINAL_SNP_REPORT>) {
 					}
 					
 				} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
+					# Warn 
+					print "\n## File $curr_snp_report_name site $ref_pos has two variants ".
+					"in a pooled (DP4-tag) VCF file.\n## Variant frequencies have been approximated\n";
+					
 					# These are high-quality reads, so may be less that the actual coverage
 					my $fwd_ref_reads = $1;
 					my $rev_ref_reads = $2;
