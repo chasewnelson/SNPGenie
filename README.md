@@ -249,7 +249,7 @@ Some additional scripts are included to automate some common tasks when preparin
 
 When using this software, please refer to and cite:
 
-> Nelson CW, Moncla LH, Hughes AL (2015) <a target="_blank" href="http://bioinformatics.oxfordjournals.org/">SNPGenie: estimating evolutionary parameters to detect natural selection using pooled next-generation sequencing data</a>. *Bioinformatics* **2015**, doi: 10.1093/bioinformatics/btv449.
+> Nelson CW, Moncla LH, Hughes AL (2015) <a target="_blank" href="http://bioinformatics.oxfordjournals.org/">SNPGenie: estimating evolutionary parameters to detect natural selection using pooled next-generation sequencing data</a>. *Bioinformatics* **31**(22):3709-3711.
 
 ## Studies Using SNPGenie
 
