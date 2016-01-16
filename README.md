@@ -10,9 +10,9 @@ New applications of next-generation sequencing (NGS) use pooled samples containi
 
 SNPGenie version 1.2 is a command-line interface application written in Perl, with no additional dependencies. As such, it is limited only by the memory and processing capabilities of the local hardware. As input, it accepts:
 
-1. One or more **reference sequence** files in **FASTA** format (.fa/.fasta); 
-2. One file with CDS information in **Gene Transfer Format** (.gtf); and 
-3. One or more tab-delimited (.txt) **SNP reports** in CLC or Geneious format. If you want another format included, just ask!
+1. One or more [**reference sequence**](#Reference Sequence) files in **FASTA** format (.fa/.fasta); 
+2. One file with CDS information in [**Gene Transfer Format**](#Gene Transfer Format) (.gtf); and 
+3. One or more tab-delimited (.txt) [**SNP reports**](#SNP Reports) in CLC or Geneious format. If you want another format included, just ask!
 
 For ease and simplicity, one need only run SNPGenie in a directory containing the necessary input files, and SNPGenie takes care of the rest (see [Options](#options) if you wish for more control). To do this, first download the **snpgenie-1.2.pl** script and place it in your system’s PATH, or simply in your working directory. Next, place your SNP report(s), FASTA(s) (.fa/.fasta), and GTF (.gtf) files in your working directory. Open the command line prompt (or Terminal) and navigate to the directory containing these files using the "cd" command in your shell. Finally, simply execute SNPGenie by typing the name of the script and pressing the \<RETURN\> (\<ENTER\>) key. Further details on input are below.
 
