@@ -10,16 +10,16 @@ New applications of next-generation sequencing (NGS) use pooled samples containi
 
 SNPGenie version 1.2 is a command-line interface application written in Perl, with no additional dependencies. As such, it is limited only by the memory and processing capabilities of the local hardware. As input, it accepts:
 
-1. One or more [**reference sequence**](#Reference Sequence) files in **FASTA** format (.fa/.fasta); 
-2. One file with CDS information in [**Gene Transfer Format**](#Gene Transfer Format) (.gtf); and 
-3. One or more tab-delimited (.txt) [**SNP reports**](#SNP Reports) in CLC or Geneious format. If you want another format included, just ask!
+1. One or more [**reference sequence**](#ref-seq) files in **FASTA** format (.fa/.fasta); 
+2. One file with CDS information in [**Gene Transfer Format**](#gtf) (.gtf); and 
+3. One or more tab-delimited (.txt) [**SNP reports**](#SNP-Reports) in CLC or Geneious format. If you want another format included, just ask!
 
 For ease and simplicity, one need only run SNPGenie in a directory containing the necessary input files, and SNPGenie takes care of the rest (see [Options](#options) if you wish for more control). To do this, first download the **snpgenie-1.2.pl** script and place it in your system’s PATH, or simply in your working directory. Next, place your SNP report(s), FASTA(s) (.fa/.fasta), and GTF (.gtf) files in your working directory. Open the command line prompt (or Terminal) and navigate to the directory containing these files using the "cd" command in your shell. Finally, simply execute SNPGenie by typing the name of the script and pressing the \<RETURN\> (\<ENTER\>) key. Further details on input are below.
 
-### Reference Sequence
+### <a name="ref-seq"></a>Reference Sequence
 The reference sequence must be present in a **FASTA** (.fa/.fasta) file. Providing only one reference sequence assumes that all SNP coordinates in the SNP reports are called relative to the single reference file. This ONE-SEQUENCE MODE allows the maximum number of estimations to be performed. Contrarily, if two or more FASTA files are present, each is assumed to refer to a different protein product, as might occur with a segmented viral genome. In this case, MULTI-SEQUENCE MODE is activated, and each FASTA file name must begin with the name of the product followed by an underscore. For example, if "ORF1" is the name of one of the products in the SNP report, its reference FASTA file must be named as in "ORF1_xxx.fasta". Each FASTA file must contain only one sequence; a script is provided to split a multi-FASTA file into its constitutent sequences; see [Additional Scripts](#additional-scripts) below.
 
-### Gene Transfer Format
+### <a name="gtf"></a>Gene Transfer Format
 The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include records for all CDS elements (i.e., open reading frames, or ORFs) present in your SNP report(s). Note that SNPGenie expects every coding element to be labeled as type "CDS", and for its product name to follow a "gene\_id" tag. In the case of CLC and Geneious SNP reports, this name must match that present in the SNP report. If a single coding element has multiple segments with different coordinates, simply enter one line for each segment, using the same product name. SNPGenie for CLC can currently handle 2 segments per ORF; if more are needed, please contact us, and we'll be happy to make the improvement! Finally, for cases with reverse '–' strand features, SNPGenie must be run twice, once for each strand, with that strand's own set of input files (i.e., the '–' strand FASTA, GTF, and SNP report). For more information about GTF, please visit <a target="_blank" href="http://mblab.wustl.edu/GTF22.html">The Brent Lab</a>. A simple example follows:
 
 	reference.gbk	CLC	CDS	5694	8369	.	+	0	gene_id "ORF1";
@@ -33,7 +33,7 @@ The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include
 	reference.gbk	CLC	CDS	5247	5549	.	+	0	gene_id "ORF7";
 	reference.gbk	CLC	CDS	4911	5246	.	+	0	gene_id "ORF8";
 
-### SNP Reports
+### <a name="SNP-Reports"></a>SNP Reports
 
 #### CLC Genomics Workbench
 At minimum, the <a target="_blank" href="http://www.clcbio.com/products/clc-genomics-workbench/">CLC Genomics Workbench</a> SNP report must include the following 8 default column selections, with the unaltered CLC column headers: 
@@ -249,7 +249,7 @@ Some additional scripts are included to automate some common tasks when preparin
 
 When using this software, please refer to and cite:
 
-> Nelson CW, Moncla LH, Hughes AL (2015) <a target="_blank" href="http://bioinformatics.oxfordjournals.org/">SNPGenie: estimating evolutionary parameters to detect natural selection using pooled next-generation sequencing data</a>. *Bioinformatics* **31**(22):3709-3711.
+> Nelson CW, Moncla LH, Hughes AL (2015) <a target="_blank" href="http://bioinformatics.oxfordjournals.org/">SNPGenie: estimating evolutionary parameters to detect natural selection using pooled next-generation sequencing data</a>. *Bioinformatics* **2015**, doi: 10.1093/bioinformatics/btv449.
 
 ## Studies Using SNPGenie
 
