@@ -203,9 +203,13 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 
 Some additional scripts are included to automate some common tasks when preparing SNPGenie input. These currently are:
 
-* **snpgenie-gbk2gtf.pl**. At the command line, provide this script with one argument: a GenBank (.gbk) file. It will extract the coding element annotations to produce a GTF file ready for SNPGenie. Not working? Let us know, and we'll improve it! Here's an example:
+* **snpgenie-gbk2gtf.pl**. At the command line, provide this script with one argument: a GenBank (.gbk) file. It will extract the coding element annotations to produce a Gene Transfer Format (.gtf) file ready for SNPGenie. Not working? Let us know, and we'll improve it! Here's an example:
 
         snpgenie-gbk2gtf.pl my_genbank_file.gbk
+        
+* **snpgenie-gff2gtf.pl**. At the command line, provide this script with one argument: a General Feature Format (.gff) file. It will extract the coding element annotations to produce a Gene Transfer Format (.gtf) file ready for SNPGenie, with "gene_id" annotations identified using the GFF "ID" tag. Not working, or need a different tag? Let us know, and we'll improve it! Here's an example:
+
+        snpgenie-gbk2gtf.pl my_gff_file.gff
 
 * **snpgenie-split_fasta.pl**. At the command line, provide this script with one argument: a FASTA (.fa or .fasta) file containing multiple sequences. This script will create multiple files in the working directory, each containing one of the sequences. Here's an example:
 
