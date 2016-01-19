@@ -2,11 +2,25 @@
 
 Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. Just run **snpgenie-1.2.pl** in a directory containing the necessary input files, and we take care of the rest! For the earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.
 
+## Contents
+
+[Introduction](#Introduction)
+[SNPGenie Input](#snpgenie-input)
+[Options](#Options)
+[How SNPGenie Works](#how-snpgenie-works)
+[Output](#Output)
+[Additional Scripts](#additional-scripts)
+[Troubleshooting](#Troubleshooting)
+[Citation](#Citation)
+[Studies Using SNPGenie](#studies-using-snpgenie)
+[References](#References)
+
+
 ## Introduction
 
 New applications of next-generation sequencing (NGS) use pooled samples containing DNA from multiple individuals to perform population genetic analyses. SNPGenie is a Perl program which can analyze the single-nucleotide polymorphism (SNP) caller results to calculate evolutionary parameters, such as nucleotide diversity (including its nonsynonymous and synonymous partitions, πN and πS) and gene diversity. These calls are typically present in annotation tables and assume that the pooled nucleic acid sample is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it would be appropriate to sequence the pooled nucleic acid content of the virus in a blood sample from that host. Comparing πN and πS for, say, a gene product, or comparing gene diversity at polymorphic sites of different types, may help to dicepher instances of positive (Darwinian) selection, negative (purifying) selection, and random genetic drift. SNPGenie also includes such features as minimum allele frequency trimming (see [Options](#options)), and can be combined with upstream applications such as maximum-likelihood SNP calling techniques (*e.g.*, see Lynch *et al.* 2014). For additional background, see Nelson & Hughes (2015) in the [References](#references).
 
-## SNPGenie Input
+## <a name="snpgenie-input"></a>SNPGenie Input
 
 SNPGenie version 1.2 is a command-line interface application written in Perl, with no additional dependencies. As such, it is limited only by the memory and processing capabilities of the local hardware. As input, it accepts:
 
@@ -102,7 +116,7 @@ For example, if you wanted to turn on the **sepfiles** option, specify a minimum
 
 	snpgenie-1.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
 
-## How SNPGenie Works
+## <a name="how-snpgenie-works"></a>How SNPGenie Works
 
 Given the appropriate files, SNPGenie calculates gene and nucleotide diversities for different types of sites in a protein-coding sequence. Nucleotide diversity may be defined as the average number of nucleotide variants per nucleotide site for all pairwise comparisons. To distinguish between nonsynonymous and synonymous differences and sites, it is necessary to consider the codon context of each nucleotide in a sequence. This is why the user must submit the starting and ending sites of the coding regions in the .gtf file, along with the reference FASTA sequence file, so that the numbers of nonsynonymous and synonymous sites for each codon may be accurately estimated by the Nei-Gojobori (1986) method. SNPGenie first splits the coding sequence into codons, each of which contains 3 sites. The software then determines the number of these sites which are nonsynonymous and synonymous by testing all polymorphisms present at each site of every codon in the sequence. Because different nucleotide variants at the same site may lead to both nonsynonymous and synonymous polymorphisms, fractional sites occur frequently (e.g., only 2 of 3 possible nucleotide substitutions at the third position of AGA cause an amino acid change; thus, that site is considered 2/3 nonsynonymous and 1/3 synonymous). Next, the SNP report is consulted for the presence of variants to produce a revised estimate. Variants are incorporated through averaging weighted by their frequency. Although it is relatively rare, high levels of sequence variation may alter the number of nonsynonymous and synonymous sites in a particular codon, contributing to an altered picture of natural selection.
 
@@ -199,7 +213,7 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 
 8. **sliding_window_length<Length>_results.txt**, containing codon-based results over a sliding window, with a default length of 9 codons.
 
-## Additional Scripts
+## <a name="additional-scripts"></a>Additional Scripts
 
 Some additional scripts are included to automate some common tasks when preparing SNPGenie input. These currently are:
 
@@ -255,7 +269,7 @@ When using this software, please refer to and cite:
 
 > Nelson CW, Moncla LH, Hughes AL (2015) <a target="_blank" href="http://bioinformatics.oxfordjournals.org/">SNPGenie: estimating evolutionary parameters to detect natural selection using pooled next-generation sequencing data</a>. *Bioinformatics* **2015**, doi: 10.1093/bioinformatics/btv449.
 
-## Studies Using SNPGenie
+## <a name="studies-using-snpgenie"></a>Studies Using SNPGenie
 
 * Bailey AL, *et al.* (2014) <a target="_blank" href="http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0090714">High genetic diversity and adaptive potential of two simian hemorrhagic fever viruses in a wild primate population</a>. *PLoS ONE* **9**(3):e90714.
 * Nelson CW, Hughes AL (2015) <a target="_blank" href="http://www.sciencedirect.com/science/article/pii/S1567134814004468">Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing</a>. *Infection, Genetics and Evolution* **30**:1-7.
