@@ -4,19 +4,19 @@ Perl software for estimating evolutionary parameters from pooled next-generation
 
 ## Contents
 
-[Introduction](#Introduction)
-[SNPGenie Input](#snpgenie-input)
-[Options](#Options)
-[How SNPGenie Works](#how-snpgenie-works)
-[Output](#Output)
-[Additional Scripts](#additional-scripts)
-[Troubleshooting](#Troubleshooting)
-[Citation](#Citation)
-[Studies Using SNPGenie](#studies-using-snpgenie)
-[References](#References)
+* [Introduction](#introduction)
+* [SNPGenie Input](#snpgenie-input)
+* [Options](#options)
+* [How SNPGenie Works](#how-snpgenie-works)
+* [Output](#output)
+* [Additional Scripts](#additional-scripts)
+* [Troubleshooting](#troubleshooting)
+* [Citation](#citation)
+* [Studies Using SNPGenie](#studies-using-snpgenie)
+* [References](#references)
 
 
-## Introduction
+## <a name="introduction"></a>Introduction
 
 New applications of next-generation sequencing (NGS) use pooled samples containing DNA from multiple individuals to perform population genetic analyses. SNPGenie is a Perl program which can analyze the single-nucleotide polymorphism (SNP) caller results to calculate evolutionary parameters, such as nucleotide diversity (including its nonsynonymous and synonymous partitions, πN and πS) and gene diversity. These calls are typically present in annotation tables and assume that the pooled nucleic acid sample is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it would be appropriate to sequence the pooled nucleic acid content of the virus in a blood sample from that host. Comparing πN and πS for, say, a gene product, or comparing gene diversity at polymorphic sites of different types, may help to dicepher instances of positive (Darwinian) selection, negative (purifying) selection, and random genetic drift. SNPGenie also includes such features as minimum allele frequency trimming (see [Options](#options)), and can be combined with upstream applications such as maximum-likelihood SNP calling techniques (*e.g.*, see Lynch *et al.* 2014). For additional background, see Nelson & Hughes (2015) in the [References](#references).
 
@@ -99,7 +99,7 @@ As usual, you will want to make sure to maintain the VCF file's features, such a
 ### Reverse Complement ('–' Strand) Files
 Many large genomes have coding products on both strands. In this case, SNPGenie must be run twice: once for the '+' strand, and once for the '-' strand. This requires FASTA, GTF, and SNP report input for the '–' strand. Check out **snpgenie-vcf2revcom.pl**, describe in the [Additional Scripts](#additional-scripts) below, which automatically creates these files for you. Note that, regardless of the original SNP report format, the reverse complement SNP report is in a CLC-like format that SNPGenie will recognize. For both runs, the GTF should include all products for both strands, with the products on the strand being analyzed classified as '+' and having coordinates defined with reference to the beginning of that strand.
 
-## Options
+## <a name="options"></a>Options
 
 In case you want to alter the way SNPGenie works, the following options (implemented using Perl's Getopt::Long module) may be used:
 
@@ -122,7 +122,7 @@ Given the appropriate files, SNPGenie calculates gene and nucleotide diversities
 
 Next, SNPGenie calculates the number of nucleotide differences for each codon in each ORF specified in the .gtf file. Calculating nucleotide diversity codon-by-codon enables sliding-window analyses that may help to pinpoint important nucleotide regions subject to varying forms of natural selection. SNPGenie determines the average number of pairwise differences as follows: for every variant in the SNP Report, the number of variants is calculated as the product of the variant’s relative frequency and the coverage at that site. For each variant nucleotide (up to 3 non-reference nucleotides), the number of variants is stored, and their sum is subtracted from the coverage to yield the reference’s absolute frequency. Next, for each pairwise nucleotide comparison at the site, it is determined whether the comparison represents a nonsynonymous or synonymous change. If the former, the product of their absolute frequencies contributes to the number of nonsynonymous pairwise differences; if the latter, it contributes to the number of synonymous pairwise differences. When comparing codons with more than one nucleotide difference, all possible mutational pathways are considered, per the method of Nei & Gojobori (1986). The sum of pairwise differences is divided by the total number of pairwise comparisons at the codon (<sub>*n*</sub>C<sub>2</sub>, where *n* = coverage) to yield the mean number of differences per site of each type. This is calculated separately for nonsynonymous and synonymous comparisons. For further background, see Nelson & Hughes (2015).
 
-## Output
+## <a name="output"></a>Output
 
 SNPGenie creates a new folder called SNPGenie_Results within the working directory. This contains the following TAB-delimited results files:
 
@@ -238,7 +238,7 @@ Some additional scripts are included to automate some common tasks when preparin
 
         snpgenie-vcf2revcom.pl my_snp_report.vcf my_reference_sequence.fasta my_cds_file.gtf
 
-## Troubleshooting
+## <a name="troubleshooting"></a>Troubleshooting
 
 * Using **Windows**? SNPGenie was written for Unix systems (including Mac), which have Perl installed by default. Windows doesn't, but getting Perl installed is as simple as following these <a target="_blank" href="http://learn.perl.org/installing/windows.html">three-minute download instructions</a>, and you'll be good to go! Just open the Windows Command Prompt, and remember to type "perl" first when you run SNPGenie, *i.e.*, type "perl snpgenie-1.2.pl".
 * SNPGenie isn't executing? Try preceding the whole command line with "perl" to make sure SNPGenie is being treated as a script. For example:
@@ -263,7 +263,7 @@ Some additional scripts are included to automate some common tasks when preparin
 
 * Are the product coordinates in the gtf file correct? (You might use a free program such as <a target="_blank" href="http://www.megasoftware.net/">MEGA</a> to check that the CDS coordinates begin with ATG and end with TAA, TAG, or TGA.)
 
-## Citation
+## <a name="citation"></a>Citation
 
 When using this software, please refer to and cite:
 
@@ -275,7 +275,7 @@ When using this software, please refer to and cite:
 * Nelson CW, Hughes AL (2015) <a target="_blank" href="http://www.sciencedirect.com/science/article/pii/S1567134814004468">Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing</a>. *Infection, Genetics and Evolution* **30**:1-7.
 * Wilker PR, *et al.* (2013) <a target="_blank" href="http://www.nature.com/ncomms/2013/131023/ncomms3636/abs/ncomms3636.html?message-global=remove">Selection on haemagglutinin imposes a bottleneck during mammalian transmission of reassortant H5N1 influenza viruses</a>. *Nature Communications* **4**:2636.
 
-## References
+## <a name="references"></a>References
 
 * Knapp EW, *et al.* (2011) <a target="_blank" href="http://link.springer.com/article/10.1007%2Fs12686-010-9372-5">PolyAna: analyzing synonymous and nonsynonymous polymorphic sites</a>. *Conserv Genet Resour* **3**:429-431.
 * Lynch M, *et al.* (2014) <a target="_blank" href="http://gbe.oxfordjournals.org/content/early/2014/04/30/gbe.evu085">Population-genetic inference from pooled-sequencing data</a>. *Genome Biol. Evol.* **6**(5):1210-1218.
