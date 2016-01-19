@@ -18,7 +18,7 @@ Perl software for estimating evolutionary parameters from pooled next-generation
 
 ## <a name="introduction"></a>Introduction
 
-New applications of next-generation sequencing (NGS) use pooled samples containing DNA from multiple individuals to perform population genetic analyses. SNPGenie is a Perl program which can analyze the single-nucleotide polymorphism (SNP) caller results to calculate evolutionary parameters, such as nucleotide diversity (including its nonsynonymous and synonymous partitions, πN and πS) and gene diversity. These calls are typically present in annotation tables and assume that the pooled nucleic acid sample is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it would be appropriate to sequence the pooled nucleic acid content of the virus in a blood sample from that host. Comparing πN and πS for, say, a gene product, or comparing gene diversity at polymorphic sites of different types, may help to dicepher instances of positive (Darwinian) selection, negative (purifying) selection, and random genetic drift. SNPGenie also includes such features as minimum allele frequency trimming (see [Options](#options)), and can be combined with upstream applications such as maximum-likelihood SNP calling techniques (*e.g.*, see Lynch *et al.* 2014). For additional background, see Nelson & Hughes (2015) in the [References](#references).
+New applications of next-generation sequencing (NGS) use pooled samples containing DNA from multiple individuals to perform population genetic analyses. SNPGenie is a Perl program which can analyze the single-nucleotide polymorphism (SNP) caller results to calculate evolutionary parameters, such as nucleotide diversity (including its nonsynonymous and synonymous partitions, *π*<sub>N</sub> and *π*<sub>S</sub>) and gene diversity. These calls are typically present in annotation tables and assume that the pooled nucleic acid sample is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it would be appropriate to sequence the pooled nucleic acid content of the virus in a blood sample from that host. Comparing *π*<sub>N</sub> and *π*<sub>S</sub> for, say, a gene product, or comparing gene diversity at polymorphic sites of different types, may help to dicepher instances of positive (Darwinian) selection, negative (purifying) selection, and random genetic drift. SNPGenie also includes such features as minimum allele frequency trimming (see [Options](#options)), and can be combined with upstream applications such as maximum-likelihood SNP calling techniques (*e.g.*, see Lynch *et al.* 2014). For additional background, see Nelson & Hughes (2015) in the [References](#references).
 
 ## <a name="snpgenie-input"></a>SNPGenie Input
 
@@ -109,7 +109,7 @@ In case you want to alter the way SNPGenie works, the following options (impleme
 * **--gtffile**: optional string parameter specifying the one file with CDS annotations. Default: auto-detect the .gtf file.
 * **--sepfiles**: optional Boolean (flag) parameter specifying whether to product separate results (codon) files for each SNP report (all results already included together in the codon_results.txt file). Simply include in the command line to activate. Default: not included.
 * **--slidingwindow**: optional integer parameter specifying the length of the sliding (codon) window used in the analysis. Default: 9 codons.
-* **--ratiomode**: optional Boolean (flag) parameter specifying whether to include π values for each codon in the codon_results.txt file(s). This is usually inadvisable, as π values (especially πS) are subject to great stochastic error. Simply include in the command line to activate. Default: not included.
+* **--ratiomode**: optional Boolean (flag) parameter specifying whether to include π values for each codon in the codon_results.txt file(s). This is usually inadvisable, as π values (especially *π*<sub>S</sub>) are subject to great stochastic error. Simply include in the command line to activate. Default: not included.
 * **--sitebasedmode**: optional Boolean (flag) parameter specifying whether to include π values derived using a site-based (reference codon context only) approach in the codon_results.txt file(s). This is usually inadvisable, as π values will not reflect the true population pairwise comparisons. Simply include in the command line to activate. Default: not included.
 
 For example, if you wanted to turn on the **sepfiles** option, specify a minimum allele frequency of 1%, and specify your input files, you could enter the command:
@@ -156,14 +156,14 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* *site*. The site coordinate of the nucleotide in the reference sequence.
 	* *codon*. The identity of the relevant codon.
 	* *num_overlap_ORF_nts*. The number of nucleotides in this codon (up to 3) which overlap other ORFs (in addition to the current "product" annotation).
-	* *mean_nonsyn_diffs*. The mean number of pairwise nucleotide comparisons in this codon which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of πN.
-	* *mean_syn_diffs*. The mean number of pairwise nucleotide comparisons in this codon which are synonymous (i.e., amino acid-conserving) in the pooled sequence sample. The numerator of πS.
-	* *nonsyn_sites*. The mean number of sites in this codon which are nonsynonymous, given all sequences in the pooled sample. The denominator of πN and mean πN versus the reference.
-	* *syn_sites*. The mean number of sites in this codon which are synonymous, given all sequences in the pooled sample. The denominator of πS mean πS versus the reference.
+	* *mean_nonsyn_diffs*. The mean number of pairwise nucleotide comparisons in this codon which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of *π*<sub>N</sub>.
+	* *mean_syn_diffs*. The mean number of pairwise nucleotide comparisons in this codon which are synonymous (i.e., amino acid-conserving) in the pooled sequence sample. The numerator of *π*<sub>S</sub>.
+	* *nonsyn_sites*. The mean number of sites in this codon which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *π*<sub>N</sub> versus the reference.
+	* *syn_sites*. The mean number of sites in this codon which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> mean *π*<sub>S</sub> versus the reference.
 	* *nonsyn_sites_ref*. The number of sites in this codon which are nonsynonymous in the reference sequence.
 	* *syn_sites_ref*. The number of sites in this codon which are synonymous in the reference sequence.
-	* *mean_nonsyn_diffs_vs_ref*. This codon's mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean πN versus the reference.
-	* *mean_syn_diffs_vs_ref*. This codon's mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean πS versus the reference.
+	* *mean_nonsyn_diffs_vs_ref*. This codon's mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *π*<sub>N</sub> versus the reference.
+	* *mean_syn_diffs_vs_ref*. This codon's mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *π*<sub>S</sub> versus the reference.
 	* *mean_gdiv*. Mean gene diversity (observed heterozygosity) for this codon's nucleotide sites.
 	* *mean_nonsyn_gdiv*. Mean gene diversity for this codon's nonsynonymous polymorphic sites.
 	* *mean_syn_gdiv*. Mean gene diversity for this codon's synonymous polymorphic sites.
@@ -173,14 +173,14 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 6. **product_results.txt**, providing results for all CDS elements present in the GTF file for the '+' strand. Columns are:
 	* *file*. The SNP report analyzed.
 	* *product*. The CDS annotation to which the site belongs; "noncoding" if none.
-	* *mean_nonsyn_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of πN.
-	* *mean_syn_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are synonymous (i.e., amino acid-conserving) in the pooled sequence sample. The numerator of πS.
-	* *mean_nonsyn_diffs_vs_ref*. The sum over all codons in this product of the mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean πN versus the reference.
-	* *mean_syn_diffs_vs_ref*. The sum over all codons in this product of the mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean πS versus the reference.
-	* *nonsyn_sites*. The mean number of sites in this product which are nonsynonymous, given all sequences in the pooled sample. The denominator of πN and mean πN versus the reference.
-	* *syn_sites*. The mean number of sites in this product which are synonymous, given all sequences in the pooled sample. The denominator of πS and mean πS versus the reference.
-	* *piN*. The mean number of pairwise nonsynonymous differences per nonsynonymous site in this product.
-	* *piS*. The mean number of pairwise synonymous differences per synonymous site in this product.
+	* *mean_nonsyn_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of *π*<sub>N</sub>.
+	* *mean_syn_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are synonymous (i.e., amino acid-conserving) in the pooled sequence sample. The numerator of *π*<sub>S</sub>.
+	* *mean_nonsyn_diffs_vs_ref*. The sum over all codons in this product of the mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *π*<sub>N</sub> versus the reference.
+	* *mean_syn_diffs_vs_ref*. The sum over all codons in this product of the mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *π*<sub>S</sub> versus the reference.
+	* *nonsyn_sites*. The mean number of sites in this product which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *π*<sub>N</sub> versus the reference.
+	* *syn_sites*. The mean number of sites in this product which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> and mean *π*<sub>S</sub> versus the reference.
+	* *piN*. (*π*<sub>N</sub>.) The mean number of pairwise nonsynonymous differences per nonsynonymous site in this product.
+	* *piS*. (*π*<sub>S</sub>.) The mean number of pairwise synonymous differences per synonymous site in this product.
 	* *mean_dN_vs_ref*. The mean number of nonsynonymous differences from the reference per nonsynonymous site in this product.
 	* *mean_dS_vs_ref*. The mean number of synonymous differences from the reference per synonymous site in this product.
 	* *mean_gdiv_polymorphic*. Mean gene diversity (observed heterozygosity) at all polymorphic nucleotide sites in this product.
@@ -195,8 +195,8 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* *pi*. Mean number of pairwise differences per site in the pooled sample across the whole genome.
 	* *pi_coding*. Mean number of pairwise differences per site in the pooled sample across all coding sites in the genome.
 	* *pi_noncoding*. Mean number of pairwise differences per site in the pooled sample across all noncoding sites in the genome.
-	* *nonsyn_sites*. The mean number of sites in the genome which are nonsynonymous, given all sequences in the pooled sample. The denominator of πN and mean πN versus the reference.
-	* *syn_sites*. The mean number of sites in the genome which are synonymous, given all sequences in the pooled sample. The denominator of πS and mean πS versus the reference.
+	* *nonsyn_sites*. The mean number of sites in the genome which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *π*<sub>N</sub> versus the reference.
+	* *syn_sites*. The mean number of sites in the genome which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> and mean *π*<sub>S</sub> versus the reference.
 	* *piN*. The mean number of pairwise nonsynonymous differences per nonsynonymous site across the genome of the pooled sample.
 	* *piS*. The mean number of pairwise synonymous differences per synonymous site across the genome of the pooled sample.
 	* *mean_dN_vs_ref*. The mean number of nonsynonymous differences from the reference per nonsynonymous site across the genome of the pooled sample.
