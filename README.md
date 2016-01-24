@@ -6,6 +6,10 @@ Perl software for estimating evolutionary parameters from pooled next-generation
 
 * [Introduction](#introduction)
 * [SNPGenie Input](#snpgenie-input)
+	* [Reference Sequence](#ref-seq)
+	* [Gene Transfer Format](#gtf)
+	* [SNP Report(s)](#SNP-Reports)
+	* [Reverse Complement ('—' Strand) Records](#revcom)
 * [Options](#options)
 * [How SNPGenie Works](#how-snpgenie-works)
 * [Output](#output)
@@ -96,8 +100,8 @@ At minimum, the <a target="_blank" href="https://github.com/samtools/hts-specs">
 
 As usual, you will want to make sure to maintain the VCF file's features, such as TAB-delimited columns. Unlike some other formats, the allele frequency in VCF is a decimal.
 
-### Reverse Complement ('–' Strand) Files
-Many large genomes have coding products on both strands. In this case, SNPGenie must be run twice: once for the '+' strand, and once for the '-' strand. This requires FASTA, GTF, and SNP report input for the '–' strand. Check out **snpgenie-vcf2revcom.pl**, describe in the [Additional Scripts](#additional-scripts) below, which automatically creates these files for you. Note that, regardless of the original SNP report format, the reverse complement SNP report is in a CLC-like format that SNPGenie will recognize. For both runs, the GTF should include all products for both strands, with the products on the strand being analyzed classified as '+' and having coordinates defined with reference to the beginning of that strand.
+### <a name="revcom"></a>Reverse Complement ('–' Strand) Records
+Many large genomes have coding products on both strands. In this case, SNPGenie must be run twice: once for the '+' strand, and once for the '—' strand. This requires FASTA, GTF, and SNP report input for the '–' strand. Check out **snpgenie-vcf2revcom.pl**, described in the [Additional Scripts](#additional-scripts) below, which automatically creates these files for you, using your original data. Note that, regardless of the original SNP report format, the reverse complement SNP report is in a CLC-like format that SNPGenie will recognize. For both runs, the GTF should include all products for both strands, with the products on the strand being analyzed classified as '+' and having coordinates defined with reference to the beginning of that FASTA sequence. Also note that a GTF file containing *only* '—' strand records will not run; SNPGenie does calculations only for the products on the current + strand, using the '—' strand products only to determine the number of overlapping reading frames.
 
 ## <a name="options"></a>Options
 
