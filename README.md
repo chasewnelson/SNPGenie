@@ -9,7 +9,10 @@ Perl software for estimating evolutionary parameters from pooled next-generation
 	* [Reference Sequence](#ref-seq)
 	* [Gene Transfer Format](#gtf)
 	* [SNP Report(s)](#SNP-Reports)
-	* [Reverse Complement ('—' Strand) Records](#revcom)
+		* [CLC](#clc)
+		* [Geneious](#geneious)
+		* [VCF](#vcf)
+	* [A Note on Reverse Complement ('—' Strand) Records](#revcom)
 * [Options](#options)
 * [How SNPGenie Works](#how-snpgenie-works)
 * [Output](#output)
@@ -53,7 +56,7 @@ The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include
 
 ### <a name="SNP-Reports"></a>SNP Reports
 
-#### CLC Genomics Workbench
+#### <a name="clc"></a>CLC Genomics Workbench
 At minimum, the <a target="_blank" href="http://www.clcbio.com/products/clc-genomics-workbench/">CLC Genomics Workbench</a> SNP report must include the following 8 default column selections, with the unaltered CLC column headers: 
 
 * **Reference Position**, which refers to the start site of the polymorphism within the reference FASTA sequence;
@@ -67,7 +70,7 @@ At minimum, the <a target="_blank" href="http://www.clcbio.com/products/clc-geno
 
 In addition to the aforementioned columns, the SNP report should ideally be free of thousand separators (,) in the Reference Position, Count, and Coverage columns (default format). The Frequency must remain a percentage (default format). Finally, the user should verify that the reading frame in the CLC output is correct. SNPGenie will produce various errors to indicate when these conditions are not met, e.g., by checking that all products begin with START and end with STOP codons, and checking for premature stop codons. Make sure to check the SNPGenie LOG file!
 
-#### Geneious
+#### <a name="geneious"></a>Geneious
 At minimum, the <a target="_blank" href="http://www.geneious.com/">Geneious</a> SNP report must include the following default column selections, with the unaltered Geneious column headers:
 
 * **Minimum** and **Maximum**, which refer to the start and end sites of the polymorphism within the reference FASTA sequence, and will hold the same value for SNP records;
@@ -81,7 +84,7 @@ At minimum, the <a target="_blank" href="http://www.geneious.com/">Geneious</a> 
 
 As with CLC, the Geneious SNP report should ideally be free of extraneous characters such as thousand separators (,), but SNPGenie will do its best to adapt if they are present. Again, the Variant Frequency must remain a percentage (default format). Again, the user should verify that the reading frame in the Geneious output is correct. SNPGenie will produce various errors to indicate when these conditions are not met, e.g., by checking that all products begin with START and end with STOP codons, and checking for premature stop codons. Make sure to check the SNPGenie LOG file!
 
-#### Variant Call Format (VCF)
+#### <a name="vcf"></a>Variant Call Format (VCF)
 At minimum, the <a target="_blank" href="https://github.com/samtools/hts-specs">VCF</a> SNP report must include (and at present does so by definition) the following columns, with the unaltered VCF column headers:
 
 * **CHROM**, the name of the reference genome;
@@ -100,7 +103,7 @@ At minimum, the <a target="_blank" href="https://github.com/samtools/hts-specs">
 
 As usual, you will want to make sure to maintain the VCF file's features, such as TAB-delimited columns. Unlike some other formats, the allele frequency in VCF is a decimal.
 
-### <a name="revcom"></a>Reverse Complement ('–' Strand) Records
+### <a name="revcom"></a>A Note on Reverse Complement ('–' Strand) Records
 Many large genomes have coding products on both strands. In this case, SNPGenie must be run twice: once for the '+' strand, and once for the '—' strand. This requires FASTA, GTF, and SNP report input for the '–' strand. Check out **snpgenie-vcf2revcom.pl**, described in the [Additional Scripts](#additional-scripts) below, which automatically creates these files for you, using your original data. Note that, regardless of the original SNP report format, the reverse complement SNP report is in a CLC-like format that SNPGenie will recognize. For both runs, the GTF should include all products for both strands, with the products on the strand being analyzed classified as '+' and having coordinates defined with reference to the beginning of that FASTA sequence. Also note that a GTF file containing *only* '—' strand records will not run; SNPGenie does calculations only for the products on the current + strand, using the '—' strand products only to determine the number of overlapping reading frames.
 
 ## <a name="options"></a>Options
