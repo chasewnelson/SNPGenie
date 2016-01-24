@@ -20,6 +20,7 @@ Perl software for estimating evolutionary parameters from pooled next-generation
 * [Troubleshooting](#troubleshooting)
 * [Citation](#citation)
 * [Studies Using SNPGenie](#studies-using-snpgenie)
+* [Contact](#contact)
 * [References](#references)
 
 
@@ -283,6 +284,9 @@ When using this software, please refer to and cite:
 * Nelson CW, Hughes AL (2015) <a target="_blank" href="http://www.sciencedirect.com/science/article/pii/S1567134814004468">Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing</a>. *Infection, Genetics and Evolution* **30**:1-7.
 * Bailey AL, Lauck A, Weiler A, Sibley SD, Dinis JM, Bergman Z, Nelson CW, Correll M, Gleicher M, Hyeroba D, Tumukunde A, Weny G, Chapman C, Kuhn JH, Hughes AL, Friedrich TC, Goldberg TL, O’Connor DH (2014) <a target="_blank" href="http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0090714">High genetic diversity and adaptive potential of two simian hemorrhagic fever viruses in a wild primate population</a>. *PLoS ONE* **9**(3):e90714.
 * Wilker PR, Dinis JM, Starrett G, Imai M, Hatta M, Nelson CW, O’Connor DH, Hughes AL, Neumann G, Kawaoka Y, Friedrich TC (2013) <a target="_blank" href="http://www.nature.com/ncomms/2013/131023/ncomms3636/abs/ncomms3636.html?message-global=remove">Selection on haemagglutinin imposes a bottleneck during mammalian transmission of reassortant H5N1 influenza viruses</a>. *Nature Communications* **4**:2636.
+
+## <a name="contact"></a>Contact
+Please note that, given the unexpected and unfortunate passing of our friend, mentor, and colleague Dr. Austin L. Hughes, all correspondance should be addressed to Chase W. Nelson at: nelsoncw <**AT**> email <**DOT**> sc <**DOT**> edu.
 
 ## <a name="references"></a>References
 
