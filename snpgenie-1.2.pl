@@ -277,6 +277,7 @@ my %seen_no_stop_hash;
 my $exec_errors = 0;
 my $warn_5nt = 0;
 my $warn_frequencies = 0;
+my $warn_file_type_not_supported = 0;
 
 my $SNP_report_counter = 0;
 
@@ -944,6 +945,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						
 						if ($over_annot =~/CDS: ([\w\s\.']+)/) {
 							$product_name = $1;
+							#print "product name is: $product_name\n";
 							@product_coord_arr = &get_product_coordinates($product_name,$curr_snp_report_name);
 							#print "\n\n$product_name product_coord arr: @product_coord_arr\n\n";
 						} 
@@ -1322,6 +1324,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# EXPERIMENTAL
 						if ($over_annot =~/Mature peptide: ([\w\s\.']+)/) {
 							$mature_peptide_name = $1;
+							#print "product name is: $product_name\n"; # NOPE
 							@peptide_coord_arr = &get_product_coordinates($mature_peptide_name,$curr_snp_report_name);
 							print "\n## WARNING: \"Mature peptide\" annotation must take into account\n".
 							"### MNV records for CLC SNP Reports.\n";
@@ -1329,6 +1332,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						
 						if ($over_annot =~/CDS: ([\w\s\.']+)/) {
 							$product_name = $1;
+							#print "product name is: $product_name\n"; # NOPE
 							@product_coord_arr = &get_product_coordinates($product_name,$curr_snp_report_name);
 						} 
 						
@@ -3613,6 +3617,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		my $fasta_file = $product_to_fasta_file{$product_name};
 		
 		if(! exists $hh_product_position_info{$product_name}) {
+			#print "product name is: $product_name\n"; # NOPE
 			my @product_coord_arr = &get_product_coordinates($_,$curr_snp_report_name);
 			
 			my $product_start = $product_coord_arr[0];
@@ -8055,6 +8060,9 @@ sub get_product_names_vcf {
 	}
 	close CURRINFILE;
 	my @product_names = keys %products_hash;
+	#foreach (@product_names) {
+	#	print "$_\n";
+	#}
 	return @product_names;
 }
 
@@ -8890,6 +8898,7 @@ sub populate_tempfile_geneious {
 					# IF there is CDS data AND WE CAN, change the Minimum to match
 					if(($product_name ne '') && ($cds_position > 0)) { # STRINGS are 0
 						#print "Product name isn't blank\n";
+						#print "product name is: $product_name\n"; NOPE
 						@cds_coords_arr = &get_product_coordinates($product_name);
 						
 						#print "\n$product_name @cds_coords_arr\n";
@@ -9356,6 +9365,10 @@ sub populate_tempfile_vcf {
 	
 	my @product_names_arr = sort(keys %products_hash);
 	
+	#foreach (@product_names_arr) {
+	#	print "$_\n";
+	#}
+	
 	# INCLUDES "hypothetical protein" -- this not a specific tag?
 	#foreach my $prod (@product_names_arr) {
 	#	print "Product: $prod\n";
@@ -9502,7 +9515,11 @@ sub populate_tempfile_vcf {
 			if($equal_lengths_variants) {
 				if($variant3) { # THERE ARE THREE VARIANTS -- ADD A FLAG!
 					if($info_value =~ /NS=(\d+)/) { # We've got a VCF SUMMARIZING INDIVIDUALS
-						print "\n### FILE TYPE NOT FULLY SUPPORTED###\n";
+						if($warn_file_type_not_supported == 0) {
+							print "\n### WARNING: SNP REPORT FILE TYPE NOT FULLY SUPPORTED ###\n";
+							$warn_file_type_not_supported ++;
+						}
+						
 						my $num_samples;
 						$num_samples = $1;
 						
@@ -9534,44 +9551,44 @@ sub populate_tempfile_vcf {
 								# PRINT 3 LINES TO FILE
 								if($variant_freq1 > 0) {
 									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-										"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
+										"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\t$product_entry\n";
 									
 									print TEMP_FILE "$this_line1";
 								}
 								
 								if($variant_freq2 > 0) {
 									my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-										"$variant2\t$variant_count2\t$num_samples\t$variant_pct2\tCDS: $product_entry\n";
+										"$variant2\t$variant_count2\t$num_samples\t$variant_pct2\t$product_entry\n";
 									
 									print TEMP_FILE "$this_line2";
 								}
 								
 								if($variant_freq3 > 0) {
 									my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-										"$variant3\t$variant_count3\t$num_samples\t$variant_pct3\tCDS: $product_entry\n";
+										"$variant3\t$variant_count3\t$num_samples\t$variant_pct3\t$product_entry\n";
 									
 									print TEMP_FILE "$this_line3";
 								}
 							}
-						} else {
+						} else { # no products at this site, so no product entries (blank)
 							# PRINT 3 LINES TO FILE
 							if($variant_freq1 > 0) {
 								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-									"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
+									"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\t$product_entry\n";
 								
 								print TEMP_FILE "$this_line1";
 							}
 							
 							if($variant_freq2 > 0) {
 								my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-									"$variant2\t$variant_count2\t$num_samples\t$variant_pct2\tCDS: $product_entry\n";
+									"$variant2\t$variant_count2\t$num_samples\t$variant_pct2\t$product_entry\n";
 								
 								print TEMP_FILE "$this_line2";
 							}
 							
 							if($variant_freq3 > 0) {
 								my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-									"$variant3\t$variant_count3\t$num_samples\t$variant_pct3\tCDS: $product_entry\n";
+									"$variant3\t$variant_count3\t$num_samples\t$variant_pct3\t$product_entry\n";
 								
 								print TEMP_FILE "$this_line3";
 							}
@@ -9791,7 +9808,10 @@ sub populate_tempfile_vcf {
 					
 				} elsif($variant2) { # THERE ARE TWO VARIANTS -- ADD A FLAG!
 					if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
-						print "\n### FILE TYPE NOT FULLY SUPPORTED###\n";
+						if($warn_file_type_not_supported == 0) {
+							print "\n### WARNING: SNP REPORT FILE TYPE NOT FULLY SUPPORTED ###\n";
+							$warn_file_type_not_supported ++;
+						}
 						my $num_samples;
 						$num_samples = $1;
 						
@@ -9820,14 +9840,14 @@ sub populate_tempfile_vcf {
 								# PRINT 2 LINES TO FILE
 								if($variant_freq1 > 0) {
 									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-										"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
+										"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\t$product_entry\n";
 									
 									print TEMP_FILE "$this_line1";
 								}
 								
 								if($variant_freq2 > 0) {
 									my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-										"$variant2\t$variant_count2\t$num_samples\t$variant_pct2\tCDS: $product_entry\n";
+										"$variant2\t$variant_count2\t$num_samples\t$variant_pct2\t$product_entry\n";
 									
 									print TEMP_FILE "$this_line2";
 								}
@@ -9836,14 +9856,14 @@ sub populate_tempfile_vcf {
 							# PRINT 2 LINES TO FILE
 							if($variant_freq1 > 0) {
 								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-									"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
+									"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\t$product_entry\n";
 								
 								print TEMP_FILE "$this_line1";
 							}
 							
 							if($variant_freq2 > 0) {
 								my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-									"$variant2\t$variant_count2\t$num_samples\t$variant_pct2\tCDS: $product_entry\n";
+									"$variant2\t$variant_count2\t$num_samples\t$variant_pct2\t$product_entry\n";
 								
 								print TEMP_FILE "$this_line2";
 							}
@@ -10033,7 +10053,10 @@ sub populate_tempfile_vcf {
 					
 				} elsif($variant1) { # THERE IS ONE VARIANT -- no flag needed
 					if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
-						print "\n### FILE TYPE NOT FULLY SUPPORTED###\n";
+						if($warn_file_type_not_supported == 0) {
+							print "\n### WARNING: SNP REPORT FILE TYPE NOT FULLY SUPPORTED ###\n";
+							$warn_file_type_not_supported ++;
+						}
 						my $num_samples;
 						$num_samples = $1;
 						
@@ -10058,7 +10081,7 @@ sub populate_tempfile_vcf {
 								# PRINT 1 LINE TO FILE
 								if($variant_freq1 > 0) {
 									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-										"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
+										"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\t$product_entry\n";
 							
 									print TEMP_FILE "$this_line1";
 								}
@@ -10067,7 +10090,7 @@ sub populate_tempfile_vcf {
 							# PRINT 1 LINE TO FILE
 							if($variant_freq1 > 0) {
 								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
-									"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\tCDS: $product_entry\n";
+									"$variant1\t$variant_count1\t$num_samples\t$variant_pct1\t$product_entry\n";
 							
 								print TEMP_FILE "$this_line1";
 							}
