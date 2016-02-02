@@ -4,7 +4,7 @@
 # PROGRAM: Perl program to calculate evolutionary paramaters from NGS SNP Reports
 # generated from pooled DNA samples.
 
-# Copyright (C) 2015 Chase W. Nelson
+# Copyright (C) 2015, 2016 Chase W. Nelson
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,9 +30,9 @@ use strict;
 #use warnings;
 use IO::Handle;
 use Data::Dumper;
-require File::Temp;
 use File::Temp qw(tempfile);
 use Getopt::Long;
+use List::Util qw(max);
 
 my $time1 = time;
 my $local_time1 = localtime;
@@ -58,9 +58,8 @@ my $complementmode;
 my $clc_mode = 0;
 my $geneious_mode = 0;
 my $vcf_mode = 0;
-my $progress_period_count = 0;
-my @snp_report_file_names_arr;	
-my $multi_seq_mode = 0;
+#my $progress_period_count = 0;
+my @snp_report_file_names_arr;
 my $the_fasta_file = '';
 my @fasta_file_names_arr;
 my $fasta_arr_size;
@@ -166,12 +165,10 @@ if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to ch
 	$fasta_arr_size = scalar(@fasta_file_names_arr);
 	#print "\nThe size of the fasta array is $fasta_arr_size\n";
 	if($fasta_arr_size > 1) {
-		$multi_seq_mode = 1;
-		$param_file_contents .= "MULTI-SEQUENCE MODE: Yes\n";
+		die "\n\n## WARNING: There are multiple FASTA (.fa or .fasta) files in the working directory.\n".
+		"## There must be only one reference genome. SNPGenie terminated.\n\n";
 	} elsif($fasta_arr_size == 1) {
-		$multi_seq_mode = 0;
 		$the_fasta_file = $fasta_file_names_arr[0];
-		$param_file_contents .= "MULTI-SEQUENCE MODE: No\n";
 	} else {
 		die "\n\n## WARNING: There are no FASTA (.fa or .fasta) files in the working directory. ".
 		"SNPGenie terminated.\n\n";
@@ -240,23 +237,21 @@ if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to ch
 	close PRODUCT_SUMMARY;
 	
 	### POPULATION SUMMARY NONCODING RESULTS
-	if($multi_seq_mode == 0) {
-		open(POP_SUMMARY,">>population\_summary\.txt");
-		print POP_SUMMARY "file\tsites\tsites_coding\tsites_noncoding\t".
-			"pi\tpi_coding\tpi_noncoding\t".
-			#"mean_nonsyn_diffs\tmean_syn_diffs\t".
-			#"mean_nonsyn_diffs_vs_ref\tmean_syn_diffs_vs_ref\t".
-			"nonsyn_sites\tsyn_sites\t".
-			"piN\tpiS\tmean_dN_vs_ref\tmean_dS_vs_ref\t".
-			"mean_gdiv_polymorphic\tmean_gdiv_nonsyn\tmean_gdiv_syn\t".
-			"mean_gdiv\t".
-			"sites_polymorphic\t".
-			"mean_gdiv_coding_poly\t".
-			"sites_coding_poly\t".
-			"mean_gdiv_noncoding_poly\t".
-			"sites_noncoding_poly\n";
-		close POP_SUMMARY;
-	}
+	open(POP_SUMMARY,">>population\_summary\.txt");
+	print POP_SUMMARY "file\tsites\tsites_coding\tsites_noncoding\t".
+		"pi\tpi_coding\tpi_noncoding\t".
+		#"mean_nonsyn_diffs\tmean_syn_diffs\t".
+		#"mean_nonsyn_diffs_vs_ref\tmean_syn_diffs_vs_ref\t".
+		"nonsyn_sites\tsyn_sites\t".
+		"piN\tpiS\tmean_dN_vs_ref\tmean_dS_vs_ref\t".
+		"mean_gdiv_polymorphic\tmean_gdiv_nonsyn\tmean_gdiv_syn\t".
+		"mean_gdiv\t".
+		"sites_polymorphic\t".
+		"mean_gdiv_coding_poly\t".
+		"sites_coding_poly\t".
+		"mean_gdiv_noncoding_poly\t".
+		"sites_noncoding_poly\n";
+	close POP_SUMMARY;
 	
 	
 	### A LOG file
@@ -269,7 +264,7 @@ if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to ch
 }
 
 # Hash for storing which product we've seen, just for error-reporting purposes
-my %seen_product_hash;
+my %seen_product_early_stop_hash;
 my %seen_no_start_hash;
 my %seen_no_stop_hash;
 
@@ -278,6 +273,7 @@ my $exec_errors = 0;
 my $warn_5nt = 0;
 my $warn_frequencies = 0;
 my $warn_file_type_not_supported = 0;
+my $seen_sense_strand_products = 0;
 
 my $SNP_report_counter = 0;
 
@@ -303,6 +299,12 @@ print ERROR_FILE "NA\tNA\tNA\t".
 close ERROR_FILE;
 chdir('..');
 
+if($minfreq > 0) {
+	print "\nYour MIN. MINOR ALLELE FREQ. is $minfreq. All variants falling below this frequency will be ignored.\n";
+} else {
+	print "\nYou have not selected a MIN. MINOR ALLELE FREQ. All variants in the SNP report(s) will be included.\n";
+}
+
 # We will 
 # [1] determine whether COMPLEMENT ENTRIES are to be considered, and 
 # [2] if so, construct some way to DO EVERYTHING BELOW, but do it for the
@@ -313,12 +315,12 @@ chdir('..');
 $complementmode = &determine_complement_mode($cds_file);
 
 # Announce and initialize REVERSE COMPLEMENT MODE
-my %hh_compl_position_info; # saved with respect to the + strand
+my %hh_compl_position_info; # REGARDLESS OF SNP REPORT. saved with respect to the + strand
 #my @curr_compl_products;
 my @curr_compl_products_ordered_by_start;
 
-if($complementmode && ($multi_seq_mode == 0)) {
-	print "\nThere are - strand records in the GTF file. COMPLEMENT MODE activated...\n";
+if($complementmode) {
+	print "\nThere are antisense ('-') strand records in the GTF file. COMPLEMENT MODE activated...\n";
 	
 	chdir('SNPGenie_Results');
 	open(PARAM_FILE,">>SNPGenie\_parameters\.txt");
@@ -331,99 +333,82 @@ if($complementmode && ($multi_seq_mode == 0)) {
 	#my $rev_complement_seq = &reverse_complement_from_fasta($fasta_to_open);
 	#my $rev_compl_seq = &reverse_complement_from_fasta($the_fasta_file);
 	#my $seq_length = length($rev_compl_seq);
-	
 	open(GTF_FILE_AGAIN, "$cds_file") or die "\nCould not open the GTF file $cds_file - $!\n\n";
-	while(<GTF_FILE_AGAIN>) {
+	while(<GTF_FILE_AGAIN>) { # each record in the GTF file
+		my $this_product;
+		
+		# Reverse complement - strand
+		my $rev_compl_start; # Where the gene itself actually STOPS
+		my $rev_compl_stop; # Where the gene itself actually STARTS
+
 		if($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"gene\:([\w\s\.\:']+)\"/) { # Line is - strand
-			my $rev_compl_start = $1; # Where the gene itself actually STOPS
-			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-			my $this_product = $3;
-			#my $feature_length = ($rev_compl_stop - $rev_compl_start + 1);
-			
-			#my $offset = ($seq_length - $rev_compl_stop);
-			#my $this_start = ($offset + 1);
-			#my $this_start = $seq_length - $rev_compl_stop + 1;
-			#my $this_stop = ($this_start + $feature_length - 1);
-			#my $this_stop = $seq_length - $rev_compl_start + 1;
-			
-			if(exists $hh_compl_position_info{$this_product}->{start}) {
-				$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-				$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-			} else {
-				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-			}
+			$rev_compl_start = $1; # Where the gene itself actually STOPS
+			$rev_compl_stop = $2; # Where the gene itself actually STARTS
+			$this_product = $3;
 		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
-			my $rev_compl_start = $1; # Where the gene itself actually STOPS
-			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-			my $this_product = $3;
-			
-			if(exists $hh_compl_position_info{$this_product}->{start}) {
-				$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-				$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-			} else {
-				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-			}
+			$rev_compl_start = $1; # Where the gene itself actually STOPS
+			$rev_compl_stop = $2; # Where the gene itself actually STARTS
+			$this_product = $3;
 		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.\:']+)\"/) {
-			my $rev_compl_start = $1; # Where the gene itself actually STOPS
-			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-			my $this_product = $3;
-			
-			if(exists $hh_compl_position_info{$this_product}->{start}) {
-				$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-				$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-			} else {
-				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-			}
+			$rev_compl_start = $1; # Where the gene itself actually STOPS
+			$rev_compl_stop = $2; # Where the gene itself actually STARTS
+			$this_product = $3;
 		# NOW, IN CASE transcript_id comes first
 		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"gene\:([\w\s\.\:']+)\"/) {
-			my $rev_compl_start = $1; # Where the gene itself actually STOPS
-			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-			my $this_product = $3;
-			
-			if(exists $hh_compl_position_info{$this_product}->{start}) {
-				$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-				$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-			} else {
-				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-			}
+			$rev_compl_start = $1; # Where the gene itself actually STOPS
+			$rev_compl_stop = $2; # Where the gene itself actually STARTS
+			$this_product = $3;
 		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
-			my $rev_compl_start = $1; # Where the gene itself actually STOPS
-			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-			my $this_product = $3;
-			
-			if(exists $hh_compl_position_info{$this_product}->{start}) {
-				$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-				$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-			} else {
-				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-			}
+			$rev_compl_start = $1; # Where the gene itself actually STOPS
+			$rev_compl_stop = $2; # Where the gene itself actually STARTS
+			$this_product = $3;
 		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+)\"/) {
-			my $rev_compl_start = $1; # Where the gene itself actually STOPS
-			my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-			my $this_product = $3;
-			
-			if(exists $hh_compl_position_info{$this_product}->{start}) {
-				$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-				$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-			} else {
-				$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-				$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-			}
+			$rev_compl_start = $1; # Where the gene itself actually STOPS
+			$rev_compl_stop = $2; # Where the gene itself actually STARTS
+			$this_product = $3;
 		}
+		
+		# New segments approach for reverse complement - strand
+		if($rev_compl_start) { # it's a revcom record
+			#print "\nDo we ever get here 1? Yes, for $this_product\n";
+			# so we have this record's product name, start, and stop
+			my $curr_start_key = 'start_1';
+			my $curr_stop_key = 'stop_1';
+			my $segment_number = 1;
+			
+			if(! $hh_compl_position_info{$this_product}->{$curr_start_key}) { # no first segment yet
+				#print "\nDo we ever get here 2? Yes, for $this_product\n";
+				if($this_product ne '') {
+					$hh_compl_position_info{$this_product}->{$curr_start_key} = $rev_compl_start;
+					$hh_compl_position_info{$this_product}->{$curr_stop_key} = $rev_compl_stop;
+				}
+			} else { # already a start_1
+				while($hh_compl_position_info{$this_product}->{$curr_start_key}) {
+					#print "\nDo we ever get here 3? Yes, for $this_product\n";
+					my $curr_segment_number = $segment_number;
+					$segment_number++;
+					$curr_start_key =~ s/\_$curr_segment_number/\_$segment_number/;
+					$curr_stop_key =~ s/\_$curr_segment_number/\_$segment_number/;
+				}
+				
+				if($this_product ne '') {
+					$hh_compl_position_info{$this_product}->{$curr_start_key} = $rev_compl_start;
+					$hh_compl_position_info{$this_product}->{$curr_stop_key} = $rev_compl_stop;
+				}
+			}
+			
+			# Store (initiate OR update) number of segments
+			$hh_compl_position_info{$this_product}->{num_segments} = $segment_number;
+		} 
 	}
 	close GTF_FILE_AGAIN;
 	
 	#@curr_compl_products = sort(keys %hh_compl_position_info);
-	@curr_compl_products_ordered_by_start = sort { $hh_compl_position_info{$a}->{start} <=> $hh_compl_position_info{$b}->{start} } keys %hh_compl_position_info;
+	@curr_compl_products_ordered_by_start = sort { $hh_compl_position_info{$a}->{start_1} <=> $hh_compl_position_info{$b}->{start_1} } keys %hh_compl_position_info;
 	
 	#print "\nproduct\tstart\tstop\n";
 	#foreach (@curr_compl_products_ordered_by_start) {
-	#	print "$_\t" . $hh_compl_position_info{$_}->{start} . "\t" . $hh_compl_position_info{$_}->{stop} . "\n";
+	#	print "$_\t" . $hh_compl_position_info{$_}->{start_1} . "\t" . $hh_compl_position_info{$_}->{stop_1} . "\n";
 	#}
 } else {
 	#print "\nThere are NO - strand records in the GTF file. COMPLEMENT MODE NOT activated...\n";
@@ -434,6 +419,74 @@ if($complementmode && ($multi_seq_mode == 0)) {
 	chdir('..');
 }
 
+#foreach my $this_product(keys %hh_compl_position_info) {
+#	foreach(sort keys $hh_compl_position_info{$this_product}) {
+#		print "\n product $this_product key position $_\n";
+#	}
+#}
+
+# Streamline attainment of product coordinates
+# All products should be in GTF file, so don't need to get them from SNP reports as before
+my @product_names_arr = &get_product_names_from_gtf($cds_file);
+@product_names_arr = sort {$a <=> $b} @product_names_arr;
+
+# DIE if no sense + strand products seen
+if(! $seen_sense_strand_products) {
+	chdir('SNPGenie_Results');
+	open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+	print ERROR_FILE "$cds_file\tNA\tNA\t".
+		"Does not contain any sense (+) strand products. SNPGenie terminated.\n";
+	close ERROR_FILE;
+	chdir('..');
+	
+	die "\n\n## WARNING: $cds_file does not contain any sense (+) strand products. SNPGenie terminated.\n\n";
+}
+
+# Determine all product coordinates from the start
+my %product_coordinates_harr;
+foreach my $product_name (@product_names_arr) {	
+	my @product_coord_arr;
+	
+	#print "product name is: $product_name\n";
+	my @product_coord_arr = &get_product_coordinates($product_name);
+	#print "\n\n$product_name product_coord arr: @product_coord_arr\n\n";
+	
+	# Save to a hash of arrays
+	push(@{$product_coordinates_harr{$product_name}->{product_coord_arr}},@product_coord_arr);
+	#print "\n\n$product_name product_coord arr in harr: @{$product_coordinates_harr{$product_name}->{product_coord_arr}} \n\n";
+}
+
+# Streamline bulding of sequence
+# Using the fasta file, record the sequence in a variable
+print "\nReading in FASTA file... ";
+my $seq;
+open (INFILE, $the_fasta_file);
+while (<INFILE>) {
+	unless (/>/) {
+		chomp;
+		# CHOMP for 3 operating systems
+		#if($_ =~ /\r\n$/) {
+		#	$_ =~ s/\r\n//;
+		#} elsif($_ =~ /\r$/) {
+		#	$_ =~ s/\r//;
+		#} elsif($_ =~ /\n$/) {
+		#	$_ =~ s/\n//;
+		#}
+		
+		$seq .= $_;
+	}
+}
+close INFILE;
+print "COMPLETED.\n";
+
+# Record in an array by index (old %seq_by_pos_hash)
+print "\nIndexing sequence... ";
+my @seq_by_index_arr;
+for (my $i = 0; $i < length($seq); $i++) {
+	$seq_by_index_arr[$i] = substr($seq,$i,1); # This is $position - 1
+}
+print "COMPLETED.\n";
+
 # PROCESS THE SNP REPORTS
 foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	my $file_nm = $curr_snp_report_name;
@@ -441,20 +494,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	#$/ = $curr_newline;
 	
 	my %h_nc_results;
-	
 	my $seen_percent_warning = 0;
-	
-	if($multi_seq_mode == 1) {
-		print "\nThere are $fasta_arr_size FASTA files in the working directory. MULTI-SEQUENCE MODE activated...\n";
-	} elsif ($multi_seq_mode == 0) {
-		print "\nThere is $fasta_arr_size FASTA file in the working directory. ONE-SEQUENCE MODE activated...\n";
-	}
-	
-	if($minfreq > 0) {
-		print "\nYour MIN. MINOR ALLELE FREQ. is $minfreq. All variants falling below this frequency will be ignored...\n";
-	} else {
-		print "\nYou have not selected a MIN. MINOR ALLELE FREQ. All variants in the SNP Report will be included...\n";
-	}
 	
 	print "\n\n###########################  CURRENTLY PROCESSING:   ###########################\n".
 	"$file_nm... ";
@@ -509,7 +549,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	} elsif($geneious_mode == 0 && $clc_mode == 0 && $vcf_mode == 1) {
 		print "VCF format detected\n";
 	} else {
-		die "## WARNING: Conflicting SNP Report formats detected. Please contact author. ".
+		die "\n## WARNING: Conflicting SNP Report formats detected. Please contact author. ".
 			"## SNPGenie TERMINATED.\n\n";
 	}
 	
@@ -534,14 +574,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		$curr_snp_report_name = $temp_snp_report_name;
 	}
 	# Includes the automatic deletion of the tempfile afterwards. 
-	$/ = "\n";
 	my @new_header_names_arr = &get_header_names($curr_snp_report_name,$file_nm);
 	@header_names_arr = @new_header_names_arr;
 	#print "\n\nHEADER:\n@header_names_arr\n\n";
 	
 	my $index_ref_pos;
 	my $index_type;
-	#my $index_len;
 	my $index_ref;
 	my $index_allele;
 	my $index_count;
@@ -553,7 +591,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	
 	my $seen_index_ref_pos = 0;
 	my $seen_index_type = 0;
-	#my $seen_index_len = 0;
 	my $seen_index_ref = 0;
 	my $seen_index_allele = 0;
 	my $seen_index_count = 0;
@@ -577,9 +614,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		} elsif ($header_names_arr[$i] =~ /Type/) {
 			$index_type = $i;
 			$seen_index_type = 1;
-#		} elsif ($header_names_arr[$i] =~ /Length/) {
-#			$index_len = $i;
-#			$seen_index_len = 1;
 		} elsif ($header_names_arr[$i] =~ /Reference/) { # Since this comes AFTER 
 													# "Reference Position, we're fine
 			$index_ref = $i;
@@ -612,114 +646,77 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
-			"Does not contain the column header \"Reference Position\". SNPGenie terminated\n";
+			"Does not contain the column header \"Reference Position\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $file_nm does not contain the column header \"Reference Position\". SNPGenie terminated\n\n";
+		die "\n\n## WARNING: $file_nm does not contain the column header \"Reference Position\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_type == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
-			"Does not contain the column header \"Type\". SNPGenie terminated\n";
+			"Does not contain the column header \"Type\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $file_nm does not contain the column header \"Type\". SNPGenie terminated\n\n";
-#	} elsif($seen_index_len == 0) {
-#		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Length\". SNPGenie terminated\n\n";
+		die "\n\n## WARNING: $file_nm does not contain the column header \"Type\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_ref == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
-			"Does not contain the column header \"Reference\". SNPGenie terminated\n";
+			"Does not contain the column header \"Reference\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $file_nm does not contain the column header \"Reference\". SNPGenie terminated\n\n";
+		die "\n\n## WARNING: $file_nm does not contain the column header \"Reference\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_allele == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
-			"Does not contain the column header \"Allele\". SNPGenie terminated\n";
+			"Does not contain the column header \"Allele\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $file_nm does not contain the column header \"Allele\". SNPGenie terminated\n\n";
+		die "\n\n## WARNING: $file_nm does not contain the column header \"Allele\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_count == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
-			"Does not contain the column header \"Count\". SNPGenie terminated\n";
+			"Does not contain the column header \"Count\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $file_nm does not contain the column header \"Count\". SNPGenie terminated\n\n";
+		die "\n\n## WARNING: $file_nm does not contain the column header \"Count\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_cov == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
-			"Does not contain the column header \"Coverage\". SNPGenie terminated\n";
+			"Does not contain the column header \"Coverage\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $file_nm does not contain the column header \"Coverage\". SNPGenie terminated\n\n";
+		die "\n\n## WARNING: $file_nm does not contain the column header \"Coverage\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_freq == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
-			"Does not contain the column header \"Frequency\". SNPGenie terminated\n";
+			"Does not contain the column header \"Frequency\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $file_nm does not contain the column header \"Frequency\". SNPGenie terminated\n\n";
+		die "\n\n## WARNING: $file_nm does not contain the column header \"Frequency\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_over_annot == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
-			"Does not contain the column header \"Overlapping annotations\". SNPGenie terminated\n";
+			"Does not contain the column header \"Overlapping annotations\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $file_nm does not contain the column header \"Overlapping annotations\". SNPGenie terminated\n\n";
-#	} elsif($seen_index_cod_reg_chg == 0) {
-#		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Coding region change\". SNPGenie terminated\n\n";
-#	} elsif($seen_index_ami_aci_chg == 0) {
-#		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Amino acid change\". SNPGenie terminated\n\n";
+		die "\n\n## WARNING: $file_nm does not contain the column header \"Overlapping annotations\". SNPGenie terminated.\n\n";
 	}
 	
 	#print "\n\n$_\n\n";
-	
-	my @product_names_arr = &get_product_names($curr_snp_report_name,$index_over_annot);
-	#print "\n\nThe file $curr_snp_report_name has the following products: @product_names_arr\n";
-	
-	my @product_names_to_add_arr = &get_product_names_from_gtf($cds_file);
-	
-	# This part is technically unnecessary, but allows additional checks for consistency
-	my %final_product_names_hash;
-	foreach (@product_names_arr) {
-		$final_product_names_hash{$_} = 1;
-	}
-	foreach (@product_names_to_add_arr) {
-		$final_product_names_hash{$_} = 1;
-	}
-	@product_names_arr = sort(keys %final_product_names_hash);
 	
 	#print "\n\nAll my product names are: @product_names_arr\n\n";
 	# Now we have a specific file we're looking at ($curr_snp_report_name), and we 
@@ -728,60 +725,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	# @fasta_file_names_arr). So we have to identify the products in their names,
 	# taking special care with the HA's -- HA, HA1, HA2
 	
-	# Create a hash with the product names as keys, and the fasta files they refer to
-	# as values
-	my %product_to_fasta_file;
-	
-	# MULTI-SEQUENCE MODE
-	if($multi_seq_mode == 1) {
-		foreach my $curr_product (@product_names_arr) {
-			
-			#print "\tCurrently processing product: $curr_product...\n";
-			
-			# The fasta file name must begin with "PRODUCTNAME_"
-			foreach my $curr_fasta_file_name (@fasta_file_names_arr) {
-				#print "\n\nMy current fasta file is: $curr_fasta_file_name\n\n";
-				#product - file prefix
-				#HA - HA
-				#HA1 - HA
-				#HA2 - HA
-				#PB1 - PB1
-				#NP - NP
-				#PA - PA
-				#PB2 - PB2
-				#NA - NA
-				
-				# Find what prefix the current fasta file has, e.g., "NEP" in "NEP_1918.fa"
-				my $fasta_file_contains;
-				
-				# To allow for primes (') in the name
-				if ($curr_fasta_file_name =~/^([\w\s']+?)_/) { # includes newline
-					$fasta_file_contains = $1;
-					#print "\n\nFasta file $curr_fasta_file_name contains: $1\n\n";
-				}
-				
-				# Find out if the file prefix is a fit for the product and, if so, store it
-				if ($curr_product eq $fasta_file_contains) {
-					$product_to_fasta_file{$curr_product} = $curr_fasta_file_name;
-				} elsif ($curr_product =~/$fasta_file_contains/) {
-					$product_to_fasta_file{$curr_product} = $curr_fasta_file_name;
-				}
-			}
-		}
-		
-		#print ".";
-		foreach (keys %product_to_fasta_file) {
-			print "\n–The product $_ refers to the file $product_to_fasta_file{$_}\n";
-		}
-		
-		print "\n";
-	} else { # $multi_seq_mode == 0, ONE-SEQUENCE MODE, fasta is same for all
-		foreach my $curr_product (@product_names_arr) {			
-			$product_to_fasta_file{$curr_product} = $the_fasta_file;
-		}	
-		print "\n-All products are found in the same sequence file: $the_fasta_file\n\n";
-	}
-	
 	# Now we have, for the current SNP Report we're examining, the fasta files to which
 	# each of the products refer, in the hash %products_to_fasta_file
 	
@@ -789,12 +732,11 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	# outer key as the product, followed by and making sure to store the name of the 
 	# associated fasta file
 	
-	my %hh_product_position_info; # SEE EXAMPLE
+	my %hh_product_position_info; # For THIS SNP REPORT only. SEE EXAMPLE BELOW.
 	
-	# Example:
+	# Early example:
 	#my %hh_example = (
 	#	'HA' => {
-	#		'fasta' => 'theFile.txt',
 	#		'start' => 666,
 	#		'stop' =>,
 	#		158 => {
@@ -835,22 +777,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	
 	##### DATA STORAGE ##################################################################
 	# Open current SNP Report to store data for each line
+	print "\nCalculating and storing protein-coding genome and variant data (that dogma stuff)... ";
 	my $line = 0;
 	#open (INFILE, $curr_snp_report_name);
 	while (<$TEMP_SNP_REPORT_HANDLE>) {
 		if($line == 0) {
 			$line++;
 		} else {
-			#chomp;
-			
-			# CHOMP for 3 operating systems
-			if($_ =~ /\r\n?/) {
-				$_ =~ s/\r\n//;
-			} elsif($_ =~ /\r$/) {
-				$_ =~ s/\r//;
-			} elsif($_ =~ /\n$/) {
-				$_ =~ s/\n//;
-			}
+			chomp;
 			
 			#if ($_ =~/(.+)\r$/) {
 			#	$_ = $1;
@@ -870,7 +804,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			# Check that we're dealing with a single nucleotide variant, or
 			# SNV in the "Type" column, and that we have a specific product, meaning
 			# the "Overlapping annotations" column is not blank
-			#if(($line_arr[$index_type] eq 'SNV' || $line_arr[$index_type] eq 'MNV') && ($line_arr[$index_over_annot] =~/CDS/)) { 
 			if(($line_arr[$index_type] eq 'SNV') && ($line_arr[$index_count] > 0) && ($line_arr[$index_freq] > 0)) {
 				# Store data in variables to save room on screen and verify
 				my $position = $line_arr[$index_ref_pos];
@@ -880,7 +813,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				my $variant_nt = $line_arr[$index_allele];
 				my $frequency = $line_arr[$index_freq];
 				my $var_prop = ($count/$coverage);
-				#my $var_prop = ($line_arr[$index_freq])/100;
 				my $ref_prop = (1-$var_prop);
 				
 				my $ref_prop_key = "$reference_nt\_prop";
@@ -889,43 +821,17 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				#print "\nSNV site $position\. ref_prop_key: ref_prop_key: $ref_prop_key | ref_prop: $ref_prop | var_prop_key: $var_prop_key | var_prop: $var_prop";
 				
 				if(length($reference_nt) == length($variant_nt)) {
-					# Now, syn. and nonsyn. nucleotide diversity for coding variants
-					if($line_arr[$index_over_annot] =~/CDS/) { 
-						# was if(($line_arr[$index_type] eq 'SNV') && ($line_arr[$index_over_annot] ne ''))
+					# Now, nonsyn and syn nucleotide diversity for coding variants
+					if($line_arr[$index_over_annot] =~/CDS/) {
 						
 						# Get the product name(s) for this line
 						my $product_name;
 						my $mature_peptide_name;
 						my $over_annot = $line_arr[$index_over_annot];
-						
 						#print "\n\nover_annot is: $over_annot\n\n";
 						
-						# Lines ALWAYS contain a product name
-						#if ($over_annot =~/CDS: (\w+)/) {
-						#	$product_name = $1;
-						#}
-						
-						my @peptide_coord_arr;
 						my @product_coord_arr;
-						
-						# ORIGINAL HERE
-						# Lines SOMETIMES contain a mature peptide name
-						#if ($over_annot =~/Mature peptide: (\w+)/) {
-						#	$product_name = $1;
-						#	#@peptide_coord_arr = &get_product_coordinates($product_name);
-						#} elsif ($over_annot =~/CDS: (\w+)/) {
-						#	$product_name = $1;
-						#}
-						
-						# EXPLANATION: &get_product_names is used to get @product_names_arr,
-						# which is looped through for every $curr_product. &get_product_names
-						# still had the if/elsif structure. If the SNP report had a Mature peptide
-						# line for HA1 or HA2, but no HA by itself, HA did not exist as one of the
-						# $curr_product's. This would then not have been used as a key to store
-						# anything in the %product_to_fasta_file hash. Thus there would be no
-						# fasta file corresponding to HA when defining "my $fasta_file" below,
-						# and no nucleotides at all, therefore no sites at all. The codons were
-						# indeed blank in the results file.
+						my @peptide_coord_arr;
 						
 						# EXPERIMENTAL
 						if ($over_annot =~/Mature peptide: ([\w\s\.']+)/) {
@@ -940,14 +846,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							print "\n## WARNING: \"Mature peptide\" annotation must take into account\n".
 							"### MNV records for CLC SNP Reports.\n";
 							$mature_peptide_name = $1;
-							@peptide_coord_arr = &get_product_coordinates($mature_peptide_name,$curr_snp_report_name);
+							@peptide_coord_arr = @{$product_coordinates_harr{$mature_peptide_name}->{product_coord_arr}};
 						} 
 						
 						if ($over_annot =~/CDS: ([\w\s\.']+)/) {
 							$product_name = $1;
-							#print "product name is: $product_name\n";
-							@product_coord_arr = &get_product_coordinates($product_name,$curr_snp_report_name);
-							#print "\n\n$product_name product_coord arr: @product_coord_arr\n\n";
+							@product_coord_arr = @{$product_coordinates_harr{$product_name}->{product_coord_arr}};
 						} 
 						
 						# In some files, we have such atrocities as:
@@ -960,11 +864,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						#}
 						#
 						#print "The array: @product_coord_arr";
-						
-						#elsif ($over_annot =~/Gene: (\w+)/) { # CHANGED THIS TO IGNORE GENE-ONLY ANNOTATIONS: WANT CDS
-						#	$product_name = $1;
-						#	@product_coord_arr = &get_product_coordinates($product_name);
-						#}
 						
 						if($seen_percent_warning == 0 && $frequency < 0.01) {
 							chdir('SNPGenie_Results');
@@ -985,18 +884,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							$seen_percent_warning = 1;
 						}
 						
-						my $fasta_file = $product_to_fasta_file{$product_name}; # SHOULDN'T MATTER
-						#my @product_coord_arr = &get_product_coordinates($product_name);
-						my $product_start = $product_coord_arr[0];
-						my $product_stop = $product_coord_arr[1];
+						# New segments approach
+						my %product_starts;
+						my %product_stops;
 						
-						my $product_start_2;
-						my $product_stop_2;
-						
-						if ($product_coord_arr[2]) {
-							$product_start_2 = $product_coord_arr[2];
-							$product_stop_2 = $product_coord_arr[3];
-							#print "\nYes, there's a second sequence and it goes from $product_start_2 to $product_stop_2\n";
+						my $num_segments = (@product_coord_arr / 2);
+						for(my $i=1; $i<=$num_segments; $i++) { # $i<=scalar(@product_coord_arr)
+							$product_starts{$i} = $product_coord_arr[2*$i-2];
+							$product_stops{$i} = $product_coord_arr[2*$i-1];
 						}
 						
 						#my $A_count = 0;
@@ -1007,14 +902,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						#print "\n$coverage\n";
 						
 						if (! exists $hh_product_position_info{$product_name}->{$position}) { # Product/position HAVEN'T been seen
-							$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-							$hh_product_position_info{$product_name}->{start} = $product_start;
-							$hh_product_position_info{$product_name}->{stop} = $product_stop;
-							
-							if ($product_start_2) {
-								$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-								$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+							# New segments approach
+							foreach(sort {$a <=> $b} (keys %product_starts)) {
+								my $this_start_key = 'start_' . $_;
+								my $this_stop_key = 'stop_' . $_;
+								$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+								$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 							}
+							$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 							
 							$hh_product_position_info{$product_name}->{$position}->{A} = 0;
 							$hh_product_position_info{$product_name}->{$position}->{C} = 0;
@@ -1024,7 +919,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							$hh_product_position_info{$product_name}->{$position}->{C_prop} = 0;
 							$hh_product_position_info{$product_name}->{$position}->{G_prop} = 0;
 							$hh_product_position_info{$product_name}->{$position}->{T_prop} = 0;
-							$hh_product_position_info{$product_name}->{$position}->{fasta} = $fasta_file;
 							$hh_product_position_info{$product_name}->{$position}->{reference} = $reference_nt;
 							$hh_product_position_info{$product_name}->{$position}->{cov} = $coverage;
 							push(@{$hh_product_position_info{$product_name}->{$position}->{cov_arr}},$coverage);
@@ -1037,18 +931,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							$hh_nc_position_info{$position}->{C_prop} = 0;
 							$hh_nc_position_info{$position}->{G_prop} = 0;
 							$hh_nc_position_info{$position}->{T_prop} = 0;
-							$hh_nc_position_info{$position}->{fasta} = $fasta_file;
 							$hh_nc_position_info{$position}->{reference} = $reference_nt;
 							$hh_nc_position_info{$position}->{cov} = $coverage;
 							push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
-							#$hh_nc_position_info{$position}->{coding} = 1;
 							$hh_nc_position_info{$position}->{polymorphic} = 1;
 							
 							
 							if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
-								#$hh_product_position_info{$product_name}->{$position}->{$variant_nt} = ($coverage*$frequency/100);
 								$hh_product_position_info{$product_name}->{$position}->{$variant_nt} = ($count);
-								#$hh_product_position_info{$product_name}->{$position}->{$reference_nt} = $coverage-($coverage*$frequency/100);
 								$hh_product_position_info{$product_name}->{$position}->{$reference_nt} = $coverage-($count);
 								
 								$hh_product_position_info{$product_name}->{$position}->{$var_prop_key} = $var_prop;
@@ -1102,31 +992,39 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						}
 						
 						# NOW for the "Mature peptide," if it exists: DEPRECATED
+						my %peptide_starts;
+						my %peptide_stops;
 						
-						my $peptide_start = $peptide_coord_arr[0];
-						my $peptide_stop = $peptide_coord_arr[1];
-						
-						my $peptide_start_2;
-						my $peptide_stop_2;
-						
-						if ($peptide_coord_arr[2]) {
-							$peptide_start_2 = $peptide_coord_arr[2];
-							$peptide_stop_2 = $peptide_coord_arr[3];
-							#print "\nYes, there's a second sequence and it goes from $product_start_2 to $product_stop_2\n";
+						my $num_segments = (@peptide_coord_arr / 2);
+						for(my $i=1; $i<=scalar(@peptide_coord_arr); $i++) {
+							$peptide_starts{$i} = $peptide_coord_arr[2*$i-2];
+							$peptide_stops{$i} = $peptide_coord_arr[2*$i-1];
 						}
 						
 						# NOTE: Mature peptide is never the same as CDS. If Mature peptide is
 						# present, then it is HA1, and CDS is HA
 						if ($mature_peptide_name) {
 							if (! exists $hh_product_position_info{$mature_peptide_name}->{$position}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$mature_peptide_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$mature_peptide_name}->{start} = $peptide_start;
-								$hh_product_position_info{$mature_peptide_name}->{stop} = $peptide_stop;
+								chdir('SNPGenie_Results');
+								open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+								print ERROR_FILE "$file_nm\t$mature_peptide_name\t$position\t".
+									"A \'mature peptide\' annotation is being used. Contact ".
+										"the author to update this deprecated function\n";
+								close ERROR_FILE;
+								chdir('..');
 								
-								if ($peptide_start_2) {
-									$hh_product_position_info{$mature_peptide_name}->{start_2} = $peptide_start_2;
-									$hh_product_position_info{$mature_peptide_name}->{stop_2} = $peptide_stop_2;
+								print "\n## WARNING: A \'mature peptide\' annotation is being used at ".
+										"$file_nm|$product_name|$position\n".
+										"## Contact the author to update this deprecated function.\n";
+								
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %peptide_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$mature_peptide_name}->{$this_start_key} = $peptide_starts{$_};
+									$hh_product_position_info{$mature_peptide_name}->{$this_stop_key} = $peptide_stops{$_};
 								}
+								$hh_product_position_info{$mature_peptide_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{A} = 0;
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{C} = 0;
@@ -1136,7 +1034,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{C_prop} = 0;
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{G_prop} = 0;
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{T_prop} = 0;
-								$hh_product_position_info{$mature_peptide_name}->{$position}->{fasta} = $fasta_file;
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{reference} = $reference_nt;
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{cov} = $coverage;
 								
@@ -1150,7 +1047,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position}->{C_prop} = 0;
 								$hh_nc_position_info{$position}->{G_prop} = 0;
 								$hh_nc_position_info{$position}->{T_prop} = 0;
-								$hh_nc_position_info{$position}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position}->{reference} = $reference_nt;
 								$hh_nc_position_info{$position}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
@@ -1217,75 +1113,69 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					} elsif($line_arr[$index_over_annot] eq '') { # NON-CODING SNV VARIANT
 						#print "\n\nWe have a non-coding variant at site $position\n";
 	
-						if($multi_seq_mode == 0) { # We'll have to implement something different 
-						# for $multi_seq_mode == 1. Clue: the "Mapping" column may contain 
-						# information about which FASTA to look in.
-							if(! exists $hh_nc_position_info{$position}) { # First time seeing this 
-								# site. First, we populate %hh_position_info for plain old 
-								# nucleotide diversity.
-								
-								$hh_nc_position_info{$position}->{A} = 0;
-								$hh_nc_position_info{$position}->{C} = 0;
-								$hh_nc_position_info{$position}->{G} = 0;
-								$hh_nc_position_info{$position}->{T} = 0;
-								$hh_nc_position_info{$position}->{A_prop} = 0;
-								$hh_nc_position_info{$position}->{C_prop} = 0;
-								$hh_nc_position_info{$position}->{G_prop} = 0;
-								$hh_nc_position_info{$position}->{T_prop} = 0;
-								$hh_nc_position_info{$position}->{fasta} = $the_fasta_file;
-								$hh_nc_position_info{$position}->{reference} = $reference_nt;
-								$hh_nc_position_info{$position}->{cov} = $coverage;
-								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
-								#$hh_nc_position_info{$position}->{coding} = 0;
-								$hh_nc_position_info{$position}->{polymorphic} = 1;
-								
-								if($variant_nt ne $reference_nt) { # Make sure the reference and
-									# variant nts aren't identical.
-									$hh_nc_position_info{$position}->{$variant_nt} = ($count);
-									$hh_nc_position_info{$position}->{$reference_nt} = $coverage-($count);
-		
-									$hh_nc_position_info{$position}->{$var_prop_key} = $var_prop;
-									$hh_nc_position_info{$position}->{$ref_prop_key} = $ref_prop;
-								} else { # If the ref and var happen to be the same
-									$hh_nc_position_info{$position}->{$reference_nt} = $coverage;
-									$hh_nc_position_info{$position}->{$ref_prop_key} = 1;
-								}
-								#print "\n\nTEST\nhh_nc_position_info for $position:\n".
-								#	"A_prop=".$hh_nc_position_info{$position}->{A_prop}."\n".
-								#	"C_prop=".$hh_nc_position_info{$position}->{C_prop}."\n".
-								#	"G_prop=".$hh_nc_position_info{$position}->{G_prop}."\n".
-								#	"T_prop=".$hh_nc_position_info{$position}->{T_prop}."\n";
-							} else { # the site has been seen before
-								if($variant_nt ne $reference_nt) { # Make sure the reference and 
+						if(! exists $hh_nc_position_info{$position}) { # First time seeing this 
+							# site. First, we populate %hh_position_info for plain old 
+							# nucleotide diversity.
+							$hh_nc_position_info{$position}->{A} = 0;
+							$hh_nc_position_info{$position}->{C} = 0;
+							$hh_nc_position_info{$position}->{G} = 0;
+							$hh_nc_position_info{$position}->{T} = 0;
+							$hh_nc_position_info{$position}->{A_prop} = 0;
+							$hh_nc_position_info{$position}->{C_prop} = 0;
+							$hh_nc_position_info{$position}->{G_prop} = 0;
+							$hh_nc_position_info{$position}->{T_prop} = 0;
+							$hh_nc_position_info{$position}->{reference} = $reference_nt;
+							$hh_nc_position_info{$position}->{cov} = $coverage;
+							push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
+							#$hh_nc_position_info{$position}->{coding} = 0;
+							$hh_nc_position_info{$position}->{polymorphic} = 1;
+							
+							if($variant_nt ne $reference_nt) { # Make sure the reference and
 								# variant nts aren't identical.
-									$hh_nc_position_info{$position}->{$variant_nt} += ($count);
-									$hh_nc_position_info{$position}->{$reference_nt} -= ($count);
-		
-									$hh_nc_position_info{$position}->{$var_prop_key} += $var_prop;
-									$hh_nc_position_info{$position}->{$ref_prop_key} -= $var_prop;
-								} # NO ACTION REQUIRED if the ref and var are the same
-								
-								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
-								
-								if ($hh_nc_position_info{$position}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-									print ERROR_FILE "$file_nm\tN\/A\t$position\t".
-										"There are conflicting coverages reported. ".
-											"An averaging has taken place\n";
-									close ERROR_FILE;
-									chdir('..');
-									
-									print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N\/A|$position\n".
-											"## An averaging has taken place.\n";
-								}
-								#print "\n\nTEST\nhh_nc_position_info for $position:\n".
-								#	"A_prop=".$hh_nc_position_info{$position}->{A_prop}."\n".
-								#	"C_prop=".$hh_nc_position_info{$position}->{C_prop}."\n".
-								#	"G_prop=".$hh_nc_position_info{$position}->{G_prop}."\n".
-								#	"T_prop=".$hh_nc_position_info{$position}->{T_prop}."\n";
+								$hh_nc_position_info{$position}->{$variant_nt} = ($count);
+								$hh_nc_position_info{$position}->{$reference_nt} = $coverage-($count);
+	
+								$hh_nc_position_info{$position}->{$var_prop_key} = $var_prop;
+								$hh_nc_position_info{$position}->{$ref_prop_key} = $ref_prop;
+							} else { # If the ref and var happen to be the same
+								$hh_nc_position_info{$position}->{$reference_nt} = $coverage;
+								$hh_nc_position_info{$position}->{$ref_prop_key} = 1;
 							}
+							#print "\n\nTEST\nhh_nc_position_info for $position:\n".
+							#	"A_prop=".$hh_nc_position_info{$position}->{A_prop}."\n".
+							#	"C_prop=".$hh_nc_position_info{$position}->{C_prop}."\n".
+							#	"G_prop=".$hh_nc_position_info{$position}->{G_prop}."\n".
+							#	"T_prop=".$hh_nc_position_info{$position}->{T_prop}."\n";
+						} else { # the site has been seen before
+							if($variant_nt ne $reference_nt) { # Make sure the reference and 
+							# variant nts aren't identical.
+								$hh_nc_position_info{$position}->{$variant_nt} += ($count);
+								$hh_nc_position_info{$position}->{$reference_nt} -= ($count);
+	
+								$hh_nc_position_info{$position}->{$var_prop_key} += $var_prop;
+								$hh_nc_position_info{$position}->{$ref_prop_key} -= $var_prop;
+							} # NO ACTION REQUIRED if the ref and var are the same
+							
+							push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
+							
+							if ($hh_nc_position_info{$position}->{cov} != $coverage) {
+								chdir('SNPGenie_Results');
+								open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+								print ERROR_FILE "$file_nm\tN\/A\t$position\t".
+									"There are conflicting coverages reported. ".
+										"An averaging has taken place\n";
+								close ERROR_FILE;
+								chdir('..');
+								
+								print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N\/A|$position\n".
+										"## An averaging has taken place.\n";
+							}
+							#print "\n\nTEST\nhh_nc_position_info for $position:\n".
+							#	"A_prop=".$hh_nc_position_info{$position}->{A_prop}."\n".
+							#	"C_prop=".$hh_nc_position_info{$position}->{C_prop}."\n".
+							#	"G_prop=".$hh_nc_position_info{$position}->{G_prop}."\n".
+							#	"T_prop=".$hh_nc_position_info{$position}->{T_prop}."\n";
 						}
 					}
 				} # for SNV, ref length == variant length
@@ -1324,30 +1214,26 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# EXPERIMENTAL
 						if ($over_annot =~/Mature peptide: ([\w\s\.']+)/) {
 							$mature_peptide_name = $1;
-							#print "product name is: $product_name\n"; # NOPE
-							@peptide_coord_arr = &get_product_coordinates($mature_peptide_name,$curr_snp_report_name);
+							#print "product name is: $product_name\n";
+							@peptide_coord_arr = @{$product_coordinates_harr{$mature_peptide_name}->{product_coord_arr}};
 							print "\n## WARNING: \"Mature peptide\" annotation must take into account\n".
 							"### MNV records for CLC SNP Reports.\n";
 						} 
 						
 						if ($over_annot =~/CDS: ([\w\s\.']+)/) {
 							$product_name = $1;
-							#print "product name is: $product_name\n"; # NOPE
-							@product_coord_arr = &get_product_coordinates($product_name,$curr_snp_report_name);
-						} 
+							#print "product name is: $product_name\n";
+							@product_coord_arr = @{$product_coordinates_harr{$product_name}->{product_coord_arr}};
+						}
 						
-						my $fasta_file = $product_to_fasta_file{$product_name}; # SHOULDN'T MATTER
-						#my @product_coord_arr = &get_product_coordinates($product_name);
-						my $product_start = $product_coord_arr[0];
-						my $product_stop = $product_coord_arr[1];
+						# New segments approach
+						my %product_starts;
+						my %product_stops;
 						
-						my $product_start_2;
-						my $product_stop_2;
-						
-						if ($product_coord_arr[2]) {
-							$product_start_2 = $product_coord_arr[2];
-							$product_stop_2 = $product_coord_arr[3];
-							#print "\nYes, there's a second sequence and it goes from $product_start_2 to $product_stop_2\n";
+						my $num_segments = (@product_coord_arr / 2);
+						for(my $i=1; $i<=scalar(@product_coord_arr); $i++) {
+							$product_starts{$i} = $product_coord_arr[2*$i-2];
+							$product_stops{$i} = $product_coord_arr[2*$i-1];
 						}
 						
 						#my $A_count = 0;
@@ -1359,7 +1245,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						
 						if(length($reference_nt) == 2) {
 							#print "\nSaw a 2-nt MNV! $reference_nt at $product_name site $position\n\n";
-							
 							# Add extra variables with values for the 2-nt MNV
 							my $position2 = $position+1;
 							my $reference_nt2 = substr($reference_nt,1,1);
@@ -1373,14 +1258,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							# Do for nucleotide 1 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position}->{C} = 0;
@@ -1390,7 +1275,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position}->{reference} = $reference_nt;
 								$hh_product_position_info{$product_name}->{$position}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position}->{cov_arr}},$coverage);
@@ -1403,7 +1287,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position}->{C_prop} = 0;
 								$hh_nc_position_info{$position}->{G_prop} = 0;
 								$hh_nc_position_info{$position}->{T_prop} = 0;
-								$hh_nc_position_info{$position}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position}->{reference} = $reference_nt;
 								$hh_nc_position_info{$position}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
@@ -1463,14 +1346,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							# Do for nucleotide 2 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position2}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position2}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position2}->{C} = 0;
@@ -1480,7 +1363,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position2}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position2}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position2}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position2}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position2}->{reference} = $reference_nt2;
 								$hh_product_position_info{$product_name}->{$position2}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position2}->{cov_arr}},$coverage);
@@ -1493,11 +1375,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position2}->{C_prop} = 0;
 								$hh_nc_position_info{$position2}->{G_prop} = 0;
 								$hh_nc_position_info{$position2}->{T_prop} = 0;
-								$hh_nc_position_info{$position2}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position2}->{reference} = $reference_nt2;
 								$hh_nc_position_info{$position2}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
-								$hh_nc_position_info{$position2}->{coding} = 1;
+								#$hh_nc_position_info{$position2}->{coding} = 1;
 								$hh_nc_position_info{$position2}->{polymorphic} = 1;
 								
 								if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
@@ -1571,14 +1452,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							# Do for nucleotide 1 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position}->{C} = 0;
@@ -1588,7 +1469,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position}->{reference} = $reference_nt;
 								$hh_product_position_info{$product_name}->{$position}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position}->{cov_arr}},$coverage);
@@ -1601,7 +1481,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position}->{C_prop} = 0;
 								$hh_nc_position_info{$position}->{G_prop} = 0;
 								$hh_nc_position_info{$position}->{T_prop} = 0;
-								$hh_nc_position_info{$position}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position}->{reference} = $reference_nt;
 								$hh_nc_position_info{$position}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
@@ -1658,14 +1537,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							# Do for nucleotide 2 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position2}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position2}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position2}->{C} = 0;
@@ -1675,7 +1554,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position2}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position2}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position2}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position2}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position2}->{reference} = $reference_nt2;
 								$hh_product_position_info{$product_name}->{$position2}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position2}->{cov_arr}},$coverage);
@@ -1688,11 +1566,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position2}->{C_prop} = 0;
 								$hh_nc_position_info{$position2}->{G_prop} = 0;
 								$hh_nc_position_info{$position2}->{T_prop} = 0;
-								$hh_nc_position_info{$position2}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position2}->{reference} = $reference_nt2;
 								$hh_nc_position_info{$position2}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
-								$hh_nc_position_info{$position2}->{coding} = 1;
+								#$hh_nc_position_info{$position2}->{coding} = 1;
 								$hh_nc_position_info{$position2}->{polymorphic} = 1;
 								
 								if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
@@ -1748,14 +1625,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							# Do for nucleotide 3 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position3}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position3}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position3}->{C} = 0;
@@ -1765,7 +1642,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position3}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position3}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position3}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position3}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position3}->{reference} = $reference_nt3;
 								$hh_product_position_info{$product_name}->{$position3}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position3}->{cov_arr}},$coverage);
@@ -1778,11 +1654,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position3}->{C_prop} = 0;
 								$hh_nc_position_info{$position3}->{G_prop} = 0;
 								$hh_nc_position_info{$position3}->{T_prop} = 0;
-								$hh_nc_position_info{$position3}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position3}->{reference} = $reference_nt3;
 								$hh_nc_position_info{$position3}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
-								$hh_nc_position_info{$position3}->{coding} = 1;
+								#$hh_nc_position_info{$position3}->{coding} = 1;
 								$hh_nc_position_info{$position3}->{polymorphic} = 1;
 								
 								if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
@@ -1863,14 +1738,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							# Do for nucleotide 1 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position}->{C} = 0;
@@ -1880,7 +1755,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position}->{reference} = $reference_nt;
 								$hh_product_position_info{$product_name}->{$position}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position}->{cov_arr}},$coverage);
@@ -1893,7 +1767,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position}->{C_prop} = 0;
 								$hh_nc_position_info{$position}->{G_prop} = 0;
 								$hh_nc_position_info{$position}->{T_prop} = 0;
-								$hh_nc_position_info{$position}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position}->{reference} = $reference_nt;
 								$hh_nc_position_info{$position}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
@@ -1946,19 +1819,18 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 										"$file_nm|$product_name|$position\n".
 										"## An averaging has taken place.\n";
 								}
-								
 							}
 							
 							# Do for nucleotide 2 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position2}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position2}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position2}->{C} = 0;
@@ -1968,7 +1840,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position2}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position2}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position2}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position2}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position2}->{reference} = $reference_nt2;
 								$hh_product_position_info{$product_name}->{$position2}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position2}->{cov_arr}},$coverage);
@@ -1981,11 +1852,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position2}->{C_prop} = 0;
 								$hh_nc_position_info{$position2}->{G_prop} = 0;
 								$hh_nc_position_info{$position2}->{T_prop} = 0;
-								$hh_nc_position_info{$position2}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position2}->{reference} = $reference_nt2;
 								$hh_nc_position_info{$position2}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
-								$hh_nc_position_info{$position2}->{coding} = 1;
+								#$hh_nc_position_info{$position2}->{coding} = 1;
 								$hh_nc_position_info{$position2}->{polymorphic} = 1;
 								
 								if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
@@ -2038,14 +1908,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							# Do for nucleotide 3 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position3}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position3}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position3}->{C} = 0;
@@ -2055,7 +1925,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position3}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position3}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position3}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position3}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position3}->{reference} = $reference_nt3;
 								$hh_product_position_info{$product_name}->{$position3}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position3}->{cov_arr}},$coverage);
@@ -2068,11 +1937,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position3}->{C_prop} = 0;
 								$hh_nc_position_info{$position3}->{G_prop} = 0;
 								$hh_nc_position_info{$position3}->{T_prop} = 0;
-								$hh_nc_position_info{$position3}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position3}->{reference} = $reference_nt3;
 								$hh_nc_position_info{$position3}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
-								$hh_nc_position_info{$position3}->{coding} = 1;
+								#$hh_nc_position_info{$position3}->{coding} = 1;
 								$hh_nc_position_info{$position3}->{polymorphic} = 1;
 								
 								if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
@@ -2125,14 +1993,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							# Do for nucleotide 4 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position4}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position4}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position4}->{C} = 0;
@@ -2142,7 +2010,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position4}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position4}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position4}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position4}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position4}->{reference} = $reference_nt4;
 								$hh_product_position_info{$product_name}->{$position4}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position4}->{cov_arr}},$coverage);
@@ -2155,11 +2022,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position4}->{C_prop} = 0;
 								$hh_nc_position_info{$position4}->{G_prop} = 0;
 								$hh_nc_position_info{$position4}->{T_prop} = 0;
-								$hh_nc_position_info{$position4}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position4}->{reference} = $reference_nt4;
 								$hh_nc_position_info{$position4}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
-								$hh_nc_position_info{$position4}->{coding} = 1;
+								#$hh_nc_position_info{$position4}->{coding} = 1;
 								$hh_nc_position_info{$position4}->{polymorphic} = 1;
 								
 								if($variant_nt4 ne $reference_nt4) { # Make sure the reference and variant nts aren't identical
@@ -2245,14 +2111,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							# Do for nucleotide 1 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position}->{C} = 0;
@@ -2262,7 +2128,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position}->{reference} = $reference_nt;
 								$hh_product_position_info{$product_name}->{$position}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position}->{cov_arr}},$coverage);
@@ -2275,7 +2140,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position}->{C_prop} = 0;
 								$hh_nc_position_info{$position}->{G_prop} = 0;
 								$hh_nc_position_info{$position}->{T_prop} = 0;
-								$hh_nc_position_info{$position}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position}->{reference} = $reference_nt;
 								$hh_nc_position_info{$position}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
@@ -2328,19 +2192,18 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 										"$file_nm|$product_name|$position\n".
 										"## An averaging has taken place.\n";
 								}
-								
 							}
 							
 							# Do for nucleotide 2 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position2}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position2}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position2}->{C} = 0;
@@ -2350,7 +2213,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position2}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position2}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position2}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position2}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position2}->{reference} = $reference_nt2;
 								$hh_product_position_info{$product_name}->{$position2}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position2}->{cov_arr}},$coverage);
@@ -2363,11 +2225,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position2}->{C_prop} = 0;
 								$hh_nc_position_info{$position2}->{G_prop} = 0;
 								$hh_nc_position_info{$position2}->{T_prop} = 0;
-								$hh_nc_position_info{$position2}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position2}->{reference} = $reference_nt2;
 								$hh_nc_position_info{$position2}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
-								$hh_nc_position_info{$position2}->{coding} = 1;
+								#$hh_nc_position_info{$position2}->{coding} = 1;
 								$hh_nc_position_info{$position2}->{polymorphic} = 1;
 								
 								if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
@@ -2420,14 +2281,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							# Do for nucleotide 3 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position3}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position3}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position3}->{C} = 0;
@@ -2437,7 +2298,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position3}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position3}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position3}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position3}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position3}->{reference} = $reference_nt3;
 								$hh_product_position_info{$product_name}->{$position3}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position3}->{cov_arr}},$coverage);
@@ -2450,11 +2310,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position3}->{C_prop} = 0;
 								$hh_nc_position_info{$position3}->{G_prop} = 0;
 								$hh_nc_position_info{$position3}->{T_prop} = 0;
-								$hh_nc_position_info{$position3}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position3}->{reference} = $reference_nt3;
 								$hh_nc_position_info{$position3}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
-								$hh_nc_position_info{$position3}->{coding} = 1;
+								#$hh_nc_position_info{$position3}->{coding} = 1;
 								$hh_nc_position_info{$position3}->{polymorphic} = 1;
 								
 								if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
@@ -2507,14 +2366,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							# Do for nucleotide 4 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position4}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position4}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position4}->{C} = 0;
@@ -2524,7 +2383,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position4}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position4}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position4}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position4}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position4}->{reference} = $reference_nt4;
 								$hh_product_position_info{$product_name}->{$position4}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position4}->{cov_arr}},$coverage);
@@ -2537,11 +2395,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position4}->{C_prop} = 0;
 								$hh_nc_position_info{$position4}->{G_prop} = 0;
 								$hh_nc_position_info{$position4}->{T_prop} = 0;
-								$hh_nc_position_info{$position4}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position4}->{reference} = $reference_nt4;
 								$hh_nc_position_info{$position4}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
-								$hh_nc_position_info{$position4}->{coding} = 1;
+								#$hh_nc_position_info{$position4}->{coding} = 1;
 								$hh_nc_position_info{$position4}->{polymorphic} = 1;
 								
 								if($variant_nt4 ne $reference_nt4) { # Make sure the reference and variant nts aren't identical
@@ -2594,14 +2451,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							# Do for nucleotide 5 of the variant
 							if (! exists $hh_product_position_info{$product_name}->{$position5}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$product_name}->{start} = $product_start;
-								$hh_product_position_info{$product_name}->{stop} = $product_stop;
-								
-								if ($product_start_2) {
-									$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-									$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %product_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+									$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 								}
+								$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$product_name}->{$position5}->{A} = 0;
 								$hh_product_position_info{$product_name}->{$position5}->{C} = 0;
@@ -2611,7 +2468,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_product_position_info{$product_name}->{$position5}->{C_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position5}->{G_prop} = 0;
 								$hh_product_position_info{$product_name}->{$position5}->{T_prop} = 0;
-								$hh_product_position_info{$product_name}->{$position5}->{fasta} = $fasta_file;
 								$hh_product_position_info{$product_name}->{$position5}->{reference} = $reference_nt5;
 								$hh_product_position_info{$product_name}->{$position5}->{cov} = $coverage;
 								push(@{$hh_product_position_info{$product_name}->{$position5}->{cov_arr}},$coverage);
@@ -2624,11 +2480,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								$hh_nc_position_info{$position5}->{C_prop} = 0;
 								$hh_nc_position_info{$position5}->{G_prop} = 0;
 								$hh_nc_position_info{$position5}->{T_prop} = 0;
-								$hh_nc_position_info{$position5}->{fasta} = $fasta_file;
 								$hh_nc_position_info{$position5}->{reference} = $reference_nt5;
 								$hh_nc_position_info{$position5}->{cov} = $coverage;
 								push(@{$hh_nc_position_info{$position5}->{cov_arr}},$coverage);
-								$hh_nc_position_info{$position5}->{coding} = 1;
+								#$hh_nc_position_info{$position5}->{coding} = 1;
 								$hh_nc_position_info{$position5}->{polymorphic} = 1;
 								
 								if($variant_nt5 ne $reference_nt5) { # Make sure the reference and variant nts aren't identical
@@ -2684,17 +2539,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						#	print "\n6940 T = ".$hh_product_position_info{$product_name}->{$position+2}->{T}."\n\n";
 						#}
 						
-						# NOW for the "Mature peptide," if it exists.
-						my $peptide_start = $peptide_coord_arr[0];
-						my $peptide_stop = $peptide_coord_arr[1];
+						# New segments approach for mature peptide
+						my %peptide_starts;
+						my %peptide_stops;
 						
-						my $peptide_start_2;
-						my $peptide_stop_2;
-						
-						if ($peptide_coord_arr[2]) {
-							$peptide_start_2 = $peptide_coord_arr[2];
-							$peptide_stop_2 = $peptide_coord_arr[3];
-							#print "\nYes, there's a second sequence and it goes from $product_start_2 to $product_stop_2\n";
+						my $num_segments = (@peptide_coord_arr / 2);
+						for(my $i=1; $i<=scalar(@peptide_coord_arr); $i++) {
+							$peptide_starts{$i} = $peptide_coord_arr[2*$i-2];
+							$peptide_stops{$i} = $peptide_coord_arr[2*$i-1];
 						}
 						
 						# NOTE: Mature peptide is never the same as CDS. If Mature peptide is
@@ -2703,22 +2555,23 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							print "/n## WARNING: \"Mature peptide\" annotation must take into account\n".
 							"### MNV records for CLC SNP Reports.\n";
 							if (! exists $hh_product_position_info{$mature_peptide_name}->{$position}) { # Product/position HAVEN'T been seen
-								$hh_product_position_info{$mature_peptide_name}->{fasta} = $fasta_file;
-								$hh_product_position_info{$mature_peptide_name}->{start} = $peptide_start;
-								$hh_product_position_info{$mature_peptide_name}->{stop} = $peptide_stop;
-								
-								if ($peptide_start_2) {
-									$hh_product_position_info{$mature_peptide_name}->{start_2} = $peptide_start_2;
-									$hh_product_position_info{$mature_peptide_name}->{stop_2} = $peptide_stop_2;
+								# New segments approach
+								foreach(sort {$a <=> $b} (keys %peptide_starts)) {
+									my $this_start_key = 'start_' . $_;
+									my $this_stop_key = 'stop_' . $_;
+									$hh_product_position_info{$mature_peptide_name}->{$this_start_key} = $peptide_starts{$_};
+									$hh_product_position_info{$mature_peptide_name}->{$this_stop_key} = $peptide_stops{$_};
 								}
+								$hh_product_position_info{$mature_peptide_name}->{num_segments} = $num_segments;
 								
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{A} = 0;
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{C} = 0;
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{G} = 0;
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{T} = 0;
-								$hh_product_position_info{$mature_peptide_name}->{$position}->{fasta} = $fasta_file;
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{reference} = $reference_nt;
 								$hh_product_position_info{$mature_peptide_name}->{$position}->{cov} = $coverage;
+								
+								# add to coding?
 								
 								push(@{$hh_product_position_info{$product_name}->{$position}->{cov_arr}},$coverage);
 								
@@ -2760,886 +2613,865 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							print "\n## WARNING: SNPGenie only considers MNV's up to 5nt in length.\n";
 							$warn_5nt = 1;
 						}
-	
-						if($multi_seq_mode == 0) { # We'll have to implement something different 
-						# for $multi_seq_mode == 1. Clue: the "Mapping" column may contain 
-						# information about which FASTA to look in.
+						
+						#my $fasta_file = $product_to_fasta_file{$product_name}; # SHOULDN'T MATTER
+#comback						my $fasta_file = $the_fasta_file;
+						
+						#my $A_count = 0;
+						#my $C_count = 0;
+						#my $G_count = 0;
+						#my $T_count = 0;
+						#print "\n$fasta_file\n";
+						#print "\n$coverage\n";
+						
+						if(length($reference_nt) == 2) {
+							#print "\nSaw a 2-nt MNV! $reference_nt at $product_name site $position\n\n";
 							
-							#my $fasta_file = $product_to_fasta_file{$product_name}; # SHOULDN'T MATTER
-							my $fasta_file = $the_fasta_file;
+							# Add extra variables with values for the 2-nt MNV
+							my $position2 = $position+1;
+							my $reference_nt2 = substr($reference_nt,1,1);
+							my $reference_nt = substr($reference_nt,0,1);
+							my $variant_nt2 = substr($variant_nt,1,1);
+							my $variant_nt = substr($variant_nt,0,1);
+							my $ref_prop_key = "$reference_nt\_prop";
+							my $ref2_prop_key = "$reference_nt2\_prop";
+							my $var_prop_key = "$variant_nt\_prop";
+							my $var2_prop_key = "$variant_nt2\_prop";
 							
-							#my $A_count = 0;
-							#my $C_count = 0;
-							#my $G_count = 0;
-							#my $T_count = 0;
-							#print "\n$fasta_file\n";
-							#print "\n$coverage\n";
+							# Do for nucleotide 1 of the variant
+							if (! exists $hh_nc_position_info{$position}) { # Product/position HAVEN'T been seen		#########
+								$hh_nc_position_info{$position}->{A} = 0;
+								$hh_nc_position_info{$position}->{C} = 0;
+								$hh_nc_position_info{$position}->{G} = 0;
+								$hh_nc_position_info{$position}->{T} = 0;
+								$hh_nc_position_info{$position}->{A_prop} = 0;
+								$hh_nc_position_info{$position}->{C_prop} = 0;
+								$hh_nc_position_info{$position}->{G_prop} = 0;
+								$hh_nc_position_info{$position}->{T_prop} = 0;
+								$hh_nc_position_info{$position}->{reference} = $reference_nt;
+								$hh_nc_position_info{$position}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position}->{coding} = 0;
+								$hh_nc_position_info{$position}->{polymorphic} = 1;
+								
+								if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position}->{$variant_nt} = ($count);
+									$hh_nc_position_info{$position}->{$reference_nt} = $coverage-($count);
+									$hh_nc_position_info{$position}->{$var_prop_key} = $var_prop;
+									$hh_nc_position_info{$position}->{$ref_prop_key} = $ref_prop;
+								} else { # Ref and var nts are identical
+									$hh_nc_position_info{$position}->{$reference_nt} = $coverage;
+									$hh_nc_position_info{$position}->{$ref_prop_key} = 1;
+								}
+								
+							} else { # Product/position HAVE been seen before
+								if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position}->{$variant_nt} += ($count);
+									$hh_nc_position_info{$position}->{$reference_nt} -= ($count);
+									
+									$hh_nc_position_info{$position}->{$var_prop_key} += $var_prop;
+									$hh_nc_position_info{$position}->{$ref_prop_key} -= $var_prop;
+								} # NO ACTION REQUIRED if the ref and var are the same
+								
+								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
+									
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position\n".
+										"## An averaging has taken place.\n";
+								}
+							}
 							
-							if(length($reference_nt) == 2) {
-								#print "\nSaw a 2-nt MNV! $reference_nt at $product_name site $position\n\n";
+							# Do for nucleotide 2 of the variant
+							if (! exists $hh_nc_position_info{$position2}) { # Product/position HAVEN'T been seen									
+								$hh_nc_position_info{$position2}->{A} = 0;
+								$hh_nc_position_info{$position2}->{C} = 0;
+								$hh_nc_position_info{$position2}->{G} = 0;
+								$hh_nc_position_info{$position2}->{T} = 0;
+								$hh_nc_position_info{$position2}->{A_prop} = 0;
+								$hh_nc_position_info{$position2}->{C_prop} = 0;
+								$hh_nc_position_info{$position2}->{G_prop} = 0;
+								$hh_nc_position_info{$position2}->{T_prop} = 0;
+								$hh_nc_position_info{$position2}->{reference} = $reference_nt2;
+								$hh_nc_position_info{$position2}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position2}->{coding} = 0;
+								$hh_nc_position_info{$position2}->{polymorphic} = 1;
 								
-								# Add extra variables with values for the 2-nt MNV
-								my $position2 = $position+1;
-								my $reference_nt2 = substr($reference_nt,1,1);
-								my $reference_nt = substr($reference_nt,0,1);
-								my $variant_nt2 = substr($variant_nt,1,1);
-								my $variant_nt = substr($variant_nt,0,1);
-								my $ref_prop_key = "$reference_nt\_prop";
-								my $ref2_prop_key = "$reference_nt2\_prop";
-								my $var_prop_key = "$variant_nt\_prop";
-								my $var2_prop_key = "$variant_nt2\_prop";
-								
-								# Do for nucleotide 1 of the variant
-								if (! exists $hh_nc_position_info{$position}) { # Product/position HAVEN'T been seen		#########
-									$hh_nc_position_info{$position}->{A} = 0;
-									$hh_nc_position_info{$position}->{C} = 0;
-									$hh_nc_position_info{$position}->{G} = 0;
-									$hh_nc_position_info{$position}->{T} = 0;
-									$hh_nc_position_info{$position}->{A_prop} = 0;
-									$hh_nc_position_info{$position}->{C_prop} = 0;
-									$hh_nc_position_info{$position}->{G_prop} = 0;
-									$hh_nc_position_info{$position}->{T_prop} = 0;
-									$hh_nc_position_info{$position}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position}->{reference} = $reference_nt;
-									$hh_nc_position_info{$position}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
-									#$hh_nc_position_info{$position}->{coding} = 0;
-									$hh_nc_position_info{$position}->{polymorphic} = 1;
-									
-									if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position}->{$variant_nt} = ($count);
-										$hh_nc_position_info{$position}->{$reference_nt} = $coverage-($count);
-										$hh_nc_position_info{$position}->{$var_prop_key} = $var_prop;
-										$hh_nc_position_info{$position}->{$ref_prop_key} = $ref_prop;
-									} else { # Ref and var nts are identical
-										$hh_nc_position_info{$position}->{$reference_nt} = $coverage;
-										$hh_nc_position_info{$position}->{$ref_prop_key} = 1;
-									}
-									
-								} else { # Product/position HAVE been seen before
-									if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position}->{$variant_nt} += ($count);
-										$hh_nc_position_info{$position}->{$reference_nt} -= ($count);
-										
-										$hh_nc_position_info{$position}->{$var_prop_key} += $var_prop;
-										$hh_nc_position_info{$position}->{$ref_prop_key} -= $var_prop;
-									} # NO ACTION REQUIRED if the ref and var are the same
-									
-									push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
-									
-									if ($hh_nc_position_info{$position}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position\n".
-											"## An averaging has taken place.\n";
-									}
+								if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position2}->{$variant_nt2} = ($count);
+									$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage-($count);
+									$hh_nc_position_info{$position2}->{$var2_prop_key} = $var_prop;
+									$hh_nc_position_info{$position2}->{$ref2_prop_key} = $ref_prop;
+								} else {
+									$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage;
+									$hh_nc_position_info{$position2}->{$ref2_prop_key} = 1;
 								}
 								
-								# Do for nucleotide 2 of the variant
-								if (! exists $hh_nc_position_info{$position2}) { # Product/position HAVEN'T been seen									
-									$hh_nc_position_info{$position2}->{A} = 0;
-									$hh_nc_position_info{$position2}->{C} = 0;
-									$hh_nc_position_info{$position2}->{G} = 0;
-									$hh_nc_position_info{$position2}->{T} = 0;
-									$hh_nc_position_info{$position2}->{A_prop} = 0;
-									$hh_nc_position_info{$position2}->{C_prop} = 0;
-									$hh_nc_position_info{$position2}->{G_prop} = 0;
-									$hh_nc_position_info{$position2}->{T_prop} = 0;
-									$hh_nc_position_info{$position2}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position2}->{reference} = $reference_nt2;
-									$hh_nc_position_info{$position2}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
-									$hh_nc_position_info{$position2}->{coding} = 0;
-									$hh_nc_position_info{$position2}->{polymorphic} = 1;
+							} else { # Product/position HAVE been seen before
+								if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position2}->{$variant_nt2} += ($count);
+									$hh_nc_position_info{$position2}->{$reference_nt2} -= ($count);
 									
-									if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position2}->{$variant_nt2} = ($count);
-										$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage-($count);
-										$hh_nc_position_info{$position2}->{$var2_prop_key} = $var_prop;
-										$hh_nc_position_info{$position2}->{$ref2_prop_key} = $ref_prop;
-									} else {
-										$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage;
-										$hh_nc_position_info{$position2}->{$ref2_prop_key} = 1;
-									}
+									$hh_nc_position_info{$position2}->{$var2_prop_key} += $var_prop;
+									$hh_nc_position_info{$position2}->{$ref2_prop_key} -= $var_prop;
+								}  # NO ACTION REQUIRED if the ref and var are the same
+								
+								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position2}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position2\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
 									
-								} else { # Product/position HAVE been seen before
-									if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position2}->{$variant_nt2} += ($count);
-										$hh_nc_position_info{$position2}->{$reference_nt2} -= ($count);
-										
-										$hh_nc_position_info{$position2}->{$var2_prop_key} += $var_prop;
-										$hh_nc_position_info{$position2}->{$ref2_prop_key} -= $var_prop;
-									}  # NO ACTION REQUIRED if the ref and var are the same
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position2\n".
+										"## An averaging has taken place.\n";
+								}
+							}
+							
+						} elsif(length($reference_nt) == 3) {  # END MNV length 2 #####
+							#print "\nSaw a 3-nt MNV! $reference_nt at $product_name site $position\n\n";
+							
+							# Add extra variables with values for the 3-nt MNV
+							my $position2 = $position+1;
+							my $position3 = $position+2;
+							my $reference_nt2 = substr($reference_nt,1,1);
+							my $reference_nt3 = substr($reference_nt,2,1);
+							my $reference_nt = substr($reference_nt,0,1);
+							my $variant_nt2 = substr($variant_nt,1,1);
+							my $variant_nt3 = substr($variant_nt,2,1);
+							my $variant_nt = substr($variant_nt,0,1);
+							my $ref_prop_key = "$reference_nt\_prop";
+							my $ref2_prop_key = "$reference_nt2\_prop";
+							my $ref3_prop_key = "$reference_nt3\_prop";
+							my $var_prop_key = "$variant_nt\_prop";
+							my $var2_prop_key = "$variant_nt2\_prop";
+							my $var3_prop_key = "$variant_nt3\_prop";
+							
+							# Do for nucleotide 1 of the variant
+							if (! exists $hh_nc_position_info{$position}) { # Product/position HAVEN'T been seen
+								$hh_nc_position_info{$position}->{A} = 0;
+								$hh_nc_position_info{$position}->{C} = 0;
+								$hh_nc_position_info{$position}->{G} = 0;
+								$hh_nc_position_info{$position}->{T} = 0;
+								$hh_nc_position_info{$position}->{A_prop} = 0;
+								$hh_nc_position_info{$position}->{C_prop} = 0;
+								$hh_nc_position_info{$position}->{G_prop} = 0;
+								$hh_nc_position_info{$position}->{T_prop} = 0;
+								$hh_nc_position_info{$position}->{reference} = $reference_nt;
+								$hh_nc_position_info{$position}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position}->{coding} = 0;
+								$hh_nc_position_info{$position}->{polymorphic} = 1;
+								
+								if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position}->{$variant_nt} = ($count);
+									$hh_nc_position_info{$position}->{$reference_nt} = $coverage-($count);
+									$hh_nc_position_info{$position}->{$var_prop_key} = $var_prop;
+									$hh_nc_position_info{$position}->{$ref_prop_key} = $ref_prop;
+								} else {
+									$hh_nc_position_info{$position}->{$reference_nt} = $coverage;
+									$hh_nc_position_info{$position}->{$ref_prop_key} = 1;
+								}
+							} else { # Product/position HAVE been seen before
+								if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position}->{$variant_nt} += ($count);
+									$hh_nc_position_info{$position}->{$reference_nt} -= ($count);
+									$hh_nc_position_info{$position}->{$var_prop_key} += $var_prop;
+									$hh_nc_position_info{$position}->{$ref_prop_key} -= $var_prop;
+								} # NO ACTION REQUIRED if the ref and var are the same
+								
+								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position}->{cov} != $coverage) {					
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
 									
-									push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position\n".
+										"## An averaging has taken place.\n";
+								}
+							}
+							
+							# Do for nucleotide 2 of the variant
+							if (! exists $hh_nc_position_info{$position2}) { # Product/position HAVEN'T been seen
+
+								$hh_nc_position_info{$position2}->{A} = 0;
+								$hh_nc_position_info{$position2}->{C} = 0;
+								$hh_nc_position_info{$position2}->{G} = 0;
+								$hh_nc_position_info{$position2}->{T} = 0;
+								$hh_nc_position_info{$position2}->{A_prop} = 0;
+								$hh_nc_position_info{$position2}->{C_prop} = 0;
+								$hh_nc_position_info{$position2}->{G_prop} = 0;
+								$hh_nc_position_info{$position2}->{T_prop} = 0;
+								$hh_nc_position_info{$position2}->{reference} = $reference_nt2;
+								$hh_nc_position_info{$position2}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position2}->{coding} = 0;
+								$hh_nc_position_info{$position2}->{polymorphic} = 1;
+								
+								if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position2}->{$variant_nt2} = ($count);
+									$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage-($count);
+									$hh_nc_position_info{$position2}->{$var2_prop_key} = $var_prop;
+									$hh_nc_position_info{$position2}->{$ref2_prop_key} = $ref_prop;
+								} else {
+									$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage;
+									$hh_nc_position_info{$position2}->{$ref2_prop_key} = 1;
+								}
+							} else { # Product/position HAVE been seen before
+								if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position2}->{$variant_nt2} += ($count);
+									$hh_nc_position_info{$position2}->{$reference_nt2} -= ($count);
+									$hh_nc_position_info{$position2}->{$var2_prop_key} += $var_prop;
+									$hh_nc_position_info{$position2}->{$ref2_prop_key} -= $var_prop;
+								} # NO ACTION REQUIRED if the ref and var are the same
+								
+								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position2}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position2\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
 									
-									if ($hh_nc_position_info{$position2}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position2\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position2\n".
-											"## An averaging has taken place.\n";
-									}
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position2\n".
+										"## An averaging has taken place.\n";
+								}
+							}
+							
+							# Do for nucleotide 3 of the variant
+							if (! exists $hh_nc_position_info{$position3}) { # Product/position HAVEN'T been seen
+
+								$hh_nc_position_info{$position3}->{A} = 0;
+								$hh_nc_position_info{$position3}->{C} = 0;
+								$hh_nc_position_info{$position3}->{G} = 0;
+								$hh_nc_position_info{$position3}->{T} = 0;
+								$hh_nc_position_info{$position3}->{A_prop} = 0;
+								$hh_nc_position_info{$position3}->{C_prop} = 0;
+								$hh_nc_position_info{$position3}->{G_prop} = 0;
+								$hh_nc_position_info{$position3}->{T_prop} = 0;
+								$hh_nc_position_info{$position3}->{reference} = $reference_nt3;
+								$hh_nc_position_info{$position3}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position3}->{coding} = 0;
+								$hh_nc_position_info{$position3}->{polymorphic} = 1;
+								
+								if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position3}->{$variant_nt3} = ($count);
+									$hh_nc_position_info{$position3}->{$reference_nt3} = $coverage-($count);
+									$hh_nc_position_info{$position3}->{$var3_prop_key} = $var_prop;
+									$hh_nc_position_info{$position3}->{$ref3_prop_key} = $ref_prop;
+								} else {
+									$hh_nc_position_info{$position3}->{$reference_nt3} = $coverage;
+									$hh_nc_position_info{$position3}->{$ref3_prop_key} = 1;
+								}
+							} else { # Product/position HAVE been seen before
+								if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position3}->{$variant_nt3} += ($count);
+									$hh_nc_position_info{$position3}->{$reference_nt3} -= ($count);
+									$hh_nc_position_info{$position3}->{$var3_prop_key} += $var_prop;
+									$hh_nc_position_info{$position3}->{$ref3_prop_key} -= $var_prop;
+								} # NO ACTION REQUIRED if the ref and var are the same
+								
+								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position3}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position3\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
+									
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position3\n".
+										"## An averaging has taken place.\n";
+								}
+							}
+							
+						} elsif(length($reference_nt) == 4) {
+							#print "\nSaw a 3-nt MNV! $reference_nt at $product_name site $position\n\n";
+							
+							# Add extra variables with values for the 3-nt MNV
+							my $position2 = $position+1;
+							my $position3 = $position+2;
+							my $position4 = $position+3;
+							
+							my $reference_nt2 = substr($reference_nt,1,1);
+							my $reference_nt3 = substr($reference_nt,2,1);
+							my $reference_nt4 = substr($reference_nt,3,1);
+							my $reference_nt = substr($reference_nt,0,1);
+							
+							my $variant_nt2 = substr($variant_nt,1,1);
+							my $variant_nt3 = substr($variant_nt,2,1);
+							my $variant_nt4 = substr($variant_nt,3,1);
+							my $variant_nt = substr($variant_nt,0,1);
+							
+							my $ref_prop_key = "$reference_nt\_prop";
+							my $ref2_prop_key = "$reference_nt2\_prop";
+							my $ref3_prop_key = "$reference_nt3\_prop";
+							my $ref4_prop_key = "$reference_nt4\_prop";
+							
+							my $var_prop_key = "$variant_nt\_prop";
+							my $var2_prop_key = "$variant_nt2\_prop";
+							my $var3_prop_key = "$variant_nt3\_prop";
+							my $var4_prop_key = "$variant_nt4\_prop";
+							
+							# Do for nucleotide 1 of the variant
+							if (! exists $hh_nc_position_info{$position}) { # Product/position HAVEN'T been seen
+								
+								$hh_nc_position_info{$position}->{A} = 0;
+								$hh_nc_position_info{$position}->{C} = 0;
+								$hh_nc_position_info{$position}->{G} = 0;
+								$hh_nc_position_info{$position}->{T} = 0;
+								$hh_nc_position_info{$position}->{A_prop} = 0;
+								$hh_nc_position_info{$position}->{C_prop} = 0;
+								$hh_nc_position_info{$position}->{G_prop} = 0;
+								$hh_nc_position_info{$position}->{T_prop} = 0;
+								$hh_nc_position_info{$position}->{reference} = $reference_nt;
+								$hh_nc_position_info{$position}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position}->{coding} = 0;
+								$hh_nc_position_info{$position}->{polymorphic} = 1;
+								
+								if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position}->{$variant_nt} = ($count);
+									$hh_nc_position_info{$position}->{$reference_nt} = $coverage-($count);
+									$hh_nc_position_info{$position}->{$var_prop_key} = $var_prop;
+									$hh_nc_position_info{$position}->{$ref_prop_key} = $ref_prop;
+								} else {
+									$hh_nc_position_info{$position}->{$reference_nt} = $coverage;
+									$hh_nc_position_info{$position}->{$ref_prop_key} = 1;
+								}
+							} else { # Product/position HAVE been seen before
+								if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position}->{$variant_nt} += ($count);
+									$hh_nc_position_info{$position}->{$reference_nt} -= ($count);
+									$hh_nc_position_info{$position}->{$var_prop_key} += $var_prop;
+									$hh_nc_position_info{$position}->{$ref_prop_key} -= $var_prop;
+								} # NO ACTION REQUIRED if the ref and var are the same
+								
+								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
+									
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position\n".
+										"## An averaging has taken place.\n";
+								}
+							}
+							
+							# Do for nucleotide 2 of the variant
+							if (! exists $hh_nc_position_info{$position2}) { # Product/position HAVEN'T been seen
+
+								$hh_nc_position_info{$position2}->{A} = 0;
+								$hh_nc_position_info{$position2}->{C} = 0;
+								$hh_nc_position_info{$position2}->{G} = 0;
+								$hh_nc_position_info{$position2}->{T} = 0;
+								$hh_nc_position_info{$position2}->{A_prop} = 0;
+								$hh_nc_position_info{$position2}->{C_prop} = 0;
+								$hh_nc_position_info{$position2}->{G_prop} = 0;
+								$hh_nc_position_info{$position2}->{T_prop} = 0;
+								$hh_nc_position_info{$position2}->{reference} = $reference_nt2;
+								$hh_nc_position_info{$position2}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position2}->{coding} = 0;
+								$hh_nc_position_info{$position2}->{polymorphic} = 1;
+								
+								if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position2}->{$variant_nt2} = ($count);
+									$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage-($count);
+									$hh_nc_position_info{$position2}->{$var2_prop_key} = $var_prop;
+									$hh_nc_position_info{$position2}->{$ref2_prop_key} = $ref_prop;
+								} else {
+									$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage;
+									$hh_nc_position_info{$position2}->{$ref2_prop_key} = 1;
+								}
+							} else { # Product/position HAVE been seen before
+								if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position2}->{$variant_nt2} += ($count);
+									$hh_nc_position_info{$position2}->{$reference_nt2} -= ($count);
+									$hh_nc_position_info{$position2}->{$var2_prop_key} += $var_prop;
+									$hh_nc_position_info{$position2}->{$ref2_prop_key} -= $var_prop;
+								} # NO ACTION REQUIRED if the ref and var are the same
+								
+								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position2}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position2\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
+									
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position2\n".
+										"## An averaging has taken place.\n";
+								}
+							}
+							
+							# Do for nucleotide 3 of the variant
+							if (! exists $hh_nc_position_info{$position3}) { # Product/position HAVEN'T been seen
+
+								$hh_nc_position_info{$position3}->{A} = 0;
+								$hh_nc_position_info{$position3}->{C} = 0;
+								$hh_nc_position_info{$position3}->{G} = 0;
+								$hh_nc_position_info{$position3}->{T} = 0;
+								$hh_nc_position_info{$position3}->{A_prop} = 0;
+								$hh_nc_position_info{$position3}->{C_prop} = 0;
+								$hh_nc_position_info{$position3}->{G_prop} = 0;
+								$hh_nc_position_info{$position3}->{T_prop} = 0;
+								$hh_nc_position_info{$position3}->{reference} = $reference_nt3;
+								$hh_nc_position_info{$position3}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position3}->{coding} = 0;
+								$hh_nc_position_info{$position3}->{polymorphic} = 1;
+								
+								if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position3}->{$variant_nt3} = ($count);
+									$hh_nc_position_info{$position3}->{$reference_nt3} = $coverage-($count);
+									$hh_nc_position_info{$position3}->{$var3_prop_key} = $var_prop;
+									$hh_nc_position_info{$position3}->{$ref3_prop_key} = $ref_prop;
+								} else {
+									$hh_nc_position_info{$position3}->{$reference_nt3} = $coverage;
+									$hh_nc_position_info{$position3}->{$ref3_prop_key} = 1;
+								}
+							} else { # Product/position HAVE been seen before
+								if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position3}->{$variant_nt3} += ($count);
+									$hh_nc_position_info{$position3}->{$reference_nt3} -= ($count);
+									$hh_nc_position_info{$position3}->{$var3_prop_key} += $var_prop;
+									$hh_nc_position_info{$position3}->{$ref3_prop_key} -= $var_prop;
+								} # NO ACTION REQUIRED if the ref and var are the same
+								
+								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position3}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position3\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
+									
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position3\n".
+										"## An averaging has taken place.\n";
+								}
+							}
+							
+							# Do for nucleotide 4 of the variant
+							if (! exists $hh_nc_position_info{$position4}) { # Product/position HAVEN'T been seen
+								
+								$hh_nc_position_info{$position4}->{A} = 0;
+								$hh_nc_position_info{$position4}->{C} = 0;
+								$hh_nc_position_info{$position4}->{G} = 0;
+								$hh_nc_position_info{$position4}->{T} = 0;
+								$hh_nc_position_info{$position4}->{A_prop} = 0;
+								$hh_nc_position_info{$position4}->{C_prop} = 0;
+								$hh_nc_position_info{$position4}->{G_prop} = 0;
+								$hh_nc_position_info{$position4}->{T_prop} = 0;
+								$hh_nc_position_info{$position4}->{reference} = $reference_nt4;
+								$hh_nc_position_info{$position4}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position4}->{coding} = 0;
+								$hh_nc_position_info{$position4}->{polymorphic} = 1;
+								
+								if($variant_nt4 ne $reference_nt4) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position4}->{$variant_nt4} = ($count);
+									$hh_nc_position_info{$position4}->{$reference_nt4} = $coverage-($count);
+									$hh_nc_position_info{$position4}->{$var4_prop_key} = $var_prop;
+									$hh_nc_position_info{$position4}->{$ref4_prop_key} = $ref_prop;
+									
+								} else {
+									$hh_nc_position_info{$position4}->{$reference_nt4} = $coverage;
+									$hh_nc_position_info{$position4}->{$ref4_prop_key} = 1;
+								}
+							} else { # Product/position HAVE been seen before
+								if($variant_nt4 ne $reference_nt4) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position4}->{$variant_nt4} += ($count);
+									$hh_nc_position_info{$position4}->{$reference_nt4} -= ($count);
+									$hh_nc_position_info{$position4}->{$var4_prop_key} += $var_prop;
+									$hh_nc_position_info{$position4}->{$ref4_prop_key} -= $var_prop;
+								} # NO ACTION REQUIRED if the ref and var are the same
+								
+								push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position4}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position4\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
+									
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position4\n".
+										"## An averaging has taken place.\n";
+								}
+							}
+
+						} elsif(length($reference_nt) == 5) {
+							#print "\nSaw a 3-nt MNV! $reference_nt at $product_name site $position\n\n";
+							
+							# Add extra variables with values for the 3-nt MNV
+							my $position2 = $position+1;
+							my $position3 = $position+2;
+							my $position4 = $position+3;
+							my $position5 = $position+4;
+							
+							my $reference_nt2 = substr($reference_nt,1,1);
+							my $reference_nt3 = substr($reference_nt,2,1);
+							my $reference_nt4 = substr($reference_nt,3,1);
+							my $reference_nt5 = substr($reference_nt,4,1);
+							my $reference_nt = substr($reference_nt,0,1);
+							
+							my $variant_nt2 = substr($variant_nt,1,1);
+							my $variant_nt3 = substr($variant_nt,2,1);
+							my $variant_nt4 = substr($variant_nt,3,1);
+							my $variant_nt5 = substr($variant_nt,4,1);
+							my $variant_nt = substr($variant_nt,0,1);
+							
+							my $ref_prop_key = "$reference_nt\_prop";
+							my $ref2_prop_key = "$reference_nt2\_prop";
+							my $ref3_prop_key = "$reference_nt3\_prop";
+							my $ref4_prop_key = "$reference_nt4\_prop";
+							my $ref5_prop_key = "$reference_nt5\_prop";
+							
+							my $var_prop_key = "$variant_nt\_prop";
+							my $var2_prop_key = "$variant_nt2\_prop";
+							my $var3_prop_key = "$variant_nt3\_prop";
+							my $var4_prop_key = "$variant_nt4\_prop";
+							my $var5_prop_key = "$variant_nt5\_prop";
+							
+							# Do for nucleotide 1 of the variant
+							if (! exists $hh_nc_position_info{$position}) { # Product/position HAVEN'T been seen
+							
+								$hh_nc_position_info{$position}->{A} = 0;
+								$hh_nc_position_info{$position}->{C} = 0;
+								$hh_nc_position_info{$position}->{G} = 0;
+								$hh_nc_position_info{$position}->{T} = 0;
+								$hh_nc_position_info{$position}->{A_prop} = 0;
+								$hh_nc_position_info{$position}->{C_prop} = 0;
+								$hh_nc_position_info{$position}->{G_prop} = 0;
+								$hh_nc_position_info{$position}->{T_prop} = 0;
+								$hh_nc_position_info{$position}->{reference} = $reference_nt;
+								$hh_nc_position_info{$position}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position}->{coding} = 0;
+								$hh_nc_position_info{$position}->{polymorphic} = 1;
+								
+								if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position}->{$variant_nt} = ($count);
+									$hh_nc_position_info{$position}->{$reference_nt} = $coverage-($count);
+									$hh_nc_position_info{$position}->{$var_prop_key} = $var_prop;
+									$hh_nc_position_info{$position}->{$ref_prop_key} = $ref_prop;
+								} else {
+									$hh_nc_position_info{$position}->{$reference_nt} = $coverage;
+									$hh_nc_position_info{$position}->{$ref_prop_key} = 1;
 								}
 								
-							} elsif(length($reference_nt) == 3) {  # END MNV length 2 #####
-								#print "\nSaw a 3-nt MNV! $reference_nt at $product_name site $position\n\n";
+							} else { # Product/position HAVE been seen before
+								if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position}->{$variant_nt} += ($count);
+									$hh_nc_position_info{$position}->{$reference_nt} -= $coverage-($count);
+									$hh_nc_position_info{$position}->{$var_prop_key} += $var_prop;
+									$hh_nc_position_info{$position}->{$ref_prop_key} -= $var_prop;
+								} # NO ACTION REQUIRED if the ref and var are the same
 								
-								# Add extra variables with values for the 3-nt MNV
-								my $position2 = $position+1;
-								my $position3 = $position+2;
-								my $reference_nt2 = substr($reference_nt,1,1);
-								my $reference_nt3 = substr($reference_nt,2,1);
-								my $reference_nt = substr($reference_nt,0,1);
-								my $variant_nt2 = substr($variant_nt,1,1);
-								my $variant_nt3 = substr($variant_nt,2,1);
-								my $variant_nt = substr($variant_nt,0,1);
-								my $ref_prop_key = "$reference_nt\_prop";
-								my $ref2_prop_key = "$reference_nt2\_prop";
-								my $ref3_prop_key = "$reference_nt3\_prop";
-								my $var_prop_key = "$variant_nt\_prop";
-								my $var2_prop_key = "$variant_nt2\_prop";
-								my $var3_prop_key = "$variant_nt3\_prop";
+								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
 								
-								# Do for nucleotide 1 of the variant
-								if (! exists $hh_nc_position_info{$position}) { # Product/position HAVEN'T been seen
-									$hh_nc_position_info{$position}->{A} = 0;
-									$hh_nc_position_info{$position}->{C} = 0;
-									$hh_nc_position_info{$position}->{G} = 0;
-									$hh_nc_position_info{$position}->{T} = 0;
-									$hh_nc_position_info{$position}->{A_prop} = 0;
-									$hh_nc_position_info{$position}->{C_prop} = 0;
-									$hh_nc_position_info{$position}->{G_prop} = 0;
-									$hh_nc_position_info{$position}->{T_prop} = 0;
-									$hh_nc_position_info{$position}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position}->{reference} = $reference_nt;
-									$hh_nc_position_info{$position}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
-									#$hh_nc_position_info{$position}->{coding} = 0;
-									$hh_nc_position_info{$position}->{polymorphic} = 1;
+								if ($hh_nc_position_info{$position}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
 									
-									if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position}->{$variant_nt} = ($count);
-										$hh_nc_position_info{$position}->{$reference_nt} = $coverage-($count);
-										$hh_nc_position_info{$position}->{$var_prop_key} = $var_prop;
-										$hh_nc_position_info{$position}->{$ref_prop_key} = $ref_prop;
-									} else {
-										$hh_nc_position_info{$position}->{$reference_nt} = $coverage;
-										$hh_nc_position_info{$position}->{$ref_prop_key} = 1;
-									}
-								} else { # Product/position HAVE been seen before
-									if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position}->{$variant_nt} += ($count);
-										$hh_nc_position_info{$position}->{$reference_nt} -= ($count);
-										$hh_nc_position_info{$position}->{$var_prop_key} += $var_prop;
-										$hh_nc_position_info{$position}->{$ref_prop_key} -= $var_prop;
-									} # NO ACTION REQUIRED if the ref and var are the same
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position\n".
+										"## An averaging has taken place.\n";
+								}
+							}
+							
+							# Do for nucleotide 2 of the variant
+							if (! exists $hh_nc_position_info{$position2}) { # Product/position HAVEN'T been seen
+
+								$hh_nc_position_info{$position2}->{A} = 0;
+								$hh_nc_position_info{$position2}->{C} = 0;
+								$hh_nc_position_info{$position2}->{G} = 0;
+								$hh_nc_position_info{$position2}->{T} = 0;
+								$hh_nc_position_info{$position2}->{A_prop} = 0;
+								$hh_nc_position_info{$position2}->{C_prop} = 0;
+								$hh_nc_position_info{$position2}->{G_prop} = 0;
+								$hh_nc_position_info{$position2}->{T_prop} = 0;
+								$hh_nc_position_info{$position2}->{reference} = $reference_nt2;
+								$hh_nc_position_info{$position2}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position2}->{coding} = 0;
+								$hh_nc_position_info{$position2}->{polymorphic} = 1;
+								
+								if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position2}->{$variant_nt2} = ($count);
+									$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage-($count);
+									$hh_nc_position_info{$position2}->{$var2_prop_key} = $var_prop;
+									$hh_nc_position_info{$position2}->{$ref2_prop_key} = $ref_prop;
+								} else {
+									$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage;
+									$hh_nc_position_info{$position2}->{$ref2_prop_key} = 1;
+								}
+							} else { # Product/position HAVE been seen before
+								if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position2}->{$variant_nt2} += ($count);
+									$hh_nc_position_info{$position2}->{$reference_nt2} -= ($count);
+									$hh_nc_position_info{$position2}->{$var2_prop_key} += $var_prop;
+									$hh_nc_position_info{$position2}->{$ref2_prop_key} -= $var_prop;
+								} # NO ACTION REQUIRED if the ref and var are the same
+								
+								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position2}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position2\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
 									
-									push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position2\n".
+										"## An averaging has taken place.\n";
+								}
+							}
+							
+							# Do for nucleotide 3 of the variant
+							if (! exists $hh_nc_position_info{$position3}) { # Product/position HAVEN'T been seen
+
+								$hh_nc_position_info{$position3}->{A} = 0;
+								$hh_nc_position_info{$position3}->{C} = 0;
+								$hh_nc_position_info{$position3}->{G} = 0;
+								$hh_nc_position_info{$position3}->{T} = 0;
+								$hh_nc_position_info{$position3}->{A_prop} = 0;
+								$hh_nc_position_info{$position3}->{C_prop} = 0;
+								$hh_nc_position_info{$position3}->{G_prop} = 0;
+								$hh_nc_position_info{$position3}->{T_prop} = 0;
+								$hh_nc_position_info{$position3}->{reference} = $reference_nt3;
+								$hh_nc_position_info{$position3}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position3}->{coding} = 0;
+								$hh_nc_position_info{$position3}->{polymorphic} = 1;
+								
+								if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position3}->{$variant_nt3} = ($count);
+									$hh_nc_position_info{$position3}->{$reference_nt3} = $coverage-($count);
+									$hh_nc_position_info{$position3}->{$var3_prop_key} = $var_prop;
+									$hh_nc_position_info{$position3}->{$ref3_prop_key} = $ref_prop;
+								} else {
+									$hh_nc_position_info{$position3}->{$reference_nt3} = $coverage;
+									$hh_nc_position_info{$position3}->{$ref3_prop_key} = 1;
+								}
+							} else { # Product/position HAVE been seen before
+								if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position3}->{$variant_nt3} += ($count);
+									$hh_nc_position_info{$position3}->{$reference_nt3} -= ($count);
+									$hh_nc_position_info{$position3}->{$var3_prop_key} += $var_prop;
+									$hh_nc_position_info{$position3}->{$ref3_prop_key} -= $var_prop;
+								} # NO ACTION REQUIRED if the ref and var are the same
+								
+								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position3}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position3\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
 									
-									if ($hh_nc_position_info{$position}->{cov} != $coverage) {					
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position\n".
-											"## An averaging has taken place.\n";
-									}
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position3\n".
+										"## An averaging has taken place.\n";
+								}
+							}
+							
+							# Do for nucleotide 4 of the variant
+							if (! exists $hh_nc_position_info{$position4}) { # Product/position HAVEN'T been seen
+
+								$hh_nc_position_info{$position4}->{A} = 0;
+								$hh_nc_position_info{$position4}->{C} = 0;
+								$hh_nc_position_info{$position4}->{G} = 0;
+								$hh_nc_position_info{$position4}->{T} = 0;
+								$hh_nc_position_info{$position4}->{A_prop} = 0;
+								$hh_nc_position_info{$position4}->{C_prop} = 0;
+								$hh_nc_position_info{$position4}->{G_prop} = 0;
+								$hh_nc_position_info{$position4}->{T_prop} = 0;
+								$hh_nc_position_info{$position4}->{reference} = $reference_nt4;
+								$hh_nc_position_info{$position4}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position4}->{coding} = 0;
+								$hh_nc_position_info{$position4}->{polymorphic} = 1;
+								
+								if($variant_nt4 ne $reference_nt4) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position4}->{$variant_nt4} = ($count);
+									$hh_nc_position_info{$position4}->{$reference_nt4} = $coverage-($count);
+									$hh_nc_position_info{$position4}->{$var4_prop_key} = $var_prop;
+									$hh_nc_position_info{$position4}->{$ref4_prop_key} = $ref_prop;
+								} else {
+									$hh_nc_position_info{$position4}->{$reference_nt4} = $coverage;
+									$hh_nc_position_info{$position4}->{$ref4_prop_key} = 1;
+								}
+							} else { # Product/position HAVE been seen before
+								if($variant_nt4 ne $reference_nt4) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position4}->{$variant_nt4} += ($count);
+									$hh_nc_position_info{$position4}->{$reference_nt4} -= ($count);
+									$hh_nc_position_info{$position4}->{$var4_prop_key} += $var_prop;
+									$hh_nc_position_info{$position4}->{$ref4_prop_key} -= $var_prop;
+								} # NO ACTION REQUIRED if the ref and var are the same
+								
+								push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position4}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position4\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
 									
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position4\n".
+										"## An averaging has taken place.\n";
+								}
+							}
+							
+							# Do for nucleotide 5 of the variant
+							if (! exists $hh_nc_position_info{$position5}) { # Product/position HAVEN'T been seen before
+								
+								$hh_nc_position_info{$position5}->{A} = 0;
+								$hh_nc_position_info{$position5}->{C} = 0;
+								$hh_nc_position_info{$position5}->{G} = 0;
+								$hh_nc_position_info{$position5}->{T} = 0;
+								$hh_nc_position_info{$position5}->{A_prop} = 0;
+								$hh_nc_position_info{$position5}->{C_prop} = 0;
+								$hh_nc_position_info{$position5}->{G_prop} = 0;
+								$hh_nc_position_info{$position5}->{T_prop} = 0;
+								$hh_nc_position_info{$position5}->{reference} = $reference_nt5;
+								$hh_nc_position_info{$position5}->{cov} = $coverage;
+								push(@{$hh_nc_position_info{$position5}->{cov_arr}},$coverage);
+								#$hh_nc_position_info{$position5}->{coding} = 0;
+								$hh_nc_position_info{$position5}->{polymorphic} = 1;
+								
+								if($variant_nt5 ne $reference_nt5) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position5}->{$variant_nt5} = ($count);
+									$hh_nc_position_info{$position5}->{$reference_nt5} = $coverage-($count);
+									$hh_nc_position_info{$position5}->{$var5_prop_key} = $var_prop;
+									$hh_nc_position_info{$position5}->{$ref5_prop_key} = $ref_prop;
+								} else {
+									$hh_nc_position_info{$position5}->{$reference_nt5} = $coverage;
+									$hh_nc_position_info{$position5}->{$ref5_prop_key} = 1;
+								}
+							} else { # Product/position HAVE been seen before
+								if($variant_nt5 ne $reference_nt5) { # Make sure the reference and variant nts aren't identical
+									$hh_nc_position_info{$position5}->{$variant_nt5} += ($count);
+									$hh_nc_position_info{$position5}->{$reference_nt5} -= ($count);
+									$hh_nc_position_info{$position5}->{$var5_prop_key} += $var_prop;
+									$hh_nc_position_info{$position5}->{$ref5_prop_key} -= $var_prop;
 								}
 								
-								# Do for nucleotide 2 of the variant
-								if (! exists $hh_nc_position_info{$position2}) { # Product/position HAVEN'T been seen
-	
-									$hh_nc_position_info{$position2}->{A} = 0;
-									$hh_nc_position_info{$position2}->{C} = 0;
-									$hh_nc_position_info{$position2}->{G} = 0;
-									$hh_nc_position_info{$position2}->{T} = 0;
-									$hh_nc_position_info{$position2}->{A_prop} = 0;
-									$hh_nc_position_info{$position2}->{C_prop} = 0;
-									$hh_nc_position_info{$position2}->{G_prop} = 0;
-									$hh_nc_position_info{$position2}->{T_prop} = 0;
-									$hh_nc_position_info{$position2}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position2}->{reference} = $reference_nt2;
-									$hh_nc_position_info{$position2}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
-									$hh_nc_position_info{$position2}->{coding} = 0;
-									$hh_nc_position_info{$position2}->{polymorphic} = 1;
+								push(@{$hh_nc_position_info{$position5}->{cov_arr}},$coverage);
+								
+								if ($hh_nc_position_info{$position5}->{cov} != $coverage) {
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									print ERROR_FILE "$file_nm\tN/A\t$position5\t".
+										"There are conflicting coverages reported. ".
+											"An averaging has taken place\n";
+									close ERROR_FILE;
+									chdir('..');
 									
-									if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position2}->{$variant_nt2} = ($count);
-										$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage-($count);
-										$hh_nc_position_info{$position2}->{$var2_prop_key} = $var_prop;
-										$hh_nc_position_info{$position2}->{$ref2_prop_key} = $ref_prop;
-									} else {
-										$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage;
-										$hh_nc_position_info{$position2}->{$ref2_prop_key} = 1;
-									}
-								} else { # Product/position HAVE been seen before
-									if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position2}->{$variant_nt2} += ($count);
-										$hh_nc_position_info{$position2}->{$reference_nt2} -= ($count);
-										$hh_nc_position_info{$position2}->{$var2_prop_key} += $var_prop;
-										$hh_nc_position_info{$position2}->{$ref2_prop_key} -= $var_prop;
-									} # NO ACTION REQUIRED if the ref and var are the same
-									
-									push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
-									
-									if ($hh_nc_position_info{$position2}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position2\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position2\n".
-											"## An averaging has taken place.\n";
-									}
+									print "\n## WARNING: Conflicting coverages reported at ".
+										"$file_nm|N/A|$position5\n".
+										"## An averaging has taken place.\n";
 								}
-								
-								# Do for nucleotide 3 of the variant
-								if (! exists $hh_nc_position_info{$position3}) { # Product/position HAVEN'T been seen
-	
-									$hh_nc_position_info{$position3}->{A} = 0;
-									$hh_nc_position_info{$position3}->{C} = 0;
-									$hh_nc_position_info{$position3}->{G} = 0;
-									$hh_nc_position_info{$position3}->{T} = 0;
-									$hh_nc_position_info{$position3}->{A_prop} = 0;
-									$hh_nc_position_info{$position3}->{C_prop} = 0;
-									$hh_nc_position_info{$position3}->{G_prop} = 0;
-									$hh_nc_position_info{$position3}->{T_prop} = 0;
-									$hh_nc_position_info{$position3}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position3}->{reference} = $reference_nt3;
-									$hh_nc_position_info{$position3}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
-									$hh_nc_position_info{$position3}->{coding} = 0;
-									$hh_nc_position_info{$position3}->{polymorphic} = 1;
-									
-									if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position3}->{$variant_nt3} = ($count);
-										$hh_nc_position_info{$position3}->{$reference_nt3} = $coverage-($count);
-										$hh_nc_position_info{$position3}->{$var3_prop_key} = $var_prop;
-										$hh_nc_position_info{$position3}->{$ref3_prop_key} = $ref_prop;
-									} else {
-										$hh_nc_position_info{$position3}->{$reference_nt3} = $coverage;
-										$hh_nc_position_info{$position3}->{$ref3_prop_key} = 1;
-									}
-								} else { # Product/position HAVE been seen before
-									if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position3}->{$variant_nt3} += ($count);
-										$hh_nc_position_info{$position3}->{$reference_nt3} -= ($count);
-										$hh_nc_position_info{$position3}->{$var3_prop_key} += $var_prop;
-										$hh_nc_position_info{$position3}->{$ref3_prop_key} -= $var_prop;
-									} # NO ACTION REQUIRED if the ref and var are the same
-									
-									push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
-									
-									if ($hh_nc_position_info{$position3}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position3\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position3\n".
-											"## An averaging has taken place.\n";
-									}
-								}
-								
-							} elsif(length($reference_nt) == 4) {
-								#print "\nSaw a 3-nt MNV! $reference_nt at $product_name site $position\n\n";
-								
-								# Add extra variables with values for the 3-nt MNV
-								my $position2 = $position+1;
-								my $position3 = $position+2;
-								my $position4 = $position+3;
-								
-								my $reference_nt2 = substr($reference_nt,1,1);
-								my $reference_nt3 = substr($reference_nt,2,1);
-								my $reference_nt4 = substr($reference_nt,3,1);
-								my $reference_nt = substr($reference_nt,0,1);
-								
-								my $variant_nt2 = substr($variant_nt,1,1);
-								my $variant_nt3 = substr($variant_nt,2,1);
-								my $variant_nt4 = substr($variant_nt,3,1);
-								my $variant_nt = substr($variant_nt,0,1);
-								
-								my $ref_prop_key = "$reference_nt\_prop";
-								my $ref2_prop_key = "$reference_nt2\_prop";
-								my $ref3_prop_key = "$reference_nt3\_prop";
-								my $ref4_prop_key = "$reference_nt4\_prop";
-								
-								my $var_prop_key = "$variant_nt\_prop";
-								my $var2_prop_key = "$variant_nt2\_prop";
-								my $var3_prop_key = "$variant_nt3\_prop";
-								my $var4_prop_key = "$variant_nt4\_prop";
-								
-								# Do for nucleotide 1 of the variant
-								if (! exists $hh_nc_position_info{$position}) { # Product/position HAVEN'T been seen
-									
-									$hh_nc_position_info{$position}->{A} = 0;
-									$hh_nc_position_info{$position}->{C} = 0;
-									$hh_nc_position_info{$position}->{G} = 0;
-									$hh_nc_position_info{$position}->{T} = 0;
-									$hh_nc_position_info{$position}->{A_prop} = 0;
-									$hh_nc_position_info{$position}->{C_prop} = 0;
-									$hh_nc_position_info{$position}->{G_prop} = 0;
-									$hh_nc_position_info{$position}->{T_prop} = 0;
-									$hh_nc_position_info{$position}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position}->{reference} = $reference_nt;
-									$hh_nc_position_info{$position}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
-									#$hh_nc_position_info{$position}->{coding} = 0;
-									$hh_nc_position_info{$position}->{polymorphic} = 1;
-									
-									if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position}->{$variant_nt} = ($count);
-										$hh_nc_position_info{$position}->{$reference_nt} = $coverage-($count);
-										$hh_nc_position_info{$position}->{$var_prop_key} = $var_prop;
-										$hh_nc_position_info{$position}->{$ref_prop_key} = $ref_prop;
-									} else {
-										$hh_nc_position_info{$position}->{$reference_nt} = $coverage;
-										$hh_nc_position_info{$position}->{$ref_prop_key} = 1;
-									}
-								} else { # Product/position HAVE been seen before
-									if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position}->{$variant_nt} += ($count);
-										$hh_nc_position_info{$position}->{$reference_nt} -= ($count);
-										$hh_nc_position_info{$position}->{$var_prop_key} += $var_prop;
-										$hh_nc_position_info{$position}->{$ref_prop_key} -= $var_prop;
-									} # NO ACTION REQUIRED if the ref and var are the same
-									
-									push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
-									
-									if ($hh_nc_position_info{$position}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position\n".
-											"## An averaging has taken place.\n";
-									}
-								}
-								
-								# Do for nucleotide 2 of the variant
-								if (! exists $hh_nc_position_info{$position2}) { # Product/position HAVEN'T been seen
-	
-									$hh_nc_position_info{$position2}->{A} = 0;
-									$hh_nc_position_info{$position2}->{C} = 0;
-									$hh_nc_position_info{$position2}->{G} = 0;
-									$hh_nc_position_info{$position2}->{T} = 0;
-									$hh_nc_position_info{$position2}->{A_prop} = 0;
-									$hh_nc_position_info{$position2}->{C_prop} = 0;
-									$hh_nc_position_info{$position2}->{G_prop} = 0;
-									$hh_nc_position_info{$position2}->{T_prop} = 0;
-									$hh_nc_position_info{$position2}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position2}->{reference} = $reference_nt2;
-									$hh_nc_position_info{$position2}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
-									$hh_nc_position_info{$position2}->{coding} = 0;
-									$hh_nc_position_info{$position2}->{polymorphic} = 1;
-									
-									if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position2}->{$variant_nt2} = ($count);
-										$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage-($count);
-										$hh_nc_position_info{$position2}->{$var2_prop_key} = $var_prop;
-										$hh_nc_position_info{$position2}->{$ref2_prop_key} = $ref_prop;
-									} else {
-										$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage;
-										$hh_nc_position_info{$position2}->{$ref2_prop_key} = 1;
-									}
-								} else { # Product/position HAVE been seen before
-									if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position2}->{$variant_nt2} += ($count);
-										$hh_nc_position_info{$position2}->{$reference_nt2} -= ($count);
-										$hh_nc_position_info{$position2}->{$var2_prop_key} += $var_prop;
-										$hh_nc_position_info{$position2}->{$ref2_prop_key} -= $var_prop;
-									} # NO ACTION REQUIRED if the ref and var are the same
-									
-									push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
-									
-									if ($hh_nc_position_info{$position2}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position2\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position2\n".
-											"## An averaging has taken place.\n";
-									}
-								}
-								
-								# Do for nucleotide 3 of the variant
-								if (! exists $hh_nc_position_info{$position3}) { # Product/position HAVEN'T been seen
-	
-									$hh_nc_position_info{$position3}->{A} = 0;
-									$hh_nc_position_info{$position3}->{C} = 0;
-									$hh_nc_position_info{$position3}->{G} = 0;
-									$hh_nc_position_info{$position3}->{T} = 0;
-									$hh_nc_position_info{$position3}->{A_prop} = 0;
-									$hh_nc_position_info{$position3}->{C_prop} = 0;
-									$hh_nc_position_info{$position3}->{G_prop} = 0;
-									$hh_nc_position_info{$position3}->{T_prop} = 0;
-									$hh_nc_position_info{$position3}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position3}->{reference} = $reference_nt3;
-									$hh_nc_position_info{$position3}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
-									$hh_nc_position_info{$position3}->{coding} = 0;
-									$hh_nc_position_info{$position3}->{polymorphic} = 1;
-									
-									if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position3}->{$variant_nt3} = ($count);
-										$hh_nc_position_info{$position3}->{$reference_nt3} = $coverage-($count);
-										$hh_nc_position_info{$position3}->{$var3_prop_key} = $var_prop;
-										$hh_nc_position_info{$position3}->{$ref3_prop_key} = $ref_prop;
-									} else {
-										$hh_nc_position_info{$position3}->{$reference_nt3} = $coverage;
-										$hh_nc_position_info{$position3}->{$ref3_prop_key} = 1;
-									}
-								} else { # Product/position HAVE been seen before
-									if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position3}->{$variant_nt3} += ($count);
-										$hh_nc_position_info{$position3}->{$reference_nt3} -= ($count);
-										$hh_nc_position_info{$position3}->{$var3_prop_key} += $var_prop;
-										$hh_nc_position_info{$position3}->{$ref3_prop_key} -= $var_prop;
-									} # NO ACTION REQUIRED if the ref and var are the same
-									
-									push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
-									
-									if ($hh_nc_position_info{$position3}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position3\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position3\n".
-											"## An averaging has taken place.\n";
-									}
-								}
-								
-								# Do for nucleotide 4 of the variant
-								if (! exists $hh_nc_position_info{$position4}) { # Product/position HAVEN'T been seen
-									
-									$hh_nc_position_info{$position4}->{A} = 0;
-									$hh_nc_position_info{$position4}->{C} = 0;
-									$hh_nc_position_info{$position4}->{G} = 0;
-									$hh_nc_position_info{$position4}->{T} = 0;
-									$hh_nc_position_info{$position4}->{A_prop} = 0;
-									$hh_nc_position_info{$position4}->{C_prop} = 0;
-									$hh_nc_position_info{$position4}->{G_prop} = 0;
-									$hh_nc_position_info{$position4}->{T_prop} = 0;
-									$hh_nc_position_info{$position4}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position4}->{reference} = $reference_nt4;
-									$hh_nc_position_info{$position4}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
-									$hh_nc_position_info{$position4}->{coding} = 0;
-									$hh_nc_position_info{$position4}->{polymorphic} = 1;
-									
-									if($variant_nt4 ne $reference_nt4) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position4}->{$variant_nt4} = ($count);
-										$hh_nc_position_info{$position4}->{$reference_nt4} = $coverage-($count);
-										$hh_nc_position_info{$position4}->{$var4_prop_key} = $var_prop;
-										$hh_nc_position_info{$position4}->{$ref4_prop_key} = $ref_prop;
-										
-									} else {
-										$hh_nc_position_info{$position4}->{$reference_nt4} = $coverage;
-										$hh_nc_position_info{$position4}->{$ref4_prop_key} = 1;
-									}
-								} else { # Product/position HAVE been seen before
-									if($variant_nt4 ne $reference_nt4) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position4}->{$variant_nt4} += ($count);
-										$hh_nc_position_info{$position4}->{$reference_nt4} -= ($count);
-										$hh_nc_position_info{$position4}->{$var4_prop_key} += $var_prop;
-										$hh_nc_position_info{$position4}->{$ref4_prop_key} -= $var_prop;
-									} # NO ACTION REQUIRED if the ref and var are the same
-									
-									push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
-									
-									if ($hh_nc_position_info{$position4}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position4\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position4\n".
-											"## An averaging has taken place.\n";
-									}
-								}
-	
-							} elsif(length($reference_nt) == 5) {
-								#print "\nSaw a 3-nt MNV! $reference_nt at $product_name site $position\n\n";
-								
-								# Add extra variables with values for the 3-nt MNV
-								my $position2 = $position+1;
-								my $position3 = $position+2;
-								my $position4 = $position+3;
-								my $position5 = $position+4;
-								
-								my $reference_nt2 = substr($reference_nt,1,1);
-								my $reference_nt3 = substr($reference_nt,2,1);
-								my $reference_nt4 = substr($reference_nt,3,1);
-								my $reference_nt5 = substr($reference_nt,4,1);
-								my $reference_nt = substr($reference_nt,0,1);
-								
-								my $variant_nt2 = substr($variant_nt,1,1);
-								my $variant_nt3 = substr($variant_nt,2,1);
-								my $variant_nt4 = substr($variant_nt,3,1);
-								my $variant_nt5 = substr($variant_nt,4,1);
-								my $variant_nt = substr($variant_nt,0,1);
-								
-								my $ref_prop_key = "$reference_nt\_prop";
-								my $ref2_prop_key = "$reference_nt2\_prop";
-								my $ref3_prop_key = "$reference_nt3\_prop";
-								my $ref4_prop_key = "$reference_nt4\_prop";
-								my $ref5_prop_key = "$reference_nt5\_prop";
-								
-								my $var_prop_key = "$variant_nt\_prop";
-								my $var2_prop_key = "$variant_nt2\_prop";
-								my $var3_prop_key = "$variant_nt3\_prop";
-								my $var4_prop_key = "$variant_nt4\_prop";
-								my $var5_prop_key = "$variant_nt5\_prop";
-								
-								# Do for nucleotide 1 of the variant
-								if (! exists $hh_nc_position_info{$position}) { # Product/position HAVEN'T been seen
-								
-									$hh_nc_position_info{$position}->{A} = 0;
-									$hh_nc_position_info{$position}->{C} = 0;
-									$hh_nc_position_info{$position}->{G} = 0;
-									$hh_nc_position_info{$position}->{T} = 0;
-									$hh_nc_position_info{$position}->{A_prop} = 0;
-									$hh_nc_position_info{$position}->{C_prop} = 0;
-									$hh_nc_position_info{$position}->{G_prop} = 0;
-									$hh_nc_position_info{$position}->{T_prop} = 0;
-									$hh_nc_position_info{$position}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position}->{reference} = $reference_nt;
-									$hh_nc_position_info{$position}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
-									#$hh_nc_position_info{$position}->{coding} = 0;
-									$hh_nc_position_info{$position}->{polymorphic} = 1;
-									
-									if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position}->{$variant_nt} = ($count);
-										$hh_nc_position_info{$position}->{$reference_nt} = $coverage-($count);
-										$hh_nc_position_info{$position}->{$var_prop_key} = $var_prop;
-										$hh_nc_position_info{$position}->{$ref_prop_key} = $ref_prop;
-									} else {
-										$hh_nc_position_info{$position}->{$reference_nt} = $coverage;
-										$hh_nc_position_info{$position}->{$ref_prop_key} = 1;
-									}
-									
-								} else { # Product/position HAVE been seen before
-									if($variant_nt ne $reference_nt) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position}->{$variant_nt} += ($count);
-										$hh_nc_position_info{$position}->{$reference_nt} -= $coverage-($count);
-										$hh_nc_position_info{$position}->{$var_prop_key} += $var_prop;
-										$hh_nc_position_info{$position}->{$ref_prop_key} -= $var_prop;
-									} # NO ACTION REQUIRED if the ref and var are the same
-									
-									push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
-									
-									if ($hh_nc_position_info{$position}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position\n".
-											"## An averaging has taken place.\n";
-									}
-								}
-								
-								# Do for nucleotide 2 of the variant
-								if (! exists $hh_nc_position_info{$position2}) { # Product/position HAVEN'T been seen
-	
-									$hh_nc_position_info{$position2}->{A} = 0;
-									$hh_nc_position_info{$position2}->{C} = 0;
-									$hh_nc_position_info{$position2}->{G} = 0;
-									$hh_nc_position_info{$position2}->{T} = 0;
-									$hh_nc_position_info{$position2}->{A_prop} = 0;
-									$hh_nc_position_info{$position2}->{C_prop} = 0;
-									$hh_nc_position_info{$position2}->{G_prop} = 0;
-									$hh_nc_position_info{$position2}->{T_prop} = 0;
-									$hh_nc_position_info{$position2}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position2}->{reference} = $reference_nt2;
-									$hh_nc_position_info{$position2}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
-									$hh_nc_position_info{$position2}->{coding} = 0;
-									$hh_nc_position_info{$position2}->{polymorphic} = 1;
-									
-									if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position2}->{$variant_nt2} = ($count);
-										$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage-($count);
-										$hh_nc_position_info{$position2}->{$var2_prop_key} = $var_prop;
-										$hh_nc_position_info{$position2}->{$ref2_prop_key} = $ref_prop;
-									} else {
-										$hh_nc_position_info{$position2}->{$reference_nt2} = $coverage;
-										$hh_nc_position_info{$position2}->{$ref2_prop_key} = 1;
-									}
-								} else { # Product/position HAVE been seen before
-									if($variant_nt2 ne $reference_nt2) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position2}->{$variant_nt2} += ($count);
-										$hh_nc_position_info{$position2}->{$reference_nt2} -= ($count);
-										$hh_nc_position_info{$position2}->{$var2_prop_key} += $var_prop;
-										$hh_nc_position_info{$position2}->{$ref2_prop_key} -= $var_prop;
-									} # NO ACTION REQUIRED if the ref and var are the same
-									
-									push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
-									
-									if ($hh_nc_position_info{$position2}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position2\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position2\n".
-											"## An averaging has taken place.\n";
-									}
-								}
-								
-								# Do for nucleotide 3 of the variant
-								if (! exists $hh_nc_position_info{$position3}) { # Product/position HAVEN'T been seen
-	
-									$hh_nc_position_info{$position3}->{A} = 0;
-									$hh_nc_position_info{$position3}->{C} = 0;
-									$hh_nc_position_info{$position3}->{G} = 0;
-									$hh_nc_position_info{$position3}->{T} = 0;
-									$hh_nc_position_info{$position3}->{A_prop} = 0;
-									$hh_nc_position_info{$position3}->{C_prop} = 0;
-									$hh_nc_position_info{$position3}->{G_prop} = 0;
-									$hh_nc_position_info{$position3}->{T_prop} = 0;
-									$hh_nc_position_info{$position3}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position3}->{reference} = $reference_nt3;
-									$hh_nc_position_info{$position3}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
-									$hh_nc_position_info{$position3}->{coding} = 0;
-									$hh_nc_position_info{$position3}->{polymorphic} = 1;
-									
-									if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position3}->{$variant_nt3} = ($count);
-										$hh_nc_position_info{$position3}->{$reference_nt3} = $coverage-($count);
-										$hh_nc_position_info{$position3}->{$var3_prop_key} = $var_prop;
-										$hh_nc_position_info{$position3}->{$ref3_prop_key} = $ref_prop;
-									} else {
-										$hh_nc_position_info{$position3}->{$reference_nt3} = $coverage;
-										$hh_nc_position_info{$position3}->{$ref3_prop_key} = 1;
-									}
-								} else { # Product/position HAVE been seen before
-									if($variant_nt3 ne $reference_nt3) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position3}->{$variant_nt3} += ($count);
-										$hh_nc_position_info{$position3}->{$reference_nt3} -= ($count);
-										$hh_nc_position_info{$position3}->{$var3_prop_key} += $var_prop;
-										$hh_nc_position_info{$position3}->{$ref3_prop_key} -= $var_prop;
-									} # NO ACTION REQUIRED if the ref and var are the same
-									
-									push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
-									
-									if ($hh_nc_position_info{$position3}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position3\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position3\n".
-											"## An averaging has taken place.\n";
-									}
-								}
-								
-								# Do for nucleotide 4 of the variant
-								if (! exists $hh_nc_position_info{$position4}) { # Product/position HAVEN'T been seen
-	
-									$hh_nc_position_info{$position4}->{A} = 0;
-									$hh_nc_position_info{$position4}->{C} = 0;
-									$hh_nc_position_info{$position4}->{G} = 0;
-									$hh_nc_position_info{$position4}->{T} = 0;
-									$hh_nc_position_info{$position4}->{A_prop} = 0;
-									$hh_nc_position_info{$position4}->{C_prop} = 0;
-									$hh_nc_position_info{$position4}->{G_prop} = 0;
-									$hh_nc_position_info{$position4}->{T_prop} = 0;
-									$hh_nc_position_info{$position4}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position4}->{reference} = $reference_nt4;
-									$hh_nc_position_info{$position4}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
-									$hh_nc_position_info{$position4}->{coding} = 0;
-									$hh_nc_position_info{$position4}->{polymorphic} = 1;
-									
-									if($variant_nt4 ne $reference_nt4) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position4}->{$variant_nt4} = ($count);
-										$hh_nc_position_info{$position4}->{$reference_nt4} = $coverage-($count);
-										$hh_nc_position_info{$position4}->{$var4_prop_key} = $var_prop;
-										$hh_nc_position_info{$position4}->{$ref4_prop_key} = $ref_prop;
-									} else {
-										$hh_nc_position_info{$position4}->{$reference_nt4} = $coverage;
-										$hh_nc_position_info{$position4}->{$ref4_prop_key} = 1;
-									}
-								} else { # Product/position HAVE been seen before
-									if($variant_nt4 ne $reference_nt4) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position4}->{$variant_nt4} += ($count);
-										$hh_nc_position_info{$position4}->{$reference_nt4} -= ($count);
-										$hh_nc_position_info{$position4}->{$var4_prop_key} += $var_prop;
-										$hh_nc_position_info{$position4}->{$ref4_prop_key} -= $var_prop;
-									} # NO ACTION REQUIRED if the ref and var are the same
-									
-									push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
-									
-									if ($hh_nc_position_info{$position4}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position4\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position4\n".
-											"## An averaging has taken place.\n";
-									}
-								}
-								
-								# Do for nucleotide 5 of the variant
-								if (! exists $hh_nc_position_info{$position5}) { # Product/position HAVEN'T been seen before
-									
-									$hh_nc_position_info{$position5}->{A} = 0;
-									$hh_nc_position_info{$position5}->{C} = 0;
-									$hh_nc_position_info{$position5}->{G} = 0;
-									$hh_nc_position_info{$position5}->{T} = 0;
-									$hh_nc_position_info{$position5}->{A_prop} = 0;
-									$hh_nc_position_info{$position5}->{C_prop} = 0;
-									$hh_nc_position_info{$position5}->{G_prop} = 0;
-									$hh_nc_position_info{$position5}->{T_prop} = 0;
-									$hh_nc_position_info{$position5}->{fasta} = $fasta_file;
-									$hh_nc_position_info{$position5}->{reference} = $reference_nt5;
-									$hh_nc_position_info{$position5}->{cov} = $coverage;
-									push(@{$hh_nc_position_info{$position5}->{cov_arr}},$coverage);
-									$hh_nc_position_info{$position5}->{coding} = 0;
-									$hh_nc_position_info{$position5}->{polymorphic} = 1;
-									
-									if($variant_nt5 ne $reference_nt5) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position5}->{$variant_nt5} = ($count);
-										$hh_nc_position_info{$position5}->{$reference_nt5} = $coverage-($count);
-										$hh_nc_position_info{$position5}->{$var5_prop_key} = $var_prop;
-										$hh_nc_position_info{$position5}->{$ref5_prop_key} = $ref_prop;
-									} else {
-										$hh_nc_position_info{$position5}->{$reference_nt5} = $coverage;
-										$hh_nc_position_info{$position5}->{$ref5_prop_key} = 1;
-									}
-								} else { # Product/position HAVE been seen before
-									if($variant_nt5 ne $reference_nt5) { # Make sure the reference and variant nts aren't identical
-										$hh_nc_position_info{$position5}->{$variant_nt5} += ($count);
-										$hh_nc_position_info{$position5}->{$reference_nt5} -= ($count);
-										$hh_nc_position_info{$position5}->{$var5_prop_key} += $var_prop;
-										$hh_nc_position_info{$position5}->{$ref5_prop_key} -= $var_prop;
-									}
-									
-									push(@{$hh_nc_position_info{$position5}->{cov_arr}},$coverage);
-									
-									if ($hh_nc_position_info{$position5}->{cov} != $coverage) {
-										chdir('SNPGenie_Results');
-										open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-										print ERROR_FILE "$file_nm\tN/A\t$position5\t".
-											"There are conflicting coverages reported. ".
-												"An averaging has taken place\n";
-										close ERROR_FILE;
-										chdir('..');
-										
-										print "\n## WARNING: Conflicting coverages reported at ".
-											"$file_nm|N/A|$position5\n".
-											"## An averaging has taken place.\n";
-									}
-								}
-							} # END MNV of LENGTH 5										
-						} # MULTI-SEQ MODE
+							}
+						} # END MNV of LENGTH 5	
 					} # NON-CODING variant, i.e., no product, blank ''
 				} # for MNV, ref length == variant length	
 			} # MNV
 		} # not line 1
 	} # end of SNP Report, end of work populating the multidimensional hash
 	close $TEMP_SNP_REPORT_HANDLE;
-	#print ".";
+	print "COMPLETED.\n";
 	
-	# We need to ADD OTHER PRODUCTS to the hash which were found in the GTF file,
-	# in the case that they were absent from the SNP report.
+	print "\nLigating gene segments (computationally, of course!)... ";
+	# New segments approach and streamlining for THIS SNP REPORT
 	foreach (@product_names_arr) {
 		my $product_name = $_;
-		my $fasta_file = $product_to_fasta_file{$product_name};
 		
 		if(! exists $hh_product_position_info{$product_name}) {
-			#print "product name is: $product_name\n"; # NOPE
-			my @product_coord_arr = &get_product_coordinates($_,$curr_snp_report_name);
+			#print "product name is: $product_name\n";
 			
-			my $product_start = $product_coord_arr[0];
-			my $product_stop = $product_coord_arr[1];
+			# Retrieve coordinates
+			my @product_coord_arr = @{$product_coordinates_harr{$product_name}->{product_coord_arr}};
 			
-			my $product_start_2;
-			my $product_stop_2;
+			my %product_starts;
+			my %product_stops;
 			
-			if ($product_coord_arr[2]) {
-				$product_start_2 = $product_coord_arr[2];
-				$product_stop_2 = $product_coord_arr[3];
-				#print "\nYes, there's a second sequence and it goes from $product_start_2 to $product_stop_2\n";
+			my $num_segments = (@product_coord_arr / 2);
+			for(my $i=1; $i<=scalar(@product_coord_arr); $i++) {
+				$product_starts{$i} = $product_coord_arr[2*$i-2];
+				$product_stops{$i} = $product_coord_arr[2*$i-1];
 			}
 			
-			$hh_product_position_info{$product_name}->{fasta} = $fasta_file;
-			$hh_product_position_info{$product_name}->{start} = $product_start;
-			$hh_product_position_info{$product_name}->{stop} = $product_stop;
-			
-			if ($product_start_2) {
-				$hh_product_position_info{$product_name}->{start_2} = $product_start_2;
-				$hh_product_position_info{$product_name}->{stop_2} = $product_stop_2;
+			# Store start and stop for all segments
+			foreach(sort {$a <=> $b} (keys %product_starts)) {
+				my $this_start_key = 'start_' . $_;
+				my $this_stop_key = 'stop_' . $_;
+				$hh_product_position_info{$product_name}->{$this_start_key} = $product_starts{$_};
+				$hh_product_position_info{$product_name}->{$this_stop_key} = $product_stops{$_};
 			}
+			# Store number of segments
+			$hh_product_position_info{$product_name}->{num_segments} = $num_segments;
 		}
 	}
 	
@@ -3648,616 +3480,608 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	
 	my @curr_products = sort(keys %hh_product_position_info);
 	#print "\n@curr_products";
-	my @curr_products_ordered_by_start = sort { $hh_product_position_info{$a}->{start} <=> $hh_product_position_info{$b}->{start} } keys %hh_product_position_info;
+	
+	# Ordering sorting products by the first segment's start site in the genome
+	my @curr_products_ordered_by_start = 
+		sort { $hh_product_position_info{$a}->{start_1} <=> $hh_product_position_info{$b}->{start_1} } keys %hh_product_position_info;
 	
 	#print "\nProducts sorted by start sites:\n";
 	#foreach (@curr_products_ordered_by_start) {
-	#	print "$_\t" . $hh_product_position_info{$_}->{start} . "\n";
+	#	print "$_\t" . $hh_product_position_info{$_}->{start_1} . "\n";
 	#}
 	
+	print "COMPLETED.\n";
+	
 	my $product_counter = 0;
-
 	my $pop_summary_line = '';
-
-	# Deal with NON-CODING STUFF if we're in ONE-SEQUENCE MODE
-	if($multi_seq_mode == 0) {
-		# Put the sequence in a scalar variable
-		my $seq;
-		open (INFILE, $the_fasta_file);
-		while (<INFILE>) {
-			unless (/>/) {
-				#chomp;
-				# CHOMP for 3 operating systems
-				if($_ =~ /\r\n$/) {
-					$_ =~ s/\r\n//;
-				} elsif($_ =~ /\r$/) {
-					$_ =~ s/\r//;
-				} elsif($_ =~ /\n$/) {
-					$_ =~ s/\n//;
-				}
-				
-				$seq .= $_;
-			}
-		}
-		close INFILE;
+	
+	print "\nCalculating and storing non-protein-coding genome and variant data (\"junk\" gets a bad rap!)... ";
+	# NONCODING: CALCULATE AVERAGE COVERAGE at each of the sites in this product.
+	# We are REPLACING the coverage currently stored with this.
+	# FIRST, extract the positions that have already been stored, i.e., were present
+	# in the SNP report
+	my @stored_positions_sorted = sort {$a <=> $b} (keys %hh_nc_position_info); # only the polymorphic
+	#print "\n\nSo far, we have stored: @stored_positions_sorted\n";
+	foreach my $curr_spot (@stored_positions_sorted) {
+		my $cov_sum = 0;
+		my $cov_denom = 0;
 		
-		
-		
-		
-		
-		# NONCODING: CALCULATE AVERAGE COVERAGE at each of the sites in this product.
-		# We are REPLACING the coverage currently stored with this.
-		# FIRST, extract the positions that have already been stored, i.e., were present
-		# in the SNP report
-		my @stored_positions_sorted = sort {$a <=> $b} (keys %hh_nc_position_info);
-		#print "\n\nSo far, we have stored: @stored_positions_sorted\n";
-		foreach my $curr_spot (@stored_positions_sorted) {
-			my $cov_sum = 0;
-			my $cov_denom = 0;
-			
-			foreach my $cov_mm (@{$hh_nc_position_info{$curr_spot}->{cov_arr}}) {
-				$cov_sum += $cov_mm;
-				$cov_denom += 1;
-			}
-			
-			my $this_avg_cov = ($cov_sum / $cov_denom);
-			$hh_nc_position_info{$curr_spot}->{cov} = $this_avg_cov;
-			
-			# DETERMINE THE MAJORITY NUCLEOTIDE, TOO
-			my $A = $hh_nc_position_info{$curr_spot}->{A};
-			my $C = $hh_nc_position_info{$curr_spot}->{C};
-			my $G = $hh_nc_position_info{$curr_spot}->{G};
-			my $T = $hh_nc_position_info{$curr_spot}->{T};
-			
-			my $majority_nucleotide; # a variant nucleotide may have fixed
-			my $curr_majority_count = 0;
-			if($A > $curr_majority_count) {
-				$curr_majority_count = $A;
-				$majority_nucleotide = 'A';
-			}
-			if($C > $curr_majority_count) {
-				$curr_majority_count = $C;
-				$majority_nucleotide = 'C';
-			} 
-			if($G > $curr_majority_count) {
-				$curr_majority_count = $G;
-				$majority_nucleotide = 'G';
-			} 
-			if($T > $curr_majority_count) {
-				$curr_majority_count = $T;
-				$majority_nucleotide = 'T';
-			}
-			
-			$hh_nc_position_info{$curr_spot}->{maj_nt} = $majority_nucleotide;
-			
-			#print "\n\nAt site $curr_spot, the majority nucleotide is $majority_nucleotide and ".
-			#	"the average coverage is $this_avg_cov\n";
-
-			# WARNING if there is a negative number of sites because of conflicting
-			# coverages; round negative nucleotide counts to 0
-			if($A < 0) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-				# FILE | PRODUCT | SITE | WARNING
-				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-					"imply a negative number of A nucleotides: $A. This most often results from variants ".
-					"which are assigned to the wrong site in the SNP Report. Results at this site ".
-					"are unreliable; A count set to 0; proceed with caution.\n";
-				close ERROR_FILE;
-				chdir('..');
-				
-				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-					"## the variant data imply a negative number of A nucleotides: $A. This most often results from\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-					"## are unreliable; A count set to 0; proceed with caution.\n";
-				$hh_nc_position_info{$curr_spot}->{A} = 0;
-			}
-			if($C < 0) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-				# FILE | PRODUCT | SITE | WARNING
-				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-					"imply a negative number of C nucleotides: $C. This most often results from variants ".
-					"which are assigned to the wrong site in the SNP Report. Results at this site ".
-					"are unreliable; C count set to 0; proceed with caution.\n";
-				close ERROR_FILE;
-				chdir('..');
-				
-				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-					"## the variant data imply a negative number of C nucleotides: $C. This most often results from\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-					"## are unreliable; C count set to 0; proceed with caution.\n";
-				$hh_nc_position_info{$curr_spot}->{C} = 0;
-			}
-			if($G < 0) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-				# FILE | PRODUCT | SITE | WARNING
-				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-					"imply a negative number of G nucleotides: $G. This most often results from variants ".
-					"which are assigned to the wrong site in the SNP Report. Results at this site ".
-					"are unreliable; G count set to 0; proceed with caution.\n";
-				close ERROR_FILE;
-				chdir('..');
-				
-				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-					"## the variant data imply a negative number of G nucleotides: $G. This most often results from\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-					"## are unreliable; G count set to 0; proceed with caution.\n";
-				$hh_nc_position_info{$curr_spot}->{G} = 0;
-			}
-			if($T < 0) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-				# FILE | PRODUCT | SITE | WARNING
-				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-					"imply a negative number of T nucleotides: $T. This most often results from variants ".
-					"which are assigned to the wrong site in the SNP Report. Results at this site ".
-					"are unreliable; T count set to 0; proceed with caution.\n";
-				close ERROR_FILE;
-				chdir('..');
-				
-				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-					"## the variant data imply a negative number of T nucleotides: $T. This most often results from\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-					"## are unreliable; T count set to 0; proceed with caution.\n";
-				$hh_nc_position_info{$curr_spot}->{T} = 0;
-			}
-			
-			# Do the same warning and correction for the proportion data
-			my $A_prop = $hh_nc_position_info{$curr_spot}->{A_prop};
-			my $C_prop = $hh_nc_position_info{$curr_spot}->{C_prop};
-			my $G_prop = $hh_nc_position_info{$curr_spot}->{G_prop};
-			my $T_prop = $hh_nc_position_info{$curr_spot}->{T_prop};
-			
-			if($A_prop < 0) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-				# FILE | PRODUCT | SITE | WARNING
-				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-					"imply a negative proportion of A nucleotides of $A_prop. This may result from rounding error, ".
-					"in which case the number will be very small in magnitude, or variants ".
-					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
-					"are unreliable. In either case, A prop has set to 0; proceed with caution.\n";
-				close ERROR_FILE;
-				chdir('..');
-				
-				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-					"## the variant data imply a negative proportion of A nucleotides: $A_prop.\n".
-					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-					"## may be unreliable; A prop set to 0; proceed with caution.\n";
-				$hh_nc_position_info{$curr_spot}->{A_prop} = 0;
-			}
-			if($C_prop < 0) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-				# FILE | PRODUCT | SITE | WARNING
-				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-					"imply a negative proportion of C nucleotides of $C_prop. This may result from rounding error, ".
-					"in which case the number will be very small in magnitude, or variants ".
-					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
-					"are unreliable. In either case, C prop has set to 0; proceed with caution.\n";
-				close ERROR_FILE;
-				chdir('..');
-				
-				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-					"## the variant data imply a negative proportion of C nucleotides: $C_prop.\n".
-					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-					"## may be unreliable; C prop set to 0; proceed with caution.\n";
-				$hh_nc_position_info{$curr_spot}->{C_prop} = 0;
-			}
-			if($G_prop < 0) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-				# FILE | PRODUCT | SITE | WARNING
-				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-					"imply a negative proportion of G nucleotides of $G_prop. This may result from rounding error, ".
-					"in which case the number will be very small in magnitude, or variants ".
-					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
-					"are unreliable. In either case, G prop has set to 0; proceed with caution.\n";
-				close ERROR_FILE;
-				chdir('..');
-				
-				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-					"## the variant data imply a negative proportion of G nucleotides: $G_prop.\n".
-					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-					"## may be unreliable; G prop set to 0; proceed with caution.\n";
-				$hh_nc_position_info{$curr_spot}->{G_prop} = 0;
-			}
-			if($T_prop < 0) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-				# FILE | PRODUCT | SITE | WARNING
-				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-					"imply a negative proportion of T nucleotides of $T_prop. This may result from rounding error, ".
-					"in which case the number will be very small in magnitude, or variants ".
-					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
-					"are unreliable. In either case, T prop has set to 0; proceed with caution.\n";
-				close ERROR_FILE;
-				chdir('..');
-				
-				print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-					"## the variant data imply a negative proportion of T nucleotides: $T_prop.\n".
-					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-					"## may be unreliable; T prop set to 0; proceed with caution.\n";
-				$hh_nc_position_info{$curr_spot}->{T_prop} = 0;
-			}
-		} # finish calculating mean coverage for noncoding sites
-		
-		# EXCLUDE sites with 0 actual variants, or else exclude variants BELOW MAF
-		my $variants_excluded = 0;
-		#my %variants_excluded;
-		foreach my $curr_spot (@stored_positions_sorted) {				
-			my $cov = $hh_nc_position_info{$curr_spot}->{cov};
-			my $min_COUNT = ($minfreq * $cov);
-			
-			my $A = $hh_nc_position_info{$curr_spot}->{A};
-			my $C = $hh_nc_position_info{$curr_spot}->{C};
-			my $G = $hh_nc_position_info{$curr_spot}->{G};
-			my $T = $hh_nc_position_info{$curr_spot}->{T};
-			
-			my $A_prop = $hh_nc_position_info{$curr_spot}->{A_prop};
-			my $C_prop = $hh_nc_position_info{$curr_spot}->{C_prop};
-			my $G_prop = $hh_nc_position_info{$curr_spot}->{G_prop};
-			my $T_prop = $hh_nc_position_info{$curr_spot}->{T_prop};
-			
-			my $majority_nucleotide = $hh_nc_position_info{$curr_spot}->{maj_nt};
-			my $majority_prop_key = "$majority_nucleotide\_prop";
-			my $curr_majority_count = $hh_nc_position_info{$curr_spot}->{$majority_nucleotide};
-			
-			#print "\n\nFOR THE MIN MAF TEST: $curr_spot\n".
-			#	"\nMajority nucleotide: $majority_nucleotide\n".
-			#	"Count: $curr_majority_count\nCov: $cov\nMin count: $min_COUNT\n".
-			#	"Min freq: $minfreq\nA: $A\nC: $C\nG: $G\nT: $T\n".
-			#	"A prop: $A_prop\nC prop: $C_prop\nG prop: $G_prop\nT prop: $T_prop\n";
-			
-			my $leftover_prop;
-			
-			if($curr_majority_count > $min_COUNT) { # Make sure there are site data
-				if(($A_prop > 0) && ($A_prop < $minfreq)) {
-					$variants_excluded++;
-					$hh_nc_position_info{$curr_spot}->{cov} -= $A;
-					$hh_nc_position_info{$curr_spot}->{A} = 0;
-					$A = 0;
-					$hh_nc_position_info{$curr_spot}->{$majority_prop_key} += $A_prop;
-					$hh_nc_position_info{$curr_spot}->{A_prop} = 0;
-					$leftover_prop += $A_prop;
-					$A_prop = 0;
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					print ERROR_FILE "$file_nm\tNA\t$curr_spot\t".
-						"Variant 'A' excluded from analysis because it falls below the minimum ".
-							"minor allele frequency\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## Variant 'A' excluded from analysis because it falls below the\n".
-						"## minimum minor allele frequency at:\n".
-						"## $file_nm|$curr_spot\n";
-				} 
-				if(($C_prop > 0) && ($C_prop < $minfreq)) {
-					$variants_excluded++;
-					$hh_nc_position_info{$curr_spot}->{cov} -= $C;
-					$hh_nc_position_info{$curr_spot}->{C} = 0;
-					$C = 0;
-					$hh_nc_position_info{$curr_spot}->{$majority_prop_key} += $C_prop;
-					$hh_nc_position_info{$curr_spot}->{C_prop} = 0;
-					$leftover_prop += $C_prop;
-					$C_prop = 0;
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					print ERROR_FILE "$file_nm\tNA\t$curr_spot\t".
-						"Variant 'C' excluded from analysis because it falls below the minimum ".
-							"minor allele frequency\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## Variant 'C' excluded from analysis because it falls below the\n".
-						"## minimum minor allele frequency at:\n".
-						"## $file_nm|$curr_spot\n";
-				} 
-				if(($G_prop > 0) && ($G_prop < $minfreq)) {
-					$variants_excluded++;
-					$hh_nc_position_info{$curr_spot}->{cov} -= $G;
-					$hh_nc_position_info{$curr_spot}->{G} = 0;
-					$G = 0;
-					$hh_nc_position_info{$curr_spot}->{$majority_prop_key} += $G_prop;
-					$hh_nc_position_info{$curr_spot}->{G_prop} = 0;
-					$leftover_prop += $G_prop;
-					$G_prop = 0;
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					print ERROR_FILE "$file_nm\tNA\t$curr_spot\t".
-						"Variant 'G' excluded from analysis because it falls below the minimum ".
-							"minor allele frequency\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## Variant 'G' excluded from analysis because it falls below the\n".
-						"## minimum minor allele frequency at:\n".
-						"## $file_nm|$curr_spot\n";
-				} 
-				if(($T_prop > 0) && ($T_prop < $minfreq)) {
-					$variants_excluded++;
-					$hh_nc_position_info{$curr_spot}->{cov} -= $T;
-					$hh_nc_position_info{$curr_spot}->{T} = 0;
-					$T = 0;
-					$hh_nc_position_info{$curr_spot}->{$majority_prop_key} += $T_prop;
-					$hh_nc_position_info{$curr_spot}->{T_prop} = 0;
-					$leftover_prop += $T_prop;
-					$T_prop = 0;
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					print ERROR_FILE "$file_nm\tNA\t$curr_spot\t".
-						"Variant 'T' excluded from analysis because it falls below the minimum ".
-							"minor allele frequency\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## Variant 'T' excluded from analysis because it falls below the\n".
-						"## minimum minor allele frequency at:\n".
-						"## $file_nm|$curr_spot\n";
-				}
-			} # sites are further normalized later
-			
-			if($majority_prop_key eq 'A_prop') {
-				$A_prop += $leftover_prop;
-			} elsif($majority_prop_key eq 'C_prop') {
-				$C_prop += $leftover_prop;
-			} elsif($majority_prop_key eq 'G_prop') {
-				$G_prop += $leftover_prop;
-			} elsif($majority_prop_key eq 'T_prop') {
-				$T_prop += $leftover_prop;
-			}
-			
-			my $nt_sum = ($A + $C + $G + $T);
-			my $nt_prop_sum = ($A_prop + $C_prop + $G_prop + $T_prop);
-			my $updated_cov = $hh_nc_position_info{$curr_spot}->{cov};
-			
-			#print "New A: $A\nNew C: $C\nNew G: $G\nNew T: $T\n".
-			#	"New A prop: $A_prop\nNew C prop: $C_prop\nNew G prop: $G_prop\nNew T prop: $T_prop\n";
-			
-			# DELETE the hash element if there are no longer any variants here.
-			if(($A + $C + $G == 0) || ($A + $C + $T == 0) || ($A + $G + $T == 0) ||
-				($C + $G + $T == 0)) {
-				delete($hh_nc_position_info{$curr_spot});
-			}
-			
-			#print "New nt sum: $nt_sum\nNew cov: $updated_cov\nNew prop sum: $nt_prop_sum\n\n";
-			
-			# Round for comparisons
-			my $rounded_nt_sum = sprintf("%.3f",$nt_sum);
-			my $rounded_updated_cov = sprintf("%.3f",$updated_cov);
-			
-			# ERRORS
-			#if($rounded_nt_sum != $rounded_updated_cov) {
-			#	die "\n## WARNING: The MIN. M.A.F. or conflicting coverages have caused an error, ".
-			#		"such that the new coverage \n". 
-			#		"## does not equal the nucleotide sum. Please contact the author; ".
-			#		"SNPGenie terminated.\n\n";
-			#}
-			
-			#if($nt_prop_sum != 1) {
-			#	die "\n## WARNING: The MIN. M.A.F. or conflicting coverages have caused an error, ".
-			#		"such that the new nucleotide proportion sum does not equal 1.".
-			#		"\n## Please contact the author; ".
-			#		"SNPGenie terminated.\n\n";
-			#}
+		foreach my $cov_mm (@{$hh_nc_position_info{$curr_spot}->{cov_arr}}) {
+			$cov_sum += $cov_mm;
+			$cov_denom += 1;
 		}
 		
-		if($variants_excluded > 0) {
+		my $this_avg_cov = ($cov_sum / $cov_denom);
+		$hh_nc_position_info{$curr_spot}->{cov} = $this_avg_cov;
+		
+		# DETERMINE THE MAJORITY NUCLEOTIDE, TOO
+		my $A = $hh_nc_position_info{$curr_spot}->{A};
+		my $C = $hh_nc_position_info{$curr_spot}->{C};
+		my $G = $hh_nc_position_info{$curr_spot}->{G};
+		my $T = $hh_nc_position_info{$curr_spot}->{T};
+		
+		my $majority_nucleotide; # a variant nucleotide may have fixed
+		my $curr_majority_count = 0;
+		if($A > $curr_majority_count) {
+			$curr_majority_count = $A;
+			$majority_nucleotide = 'A';
+		}
+		if($C > $curr_majority_count) {
+			$curr_majority_count = $C;
+			$majority_nucleotide = 'C';
+		} 
+		if($G > $curr_majority_count) {
+			$curr_majority_count = $G;
+			$majority_nucleotide = 'G';
+		} 
+		if($T > $curr_majority_count) {
+			$curr_majority_count = $T;
+			$majority_nucleotide = 'T';
+		}
+		
+		$hh_nc_position_info{$curr_spot}->{maj_nt} = $majority_nucleotide;
+		
+		#print "\n\nAt site $curr_spot, the majority nucleotide is $majority_nucleotide and ".
+		#	"the average coverage is $this_avg_cov\n";
+
+		# WARNING if there is a negative number of sites because of conflicting
+		# coverages; round negative nucleotide counts to 0
+		if($A < 0) {
 			chdir('SNPGenie_Results');
 			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-			print ERROR_FILE "$file_nm\tNA\tN/A\t".
-				"A total of $variants_excluded variants have been excluded because they fall below the ".
-					"minimum minor allele frequency\n";
+			# FILE | PRODUCT | SITE | WARNING
+			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+				"imply a negative number of A nucleotides: $A. This most often results from variants ".
+				"which are assigned to the wrong site in the SNP Report. Results at this site ".
+				"are unreliable; A count set to 0; proceed with caution.\n";
 			close ERROR_FILE;
 			chdir('..');
-							
-			print "\n## In $file_nm|N/A\n".
-				"## A total of $variants_excluded variants have been excluded because they\n".
-				"## fall below the minimum minor allele frequency.\n";
+			
+			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+				"## the variant data imply a negative number of A nucleotides: $A. This most often results from\n".
+				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+				"## are unreliable; A count set to 0; proceed with caution.\n";
+			$hh_nc_position_info{$curr_spot}->{A} = 0;
 		}
-
-		# LABEL AS CODING IF WITHIN A CODING SEGMENT (from GTF)
-		foreach my $curr_product (@curr_products) {
-			#print "\nProduct: $curr_product, ";
-		
-			my $start = $hh_product_position_info{$curr_product}->{start};
-			my $stop = $hh_product_position_info{$curr_product}->{stop};
-			my $start2 = 0;
-			my $stop2 = 0;
+		if($C < 0) {
+			chdir('SNPGenie_Results');
+			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+			# FILE | PRODUCT | SITE | WARNING
+			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+				"imply a negative number of C nucleotides: $C. This most often results from variants ".
+				"which are assigned to the wrong site in the SNP Report. Results at this site ".
+				"are unreliable; C count set to 0; proceed with caution.\n";
+			close ERROR_FILE;
+			chdir('..');
 			
-			#print "range: $start\.\.$stop";
+			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+				"## the variant data imply a negative number of C nucleotides: $C. This most often results from\n".
+				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+				"## are unreliable; C count set to 0; proceed with caution.\n";
+			$hh_nc_position_info{$curr_spot}->{C} = 0;
+		}
+		if($G < 0) {
+			chdir('SNPGenie_Results');
+			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+			# FILE | PRODUCT | SITE | WARNING
+			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+				"imply a negative number of G nucleotides: $G. This most often results from variants ".
+				"which are assigned to the wrong site in the SNP Report. Results at this site ".
+				"are unreliable; G count set to 0; proceed with caution.\n";
+			close ERROR_FILE;
+			chdir('..');
 			
-			if(exists $hh_product_position_info{$curr_product}->{start_2}) {
-				$start2 = $hh_product_position_info{$curr_product}->{start_2};
-				$stop2 = $hh_product_position_info{$curr_product}->{stop_2};
-				
-				#print ",$start2\.\.$stop2";
-			}
+			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+				"## the variant data imply a negative number of G nucleotides: $G. This most often results from\n".
+				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+				"## are unreliable; G count set to 0; proceed with caution.\n";
+			$hh_nc_position_info{$curr_spot}->{G} = 0;
+		}
+		if($T < 0) {
+			chdir('SNPGenie_Results');
+			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+			# FILE | PRODUCT | SITE | WARNING
+			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+				"imply a negative number of T nucleotides: $T. This most often results from variants ".
+				"which are assigned to the wrong site in the SNP Report. Results at this site ".
+				"are unreliable; T count set to 0; proceed with caution.\n";
+			close ERROR_FILE;
+			chdir('..');
 			
-			#print "\n";
-			
-			for(my $i = $start; $i <= $stop; $i++) { # FOR EACH SITE IN SEGMENT 1
-				$hh_nc_position_info{$i}->{coding} = 1;
-			}
-			
-			if($start2) {
-				for(my $i = $start2; $i <= $stop2; $i++) { # FOR EACH SITE IN SEGMENT 2
-					$hh_nc_position_info{$i}->{coding} = 1;
-				}
-			}
+			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+				"## the variant data imply a negative number of T nucleotides: $T. This most often results from\n".
+				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+				"## are unreliable; T count set to 0; proceed with caution.\n";
+			$hh_nc_position_info{$curr_spot}->{T} = 0;
 		}
 		
-		# CALCULATE PI, etc. for NONCODING DNA (i.e., without regarding to product)
-		# Variables for calculating averages
-		my $sum_mean_pw_diffs = 0;
-		my $sum_mean_pw_diffs_coding = 0;
-		my $sum_mean_pw_diffs_nc = 0;
+		# Do the same warning and correction for the proportion data
+		my $A_prop = $hh_nc_position_info{$curr_spot}->{A_prop};
+		my $C_prop = $hh_nc_position_info{$curr_spot}->{C_prop};
+		my $G_prop = $hh_nc_position_info{$curr_spot}->{G_prop};
+		my $T_prop = $hh_nc_position_info{$curr_spot}->{T_prop};
 		
-		my $num_coding_sites = 0;
-		my $num_coding_sites_polymorphic = 0;
-		my $num_nc_sites = 0;
-		my $num_nc_sites_polymorphic = 0;
-		
-		my $sum_gdiv;
-		my $sum_gdiv_coding_poly;
-		my $sum_gdiv_nc_poly;
-		
-		#print "\nSeq. length is: ".length($seq)."\n";
-		for (my $i = 0; $i < length($seq); $i++) { # FOR EACH SITE IN FASTA
-			my $position = $i+1;
-			my $ref_nt = substr($seq,$i,1);
+		if($A_prop < 0) {
+			chdir('SNPGenie_Results');
+			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+			# FILE | PRODUCT | SITE | WARNING
+			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+				"imply a negative proportion of A nucleotides of $A_prop. This may result from rounding error, ".
+				"in which case the number will be very small in magnitude, or variants ".
+				"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+				"are unreliable. In either case, A prop has set to 0; proceed with caution.\n";
+			close ERROR_FILE;
+			chdir('..');
 			
-			#print "Site $position\t";
+			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+				"## the variant data imply a negative proportion of A nucleotides: $A_prop.\n".
+				"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+				"## may be unreliable; A prop set to 0; proceed with caution.\n";
+			$hh_nc_position_info{$curr_spot}->{A_prop} = 0;
+		}
+		if($C_prop < 0) {
+			chdir('SNPGenie_Results');
+			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+			# FILE | PRODUCT | SITE | WARNING
+			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+				"imply a negative proportion of C nucleotides of $C_prop. This may result from rounding error, ".
+				"in which case the number will be very small in magnitude, or variants ".
+				"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+				"are unreliable. In either case, C prop has set to 0; proceed with caution.\n";
+			close ERROR_FILE;
+			chdir('..');
 			
-			# If polymorphic; we've saved this while going through the SNP report
-			if($hh_nc_position_info{$position}->{polymorphic} == 1) { # poly
-				# We have already DELETED records that contained no real variants, e.g.,
-				# all variant had frequencies 0% or were below the MAF
-				#print "\nSite $position is polymorphic\n"; # DOUBLE-CHECK: PASS
-				
-				my $A = $hh_nc_position_info{$position}->{A};
-				my $C = $hh_nc_position_info{$position}->{C};
-				my $G = $hh_nc_position_info{$position}->{G};
-				my $T = $hh_nc_position_info{$position}->{T};
-				my $maj_nt = $hh_nc_position_info{$position}->{maj_nt};
-				my $cov = $A + $C + $G + $T;
-				my $cov_old = $hh_nc_position_info{$position}->{cov};
-				
-				my $cov_for_comp = sprintf("%.3f",$cov);
-				my $cov_old_for_comp = sprintf("%.3f",$cov_old);
-				
-				# WARN if the coverage doesn't match the sum of nucleotide counts
-				if($cov_for_comp != $cov_old_for_comp) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\tNA\t$position\tCoverage does not equal ".
-						"the nucleotide sum.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, at site $position,\n".
-						"## the coverage does not equal the nucleotide sum.\n";
-						#."\n\tSITE $position\nA $A\nC $C\nG $G\nT $T\nCOV $cov_old\nSUM $cov\n";
-				}
-				
-				my $A_prop = ($A / $cov);
-				my $C_prop = ($C / $cov);
-				my $G_prop = ($G / $cov);
-				my $T_prop = ($T / $cov);
-				
-				my $gdiv = (1 - ($A_prop * $A_prop) - ($C_prop * $C_prop) - 
-					($G_prop * $G_prop) - ($T_prop * $T_prop));
-				#print "$position\t$gdiv\n";
-				$hh_nc_position_info{$position}->{gdiv} = $gdiv;
-				$sum_gdiv += $gdiv;
-				
-				my $num_pw_diffs = ($A*$C + $A*$G + $A*$T + $C*$G + $C*$T + $G*$T);
-				my $total_pw_comps = (($cov * $cov) - $cov)/2;
-				my $mean_pw_diffs = ($num_pw_diffs / $total_pw_comps); # this IS pi, div by 1
-				$hh_nc_position_info{$position}->{pi} = $mean_pw_diffs;
-				$sum_mean_pw_diffs += $mean_pw_diffs;
-				
-				if($hh_nc_position_info{$position}->{coding} == 1) { # poly-coding site
-					$num_coding_sites ++;
-					$num_coding_sites_polymorphic ++;
-					$sum_mean_pw_diffs_coding += $mean_pw_diffs;
-					$sum_gdiv_coding_poly += $gdiv;
-					#print "CODING\n";
-				} else { # poly-noncoding site
-					$num_nc_sites ++;
-					$num_nc_sites_polymorphic ++;
-					$sum_mean_pw_diffs_nc += $mean_pw_diffs;
-					$sum_gdiv_nc_poly += $gdiv;
-					#print "NC\n";
-				}
-				
-				#print "\nMy pi at site $position is $mean_pw_diffs\n";
+			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+				"## the variant data imply a negative proportion of C nucleotides: $C_prop.\n".
+				"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+				"## may be unreliable; C prop set to 0; proceed with caution.\n";
+			$hh_nc_position_info{$curr_spot}->{C_prop} = 0;
+		}
+		if($G_prop < 0) {
+			chdir('SNPGenie_Results');
+			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+			# FILE | PRODUCT | SITE | WARNING
+			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+				"imply a negative proportion of G nucleotides of $G_prop. This may result from rounding error, ".
+				"in which case the number will be very small in magnitude, or variants ".
+				"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+				"are unreliable. In either case, G prop has set to 0; proceed with caution.\n";
+			close ERROR_FILE;
+			chdir('..');
+			
+			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+				"## the variant data imply a negative proportion of G nucleotides: $G_prop.\n".
+				"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+				"## may be unreliable; G prop set to 0; proceed with caution.\n";
+			$hh_nc_position_info{$curr_spot}->{G_prop} = 0;
+		}
+		if($T_prop < 0) {
+			chdir('SNPGenie_Results');
+			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+			# FILE | PRODUCT | SITE | WARNING
+			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+				"imply a negative proportion of T nucleotides of $T_prop. This may result from rounding error, ".
+				"in which case the number will be very small in magnitude, or variants ".
+				"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+				"are unreliable. In either case, T prop has set to 0; proceed with caution.\n";
+			close ERROR_FILE;
+			chdir('..');
+			
+			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+				"## the variant data imply a negative proportion of T nucleotides: $T_prop.\n".
+				"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+				"## may be unreliable; T prop set to 0; proceed with caution.\n";
+			$hh_nc_position_info{$curr_spot}->{T_prop} = 0;
+		}
+	} # finish calculating mean coverage for noncoding sites
 	
-			} else { # nonpoly
-				# Save the reference nucleotide
-				#print "\nSite $position is not polymorphic\n";
-				$hh_nc_position_info{$position}->{$ref_nt} = 1; # act as if coverage is 1
-				my $ref_nt_prop_key = $ref_nt . "_prop";
-				$hh_nc_position_info{$position}->{$ref_nt_prop_key} = 1;
-				$hh_nc_position_info{$position}->{polymorphic} = 0;
-				$hh_nc_position_info{$position}->{pi} = 0;
+	# EXCLUDE sites with 0 actual variants, or else exclude variants BELOW MAF
+	my $variants_excluded = 0;
+	#my %variants_excluded;
+	foreach my $curr_spot (@stored_positions_sorted) {				
+		my $cov = $hh_nc_position_info{$curr_spot}->{cov};
+		my $min_COUNT = ($minfreq * $cov);
+		
+		my $A = $hh_nc_position_info{$curr_spot}->{A};
+		my $C = $hh_nc_position_info{$curr_spot}->{C};
+		my $G = $hh_nc_position_info{$curr_spot}->{G};
+		my $T = $hh_nc_position_info{$curr_spot}->{T};
+		
+		my $A_prop = $hh_nc_position_info{$curr_spot}->{A_prop};
+		my $C_prop = $hh_nc_position_info{$curr_spot}->{C_prop};
+		my $G_prop = $hh_nc_position_info{$curr_spot}->{G_prop};
+		my $T_prop = $hh_nc_position_info{$curr_spot}->{T_prop};
+		
+		my $majority_nucleotide = $hh_nc_position_info{$curr_spot}->{maj_nt};
+		my $majority_prop_key = "$majority_nucleotide\_prop";
+		my $curr_majority_count = $hh_nc_position_info{$curr_spot}->{$majority_nucleotide};
+		
+		#print "\n\nFOR THE MIN MAF TEST: $curr_spot\n".
+		#	"\nMajority nucleotide: $majority_nucleotide\n".
+		#	"Count: $curr_majority_count\nCov: $cov\nMin count: $min_COUNT\n".
+		#	"Min freq: $minfreq\nA: $A\nC: $C\nG: $G\nT: $T\n".
+		#	"A prop: $A_prop\nC prop: $C_prop\nG prop: $G_prop\nT prop: $T_prop\n";
+		
+		my $leftover_prop;
+		
+		if($curr_majority_count > $min_COUNT) { # Make sure there are site data
+			if(($A_prop > 0) && ($A_prop < $minfreq)) {
+				$variants_excluded++;
+				$hh_nc_position_info{$curr_spot}->{cov} -= $A;
+				$hh_nc_position_info{$curr_spot}->{A} = 0;
+				$A = 0;
+				$hh_nc_position_info{$curr_spot}->{$majority_prop_key} += $A_prop;
+				$hh_nc_position_info{$curr_spot}->{A_prop} = 0;
+				$leftover_prop += $A_prop;
+				$A_prop = 0;
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\t".
+					"Variant 'A' excluded from analysis because it falls below the minimum ".
+						"minor allele frequency\n";
+				close ERROR_FILE;
+				chdir('..');
 				
-				if($hh_nc_position_info{$position}->{coding} == 1) { # nonpoly-coding site
-					$num_coding_sites ++;
-					#print "CODING\n";
-				} else { # nonpoly-noncoding site
-					$num_nc_sites ++;
-					#print "NC\n";
+				print "\n## Variant 'A' excluded from analysis because it falls below the\n".
+					"## minimum minor allele frequency at:\n".
+					"## $file_nm|$curr_spot\n";
+			} 
+			if(($C_prop > 0) && ($C_prop < $minfreq)) {
+				$variants_excluded++;
+				$hh_nc_position_info{$curr_spot}->{cov} -= $C;
+				$hh_nc_position_info{$curr_spot}->{C} = 0;
+				$C = 0;
+				$hh_nc_position_info{$curr_spot}->{$majority_prop_key} += $C_prop;
+				$hh_nc_position_info{$curr_spot}->{C_prop} = 0;
+				$leftover_prop += $C_prop;
+				$C_prop = 0;
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\t".
+					"Variant 'C' excluded from analysis because it falls below the minimum ".
+						"minor allele frequency\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				print "\n## Variant 'C' excluded from analysis because it falls below the\n".
+					"## minimum minor allele frequency at:\n".
+					"## $file_nm|$curr_spot\n";
+			} 
+			if(($G_prop > 0) && ($G_prop < $minfreq)) {
+				$variants_excluded++;
+				$hh_nc_position_info{$curr_spot}->{cov} -= $G;
+				$hh_nc_position_info{$curr_spot}->{G} = 0;
+				$G = 0;
+				$hh_nc_position_info{$curr_spot}->{$majority_prop_key} += $G_prop;
+				$hh_nc_position_info{$curr_spot}->{G_prop} = 0;
+				$leftover_prop += $G_prop;
+				$G_prop = 0;
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\t".
+					"Variant 'G' excluded from analysis because it falls below the minimum ".
+						"minor allele frequency\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				print "\n## Variant 'G' excluded from analysis because it falls below the\n".
+					"## minimum minor allele frequency at:\n".
+					"## $file_nm|$curr_spot\n";
+			} 
+			if(($T_prop > 0) && ($T_prop < $minfreq)) {
+				$variants_excluded++;
+				$hh_nc_position_info{$curr_spot}->{cov} -= $T;
+				$hh_nc_position_info{$curr_spot}->{T} = 0;
+				$T = 0;
+				$hh_nc_position_info{$curr_spot}->{$majority_prop_key} += $T_prop;
+				$hh_nc_position_info{$curr_spot}->{T_prop} = 0;
+				$leftover_prop += $T_prop;
+				$T_prop = 0;
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\t".
+					"Variant 'T' excluded from analysis because it falls below the minimum ".
+						"minor allele frequency\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				print "\n## Variant 'T' excluded from analysis because it falls below the\n".
+					"## minimum minor allele frequency at:\n".
+					"## $file_nm|$curr_spot\n";
+			}
+		} # sites are further normalized later
+		
+		if($majority_prop_key eq 'A_prop') {
+			$A_prop += $leftover_prop;
+		} elsif($majority_prop_key eq 'C_prop') {
+			$C_prop += $leftover_prop;
+		} elsif($majority_prop_key eq 'G_prop') {
+			$G_prop += $leftover_prop;
+		} elsif($majority_prop_key eq 'T_prop') {
+			$T_prop += $leftover_prop;
+		}
+		
+		my $nt_sum = ($A + $C + $G + $T);
+		my $nt_prop_sum = ($A_prop + $C_prop + $G_prop + $T_prop);
+		my $updated_cov = $hh_nc_position_info{$curr_spot}->{cov};
+		
+		#print "New A: $A\nNew C: $C\nNew G: $G\nNew T: $T\n".
+		#	"New A prop: $A_prop\nNew C prop: $C_prop\nNew G prop: $G_prop\nNew T prop: $T_prop\n";
+		
+		# DELETE the hash element if there are no longer any variants here.
+		if(($A + $C + $G == 0) || ($A + $C + $T == 0) || ($A + $G + $T == 0) ||
+			($C + $G + $T == 0)) {
+			delete($hh_nc_position_info{$curr_spot});
+		}
+		
+		#print "New nt sum: $nt_sum\nNew cov: $updated_cov\nNew prop sum: $nt_prop_sum\n\n";
+		
+		# Round for comparisons
+		my $rounded_nt_sum = sprintf("%.3f",$nt_sum);
+		my $rounded_updated_cov = sprintf("%.3f",$updated_cov);
+		
+		# ERRORS
+		#if($rounded_nt_sum != $rounded_updated_cov) {
+		#	die "\n## WARNING: The MIN. M.A.F. or conflicting coverages have caused an error, ".
+		#		"such that the new coverage \n". 
+		#		"## does not equal the nucleotide sum. Please contact the author; ".
+		#		"SNPGenie terminated.\n\n";
+		#}
+		
+		#if($nt_prop_sum != 1) {
+		#	die "\n## WARNING: The MIN. M.A.F. or conflicting coverages have caused an error, ".
+		#		"such that the new nucleotide proportion sum does not equal 1.".
+		#		"\n## Please contact the author; ".
+		#		"SNPGenie terminated.\n\n";
+		#}
+	}
+	
+	if($variants_excluded > 0) {
+		chdir('SNPGenie_Results');
+		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		print ERROR_FILE "$file_nm\tNA\tN/A\t".
+			"A total of $variants_excluded variants have been excluded because they fall below the ".
+				"minimum minor allele frequency\n";
+		close ERROR_FILE;
+		chdir('..');
+						
+		print "\n## In $file_nm|N/A\n".
+			"## A total of $variants_excluded variants have been excluded because they\n".
+			"## fall below the minimum minor allele frequency.\n";
+	}
+
+	# LABEL AS CODING IF WITHIN A CODING SEGMENT (from GTF)
+	# Go through each product, through each segment
+	foreach my $curr_product (@curr_products) {
+		#print "\nProduct: $curr_product, ";
+
+		# SAVE A num_segments in the hh!
+		my $num_segments = $hh_product_position_info{$curr_product}->{num_segments}; 
+		#print "\nFor product $curr_product, the num_segments is: $num_segments\n";
+		
+		# For each segment, step through each site, label coding
+		for(my $i = 1; $i <= $num_segments; $i++) {
+			my $this_start_key = 'start_' . $i;
+			my $this_stop_key = 'stop_' . $i;
+			
+			my $start = $hh_product_position_info{$curr_product}->{$this_start_key};
+			my $stop = $hh_product_position_info{$curr_product}->{$this_stop_key};
+			
+			for(my $j = $start; $j <= $stop; $j++) { # FOR EACH SITE IN SEGMENT 1 +=1
+				$hh_nc_position_info{$j}->{coding} += 1;
+			}
+		}
+	}
+	
+	# LABEL AS CODING IF CODING from the REVCOM '-' STRAND (from GTF)
+	# Go through each product, through each segment
+	if($complementmode) {
+		foreach my $revcom_product (@curr_compl_products_ordered_by_start) {
+			#print "\nProduct: $curr_product, ";
+
+			# SAVE A num_segments in the hh!
+			my $num_segments = $hh_compl_position_info{$revcom_product}->{num_segments};
+			#print "\nFor revcom product $revcom_product, the num_segments is: $num_segments\n";
+			
+			# For each segment, step through each site, label coding
+			for(my $i = 1; $i <= $num_segments; $i++) {
+				my $this_start_key = 'start_' . $i;
+				my $this_stop_key = 'stop_' . $i;
+				
+				my $start = $hh_compl_position_info{$revcom_product}->{$this_start_key};
+				my $stop = $hh_compl_position_info{$revcom_product}->{$this_stop_key};
+				
+				for(my $j = $start; $j <= $stop; $j++) { # FOR EACH SITE IN SEGMENT 1 +=1
+					$hh_nc_position_info{$j}->{coding} += 1;
 				}
 			}
 		}
-		
-		# Calculate total pi values
-		my $num_sites_total = ($num_coding_sites + $num_nc_sites);
-		my $pi_total = ($sum_mean_pw_diffs / $num_sites_total);
-		my $pi_coding = ($sum_mean_pw_diffs_coding / $num_coding_sites);
-		my $pi_nc = ($sum_mean_pw_diffs_nc / $num_nc_sites);
-		
-		my $mean_gdiv;
-		if($num_sites_total > 0) {
-			$mean_gdiv = ($sum_gdiv / $num_sites_total);
-		} else {
-			$mean_gdiv = '*';
-		}
-		
-		my $mean_gdiv_coding_poly;
-		if($num_coding_sites_polymorphic > 0) {
-			$mean_gdiv_coding_poly = ($sum_gdiv_coding_poly / $num_coding_sites_polymorphic);
-		} else {
-			$mean_gdiv_coding_poly = '*';
-		}
-		
-		my $mean_gdiv_nc_poly;
-		if($num_nc_sites_polymorphic > 0) {
-			$mean_gdiv_nc_poly = ($sum_gdiv_nc_poly / $num_nc_sites_polymorphic);
-		} else {
-			$mean_gdiv_nc_poly = '*';
-		}
-		
-		$h_nc_results{num_poly_coding_sites} = $num_coding_sites_polymorphic;
-		$h_nc_results{num_poly_nc_sites} = $num_nc_sites_polymorphic;
-		
-		$h_nc_results{mean_gdiv} = $mean_gdiv;
-		$h_nc_results{mean_gdiv_coding_poly} = $mean_gdiv_coding_poly;
-		$h_nc_results{mean_gdiv_nc_poly} = $mean_gdiv_nc_poly;
-		
-		$h_nc_results{num_coding_sites} = $num_coding_sites;
-		$h_nc_results{num_nc_sites} = $num_nc_sites;
-		$h_nc_results{num_sites_total} = $num_sites_total;
-		$h_nc_results{sum_mean_pw_diffs} = $sum_mean_pw_diffs;
-		$h_nc_results{sum_mean_pw_diffs_coding} = $sum_mean_pw_diffs_coding;
-		$h_nc_results{sum_mean_pw_diffs_nc} = $sum_mean_pw_diffs_nc;
-		$h_nc_results{pi_total} = $pi_total;
-		$h_nc_results{pi_coding} = $pi_coding;
-		$h_nc_results{pi_nc} = $pi_nc;
-		
-		#print "\nMy total pi is: $pi_total\nMy coding pi is: $pi_coding\n".
-		#	"My noncoding sum diffs is: $sum_mean_pw_diffs_nc\n".
-		#	"My noncoding sites is: $num_nc_sites\nMy noncoding pi is: $pi_nc\n".
-		#	"My coding sites is: $num_coding_sites\n";
-		
-		$pop_summary_line .= "$file_nm\t$num_sites_total\t$num_coding_sites\t".
-			"$num_nc_sites\t".
-			"$pi_total\t$pi_coding\t$pi_nc\t";
-		
-	} else { # END ONE-SEQUENCE MODE (i.e., END MULTI-SEQUENCE MODE == 0)
-		$pop_summary_line .= "$file_nm\tNA\tNA\t".
-			"NA\t".
-			"NA\tNA\tNA\t";
 	}
+	
+	# CALCULATE PI, etc. for NONCODING DNA (i.e., without regarding to product)
+	# Variables for calculating averages
+	my $sum_mean_pw_diffs = 0;
+	my $sum_mean_pw_diffs_coding = 0;
+	my $sum_mean_pw_diffs_nc = 0;
+	
+	my $num_coding_sites = 0;
+	my $num_coding_sites_polymorphic = 0;
+	my $num_nc_sites = 0;
+	my $num_nc_sites_polymorphic = 0;
+	
+	my $sum_gdiv;
+	my $sum_gdiv_coding_poly;
+	my $sum_gdiv_nc_poly;
+	
+	print "COMPLETED.\n";
+	
+	#comeback
+	print "\nProcessing all individual sites (nucleotides take time)... ";
+	#print "\nSeq. length is: ".length($seq)."\n";
+	for (my $i = 0; $i < length($seq); $i++) { # FOR EACH SITE IN FASTA
+		my $position = $i+1;
+		my $ref_nt = substr($seq,$i,1);
+		
+		#print "Site $position\t";
+		
+		# If polymorphic; we've saved this while going through the SNP report
+		if($hh_nc_position_info{$position}->{polymorphic} == 1) { # poly
+			# We have already DELETED records that contained no real variants, e.g.,
+			# all variant had frequencies 0% or were below the MAF
+			#print "\nSite $position is polymorphic\n"; # DOUBLE-CHECK: PASS
+			
+			my $A = $hh_nc_position_info{$position}->{A};
+			my $C = $hh_nc_position_info{$position}->{C};
+			my $G = $hh_nc_position_info{$position}->{G};
+			my $T = $hh_nc_position_info{$position}->{T};
+			my $maj_nt = $hh_nc_position_info{$position}->{maj_nt};
+			my $cov = $A + $C + $G + $T;
+			my $cov_old = $hh_nc_position_info{$position}->{cov};
+			
+			my $cov_for_comp = sprintf("%.3f",$cov);
+			my $cov_old_for_comp = sprintf("%.3f",$cov_old);
+			
+			# WARN if the coverage doesn't match the sum of nucleotide counts
+			if($cov_for_comp != $cov_old_for_comp) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$position\tCoverage does not equal ".
+					"the nucleotide sum.\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				print "\n## WARNING: In $file_nm, at site $position,\n".
+					"## the coverage does not equal the nucleotide sum.\n";
+					#."\n\tSITE $position\nA $A\nC $C\nG $G\nT $T\nCOV $cov_old\nSUM $cov\n";
+			}
+			
+			my $A_prop = ($A / $cov);
+			my $C_prop = ($C / $cov);
+			my $G_prop = ($G / $cov);
+			my $T_prop = ($T / $cov);
+			
+			my $gdiv = (1 - ($A_prop * $A_prop) - ($C_prop * $C_prop) - 
+				($G_prop * $G_prop) - ($T_prop * $T_prop));
+			#print "$position\t$gdiv\n";
+			$hh_nc_position_info{$position}->{gdiv} = $gdiv;
+			$sum_gdiv += $gdiv;
+			
+			my $num_pw_diffs = ($A*$C + $A*$G + $A*$T + $C*$G + $C*$T + $G*$T);
+			my $total_pw_comps = (($cov * $cov) - $cov)/2;
+			my $mean_pw_diffs = ($num_pw_diffs / $total_pw_comps); # this IS pi, div by 1
+			$hh_nc_position_info{$position}->{pi} = $mean_pw_diffs;
+			$sum_mean_pw_diffs += $mean_pw_diffs;
+			
+			if($hh_nc_position_info{$position}->{coding} > 0) { # poly-coding site
+				$num_coding_sites ++;
+				$num_coding_sites_polymorphic ++;
+				$sum_mean_pw_diffs_coding += $mean_pw_diffs;
+				$sum_gdiv_coding_poly += $gdiv;
+				#print "CODING\n";
+			} else { # poly-noncoding site
+				$num_nc_sites ++;
+				$num_nc_sites_polymorphic ++;
+				$sum_mean_pw_diffs_nc += $mean_pw_diffs;
+				$sum_gdiv_nc_poly += $gdiv;
+				#print "NC\n";
+			}
+			
+			#print "\nMy pi at site $position is $mean_pw_diffs\n";
+
+		} else { # nonpoly
+			# Save the reference nucleotide
+			#print "\nSite $position is not polymorphic\n";
+			
+			if($hh_nc_position_info{$position}->{coding} > 0) { # nonpoly-coding site
+				$num_coding_sites ++;
+				#print "CODING\n";
+			} else { # nonpoly-noncoding site
+				$num_nc_sites ++;
+				#print "NC\n";
+			}	
+		}
+	}
+
+	
+	# Calculate total pi values
+	my $num_sites_total = ($num_coding_sites + $num_nc_sites);
+	my $pi_total = ($sum_mean_pw_diffs / $num_sites_total);
+	my $pi_coding = ($sum_mean_pw_diffs_coding / $num_coding_sites);
+	my $pi_nc = ($sum_mean_pw_diffs_nc / $num_nc_sites);
+	
+	my $mean_gdiv;
+	if($num_sites_total > 0) {
+		$mean_gdiv = ($sum_gdiv / $num_sites_total);
+	} else {
+		$mean_gdiv = '*';
+	}
+	
+	my $mean_gdiv_coding_poly;
+	if($num_coding_sites_polymorphic > 0) {
+		$mean_gdiv_coding_poly = ($sum_gdiv_coding_poly / $num_coding_sites_polymorphic);
+	} else {
+		$mean_gdiv_coding_poly = '*';
+	}
+	
+	my $mean_gdiv_nc_poly;
+	if($num_nc_sites_polymorphic > 0) {
+		$mean_gdiv_nc_poly = ($sum_gdiv_nc_poly / $num_nc_sites_polymorphic);
+	} else {
+		$mean_gdiv_nc_poly = '*';
+	}
+	
+	$h_nc_results{num_poly_coding_sites} = $num_coding_sites_polymorphic;
+	$h_nc_results{num_poly_nc_sites} = $num_nc_sites_polymorphic;
+	
+	$h_nc_results{mean_gdiv} = $mean_gdiv;
+	$h_nc_results{mean_gdiv_coding_poly} = $mean_gdiv_coding_poly;
+	$h_nc_results{mean_gdiv_nc_poly} = $mean_gdiv_nc_poly;
+	
+	$h_nc_results{num_coding_sites} = $num_coding_sites;
+	$h_nc_results{num_nc_sites} = $num_nc_sites;
+	$h_nc_results{num_sites_total} = $num_sites_total;
+	$h_nc_results{sum_mean_pw_diffs} = $sum_mean_pw_diffs;
+	$h_nc_results{sum_mean_pw_diffs_coding} = $sum_mean_pw_diffs_coding;
+	$h_nc_results{sum_mean_pw_diffs_nc} = $sum_mean_pw_diffs_nc;
+	$h_nc_results{pi_total} = $pi_total;
+	$h_nc_results{pi_coding} = $pi_coding;
+	$h_nc_results{pi_nc} = $pi_nc;
+	
+	#print "\nMy total pi is: $pi_total\nMy coding pi is: $pi_coding\n".
+	#	"My noncoding sum diffs is: $sum_mean_pw_diffs_nc\n".
+	#	"My noncoding sites is: $num_nc_sites\nMy noncoding pi is: $pi_nc\n".
+	#	"My coding sites is: $num_coding_sites\n";
+	
+	$pop_summary_line .= "$file_nm\t$num_sites_total\t$num_coding_sites\t".
+		"$num_nc_sites\t".
+		"$pi_total\t$pi_coding\t$pi_nc\t";
+	
+	print "COMPLETED.\n";
 	
 	# NON-CODING WORK HAPPENS HERE
 	# We must assign EVERY SITE in the FASTA, labeling as polymorphic=1/0 and as
@@ -4282,6 +4106,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	my $pop_sum_S_gdiv = 0;
 	my $pop_sum_A_gdiv = 0;
 	
+	print "\nProcessing population genetic estimates codon-by-codon (beware stochasticity!)... ";
 	# Here we loop through each product present in this SNP Report
 	# This is where the major CODON work takes place
 	foreach my $curr_product (@curr_products) {
@@ -4291,9 +4116,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		my @stored_positions_sorted = sort {$a <=> $b} (keys %{$hh_product_position_info{$curr_product}});
 		foreach my $curr_spot (@stored_positions_sorted) {
 			#print "\ncurr_product is: $curr_product; curr_spot is: $curr_spot\n";
-			if (($curr_spot ne 'start') && ($curr_spot ne 'stop') &&
-				($curr_spot ne 'start_1') && ($curr_spot ne 'stop_1') &&
-				($curr_spot ne 'start_2') && ($curr_spot ne 'stop_2') && ($curr_spot ne 'fasta')) {
+			if (!($curr_spot =~ 'start') && !($curr_spot =~ 'stop') && 
+				!($curr_spot =~ 'fasta') && !($curr_spot =~ 'num_segments')) {
 				#print "\n@{$hh_product_position_info{$curr_product}->{$curr_spot}->{cov_arr}} is: ".@{$hh_product_position_info{$curr_product}->{$curr_spot}->{cov_arr}}."\n\n";
 				#if(@{$hh_product_position_info{$curr_product}->{$curr_spot}->{cov_arr}}) {
 				my $cov_sum = 0;
@@ -4523,9 +4347,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		my $variants_excluded = 0;
 		#my %variants_excluded;
 		foreach my $curr_spot (@stored_positions_sorted) {
-			if (($curr_spot ne 'start') && ($curr_spot ne 'stop') &&
-				($curr_spot ne 'start_1') && ($curr_spot ne 'stop_1') &&
-				($curr_spot ne 'start_2') && ($curr_spot ne 'stop_2') && ($curr_spot ne 'fasta')) {
+			if (!($curr_spot =~ 'start') && !($curr_spot =~ 'stop') && 
+				!($curr_spot =~ 'fasta') && !($curr_spot =~ 'num_segments')) {
 				
 				my $cov = $hh_product_position_info{$curr_product}->{$curr_spot}->{cov};
 				my $min_COUNT = ($minfreq * $cov);
@@ -4700,51 +4523,25 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				"## fall below the minimum minor allele frequency.\n";
 		}
 		
-		# Find the fasta file for the current product
-		my $fasta_to_open = $hh_product_position_info{$curr_product}->{fasta};
-		
 		#print "\n\nProduct $curr_product should correspond to the fasta: $fasta_to_open\n\n";
-		
-		# Using the fasta file, record the sequence in a variable
-		my $seq;
-		open (INFILE, $fasta_to_open);
-		while (<INFILE>) {
-			unless (/>/) {
-				#chomp;
-				# CHOMP for 3 operating systems
-				if($_ =~ /\r\n$/) {
-					$_ =~ s/\r\n//;
-				} elsif($_ =~ /\r$/) {
-					$_ =~ s/\r//;
-				} elsif($_ =~ /\n$/) {
-					$_ =~ s/\n//;
-				}
-				
-				$seq .= $_;
-			}
-		}
-		close INFILE;
 		
 		#print "\n\nFor the fasta $fasta_to_open I get this sequence:\n$seq\n\n";
 		
-		#if (length($seq) != (1 + $hh_product_position_info{$curr_product}->{stop} - 
-		#	$hh_product_position_info{$curr_product}->{start})) {
+		#if (length($seq) != (1 + $hh_product_position_info{$curr_product}->{stop_1} - 
+		#	$hh_product_position_info{$curr_product}->{start_1})) {
 		#	print "\nThe length does not equal stop-start+1 in $curr_product\n";
 		#}
 		
 		# The $seq contains the ENTIRE fasta file, not just the product's sites
 		
-		# Using the sequence, make a hash of nucleotides for WHOLE FASTA
-		my %seq_by_pos_hash;
+		# WARN if the reference in the FASTA doesn't match the SNP Report
 		for (my $i = 0; $i < length($seq); $i++) {
 			my $position = $i+1;
-			$seq_by_pos_hash{$position} = substr($seq,$i,1);
 			
-			# WARN if the reference in the FASTA doesn't match the SNP Report
 			if($hh_product_position_info{$curr_product}->{$position}) { # If the variant exists
 				#print "YES, there IS a variant stored at $position\n";
 				my $snp_report_reference_nt = $hh_product_position_info{$curr_product}->{$position}->{reference};
-				my $fasta_nt = $seq_by_pos_hash{$position};
+				my $fasta_nt = $seq_by_index_arr[$position-1];
 				
 				if($snp_report_reference_nt ne $fasta_nt) {
 					chdir('SNPGenie_Results');
@@ -4766,238 +4563,174 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			}
 		}
 		
-		my $start_site = $hh_product_position_info{$curr_product}->{start};
-		my $start_index = ($start_site-1);
-		my $stop_site = $hh_product_position_info{$curr_product}->{stop};
-		my $stop_index = ($stop_site-1);
-		my $coding_length = ($stop_site - $start_site + 1);
-		
-		my $start_site_2;
-		my $start_index_2;
-		my $stop_site_2;
-		my $stop_index_2;
-		my $coding_length_2;
+		# New segments approach
+		my $num_segments = $hh_product_position_info{$curr_product}->{num_segments};
+		#print "\nFor product $curr_product, the num_segments is: $num_segments\n";
 		my $coding_length_sum;
+		my $coding_seq;
+		my @coding_seq_pos_arr;
+		my %segment_lengths; # to store the length of each of the $num_segments segments
+		#my %segment_point_remainders;
 		
-		if ($hh_product_position_info{$curr_product}->{start_2}) { # conditional does work
-			#print "\nThere is a second segment start position stored for $curr_product\n";
-			
-			$start_site_2 = $hh_product_position_info{$curr_product}->{start_2};
-			$start_index_2 = ($start_site_2-1);
-			$stop_site_2 = $hh_product_position_info{$curr_product}->{stop_2};
-			$stop_index_2 = ($stop_site_2-1);
-			$coding_length_2 = ($stop_site_2 - $start_site_2 + 1);
-			
-			# Check that the entire coding length is a multiple of 3; if not, error
-			$coding_length_sum = ($coding_length+$coding_length_2);
-			if(($coding_length_sum % 3) != 0) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-				# FILE | PRODUCT | SITE | CODON | WARNING
-				print ERROR_FILE "N/A\t$curr_product\tN/A\tTotal length is not a multiple".
-				" of 3. Please check your annotations; a complete codon set is required.".
-				" SNPGenie terminated\n";
-				close ERROR_FILE;
-				chdir('..');
-				
-				die "## WARNING: For product $curr_product, the total length is not a multiple\n".
-					"## of 3. Please check your annotations; a complete codon set is required.\n".
-					"## SNPGenie terminated\n";
-			}
-		}
-		
-		# Using the sequence, make a CODING sequence variable for THIS PRODUCT, $curr_product
-		my $coding_seq = substr($seq,$start_index,$coding_length);
-		my $coding_seq_2;
-		
-		if ($start_site_2) {
-			$coding_seq_2 = substr($seq,$start_index_2,$coding_length_2);
-			
-			# In case the break happens within a codon (i.e., each sequence not a multiple of 
-			# 3), make adjustments
-			my $seq_1_rem = ($coding_length % 3);
-			
-			# We have already checked (or died) that the total length was a multiple of
-			# 3, so we only have one degree of freedom and can focus on the first seq
-			if($seq_1_rem == 1) { # seq1 has 1 more than a multiple of 3
-				# Cut the first 2 nt of seq2 and paste them to the end of seq1
-				$coding_seq = ($coding_seq . substr($coding_seq_2,0,2));
-				$coding_seq_2 = substr($coding_seq_2,2,($coding_length_2 - 2));
-				
-				# Re-set the start/end sites and lengths
-				$stop_site = $stop_site + 2;
-				$stop_index = $stop_index + 2;
-				$coding_length = $coding_length + 2;
-				
-				$start_site_2 = $start_site_2 + 2;
-				$start_index_2 = $start_index_2 + 2;
-				$coding_length_2 = $coding_length_2 - 2;
-				
-			} elsif($seq_1_rem == 2) { # seq1 has 2 more than a multiple of 3
-				# Cut the first 1 nt of seq2 and paste it to the end of seq1
-				$coding_seq = ($coding_seq . substr($coding_seq_2,0,1));
-				$coding_seq_2 = substr($coding_seq_2,1,($coding_length_2 - 1));
-				
-				# Re-set the start/end sites and lengths
-				$stop_site = $stop_site + 1;
-				$stop_index = $stop_index + 1;
-				$coding_length = $coding_length + 1;
-				
-				$start_site_2 = $start_site_2 + 1;
-				$start_index_2 = $start_index_2 + 1;
-				$coding_length_2 = $coding_length_2 - 1;
-				
-			}
-			# REMEMBER we will need to account for these site numbers later when
-			# incorporating variants
-		}
-		
-		#print "\n\nFor product $curr_product, the coding region goes from $start_site to ".
-		#	"$stop_site and is $coding_length long.\n\n";
-		
+		# New segments approach
 		my %codon_by_pos_hash;
+		my $curr_partial_codon_pos = 0;
+		my $curr_partial_codon = '';
 		
-		# Make real coding codons – we've already stitched together the sequence
-		for (my $i = $start_site; $i <= $stop_site; $i++) { # $i goes from start to end POSITION in FASTA
-			my $j = ($i-1); # $j is always $i-1, the INDEX in the FASTA
-			# Initiate another counter here?
-			my $k = ($i - $start_site); #  $k begins at 0, and is the INDEX in the PRODUCT
-			if (($k % 3) == 0) { # $k % 3 == 0 if $k is evenly divisible by 3, such as 0, 3, 6, 9, ...
-				# So this condition will be satisfied immediately, before any operation occurs
-				
-				$codon_by_pos_hash{$i} = substr($coding_seq,$k,3); # the key is $i, the POSITION in FASTA
-				
-				if ($i == $start_site && $codon_by_pos_hash{$i} ne 'ATG' && # if $i is the first position && it ISN'T a START codon &&
-					(! exists $seen_no_start_hash{$curr_product})) { # we haven't yet noticed there's no START
-					
-					print "\n## WARNING: Please be aware that the product ".
-							"$curr_product does not begin with a START (ATG) codon.".
-							"\n## If this was unexpected, please check your annotations.\n";
-							
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | CODON | WARNING
-					print ERROR_FILE "N/A\t$curr_product\tN/A\tDoes not begin with a ".
-					"START (ATG) codon. If this was unexpected, please check your annotations\n";
-					close ERROR_FILE;
-					chdir('..');
-							
-					$seen_no_start_hash{$curr_product} = 1;
-				}
-				
-				if ((! $stop_site_2) && ($i == ($stop_site - 2)) && # if there's NO 2nd start site && we're 3 before the end of the SEQ &&
-					(($codon_by_pos_hash{$i} ne 'TAA') &&  ($codon_by_pos_hash{$i} ne 'TAG') && # it's NOT a STOP codon
-					($codon_by_pos_hash{$i} ne 'TGA') && ($codon_by_pos_hash{$i} ne 'UAA') &&
-					($codon_by_pos_hash{$i} ne 'UAG') && ($codon_by_pos_hash{$i} ne 'UGA')) && 
-					(! exists $seen_no_stop_hash{$curr_product})) {
-					
-					print "\n## WARNING: Please be aware that the product ".
-							"$curr_product does not end with a STOP (TAA, TAG, TGA) codon.".
-							"\n## If this was unexpected, please check your annotations.\n";
-							
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | CODON | WARNING
-					print ERROR_FILE "N/A\t$curr_product\tN/A\tDoes not end with a ".
-					"STOP (TAA, TAG, TGA) codon. If this was unexpected, please check your annotations\n";
-					close ERROR_FILE;
-					chdir('..');	
-						
-					$seen_no_stop_hash{$curr_product} = 1;
-				}
-				
-				# Give an error if there is a mid-sequence STOP codon, but proceed
-				if ((($i < ($stop_site-2)) && (! exists $seen_product_hash{$curr_product})) && # if we're NOT YET 3 before the end of the SEQ && we haven't seen the product yet &&
-					($codon_by_pos_hash{$i} eq "TAA" || # it IS a stop codon
-					$codon_by_pos_hash{$i} eq "TAG" ||
-					$codon_by_pos_hash{$i} eq "TGA" ||
-					$codon_by_pos_hash{$i} eq "UAA" ||
-					$codon_by_pos_hash{$i} eq "UAG" ||
-					$codon_by_pos_hash{$i} eq "UGA")) {
-						$seen_product_hash{$curr_product} = 1;
-						print "\n## WARNING: Please be aware that there is a ".
-							"mid-sequence STOP codon in the sequence ".
-							"$curr_product|$i.\n## Please check your annotations for: ".
-							"(1) incorrect frame; or (2) incorrect starting or ending coordinates.".
-							"\n## A premature STOP codon may also indicate a pseudogene, for which ".
-							"πN vs. πS analysis may not be appropriate.\n";
-							
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-						# FILE | PRODUCT | SITE | CODON | WARNING
-						print ERROR_FILE "N/A\t$curr_product\t$i\tMid-sequence ".
-						"STOP codon. Please check your annotations for: (1) incorrect ".
-						"frame; or (2) incorrect starting or ending coordinates. A ".
-						"premature STOP codon may also indicate a pseudogene, for which ".
-						"πN vs. πS analysis may not be appropriate.\n";
-						close ERROR_FILE;
-						chdir('..');
-				}
+		# For each segment, step through each site, add to length and sequence
+		for(my $i = 1; $i <= $num_segments; $i++) {
+			my $this_start_key = 'start_' . $i;
+			my $this_stop_key = 'stop_' . $i;
+			
+			my $start_site = $hh_product_position_info{$curr_product}->{$this_start_key};
+			my $start_index = ($start_site-1);
+			my $stop_site = $hh_product_position_info{$curr_product}->{$this_stop_key};
+			my $stop_index = ($stop_site-1);
+			my $coding_length = ($stop_site - $start_site + 1);
+			$segment_lengths{$i} = $coding_length;
+			$coding_length_sum += $coding_length;
+			#$segment_point_remainders{$i} = ($coding_length_sum % 3); # this will save CURRENTS for each break point
+			$coding_seq .= substr($seq,$start_index,$coding_length);
+			
+			if($curr_partial_codon_pos == 0) { # Could be FIRST or any %3==0 segment
+				$curr_partial_codon_pos = $start_site;
 			}
-		} 
-		
-		# IF there's a second segment, add to the codon hash
-		if ($start_site_2) {
-			for (my $i = $start_site_2; $i <= $stop_site_2; $i++) {
-				my $j = ($i-1); # Shifts so beginning is 0
-				# Initiate another counter here?
-				my $k = ($i - $start_site_2); # Always starts at 0, then
-				if (($k % 3) == 0) {
-					$codon_by_pos_hash{$i} = substr($coding_seq_2,$k,3);
-					# Previously treated the break as if there will always be a clean break 
-					# between codons. Must simply add them together first.
+			
+			for (my $j = $start_site; $j <= $stop_site; $j++) { # $j goes from start to end POSITION (not INDEX) of segment $i in FASTA-derived sequence
+				my $j_index = $j-1;
+				my $this_nt = substr($seq,$j_index,1);
+				$curr_partial_codon .= $this_nt;
+				push(@coding_seq_pos_arr,$j);
+				
+				if(length($curr_partial_codon) == 3) { # once $curr_partial_codon reaches 3-nt
+					# SAVE THE CODON
+					$codon_by_pos_hash{$curr_partial_codon_pos} = $curr_partial_codon;
 					
-					# Changed to $stop_site2
-					if (($i == ($stop_site_2 - 2)) && 
-					(($codon_by_pos_hash{$i} ne 'TAA') &&  ($codon_by_pos_hash{$i} ne 'TAG') &&
-					($codon_by_pos_hash{$i} ne 'TGA') && ($codon_by_pos_hash{$i} ne 'UAA') &&
-					($codon_by_pos_hash{$i} ne 'UAG') && ($codon_by_pos_hash{$i} ne 'UGA')) && 
-					(! exists $seen_no_stop_hash{$curr_product})) {
+					if ( $i == 1 && # FIRST segment
+						$j == ($start_site+2) && # end of FIRST codon
+						$curr_partial_codon ne 'ATG' && $curr_partial_codon ne 'AUG' && # it ISN'T a START codon
+						(! exists $seen_no_start_hash{$curr_product})) { # we haven't yet noticed there's no START
 						
 						print "\n## WARNING: Please be aware that the product ".
-							"$curr_product does not end with a STOP (TAA, TAG, TGA) codon.".
-							"\n## If this was unexpected, please check your annotations.\n";
-							
+								"$curr_product does not begin with a START (ATG) codon at site $start_site, but rather $curr_partial_codon.".
+								"\n## If this was unexpected, please check your annotations.\n";
+								
 						chdir('SNPGenie_Results');
 						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 						# FILE | PRODUCT | SITE | CODON | WARNING
-						print ERROR_FILE "N/A\t$curr_product\tN/A\tDoes not end with a ".
-						"STOP (TAA, TAG, TGA) codon. If this was unexpected, please check your annotations\n";
+						print ERROR_FILE "N/A\t$curr_product\t$start_site\tDoes not begin with a ".
+						"START (ATG) codon, but rather $curr_partial_codon. If this was unexpected, please check your annotations\n";
 						close ERROR_FILE;
-						chdir('..');	
-							
-						$seen_no_stop_hash{$curr_product} = 1;
+						chdir('..');
+								
+						$seen_no_start_hash{$curr_product} = 1;
 					}
 					
-					# Give an error if there is a mid-sequence STOP codon, but proceed
-					if ((($i < ($stop_site_2 - 2)) && (! exists $seen_product_hash{$curr_product})) && 
-						($codon_by_pos_hash{$i} eq "TAA" ||
-						$codon_by_pos_hash{$i} eq "TAG" ||
-						$codon_by_pos_hash{$i} eq "TGA" ||
-						$codon_by_pos_hash{$i} eq "UAA" ||
-						$codon_by_pos_hash{$i} eq "UAG" ||
-						$codon_by_pos_hash{$i} eq "UGA")) {
-							$seen_product_hash{$curr_product} = 1;
+					# WARNING if first codon isn't ATG, but proceed #comeback this necessary?
+					if (($i == 1) && ($j == $start_site) && # first segment, first site
+						($curr_partial_codon ne 'ATG' && $curr_partial_codon ne 'AUG') && # it ISN'T a START codon, and
+						(! exists $seen_no_start_hash{$curr_product})) { # we haven't yet noticed there's no START
+						
+						print "\n## WARNING: Please be aware that the product ".
+								"$curr_product does not begin with a START (ATG) codon at site $start_site, but rather $curr_partial_codon.".
+								"\n## If this was unexpected, please check your annotations.\n";
+								
+						chdir('SNPGenie_Results');
+						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						# FILE | PRODUCT | SITE | CODON | WARNING
+						print ERROR_FILE "N/A\t$curr_product\t$start_site\tDoes not begin with a ".
+						"START (ATG) codon, but rather $curr_partial_codon. If this was unexpected, please check your annotations\n";
+						close ERROR_FILE;
+						chdir('..');
+								
+						$seen_no_start_hash{$curr_product} = 1;
+					}
+					
+					# WARNING if there is a mid-sequence STOP codon, but proceed
+					if ($i < $num_segments && # NOT the last segment
+						($curr_partial_codon eq "TAA" || # it IS a stop codon
+						$curr_partial_codon eq "TAG" ||
+						$curr_partial_codon eq "TGA" ||
+						$curr_partial_codon eq "UAA" ||
+						$curr_partial_codon eq "UAG" ||
+						$curr_partial_codon eq "UGA")
+						) { 
+					
+							$seen_product_early_stop_hash{$curr_product} = 1;
 							print "\n## WARNING: Please be aware that there is a ".
-							"mid-sequence STOP codon in the sequence ".
-							"$curr_product|$i.\n## Please check your annotations for: ".
-							"(1) incorrect frame; or (2) incorrect starting or ending coordinates.".
-							"\n## A premature STOP codon may also indicate a pseudogene, for which ".
-							"πN vs. πS analysis may not be appropriate.\n";
-							
+								"mid-sequence STOP codon in the sequence ".
+								"$curr_product|$j.\n## Please check your annotations for: ".
+								"(1) incorrect frame; or (2) incorrect starting or ending coordinates.".
+								"\n## A premature STOP codon may also indicate a pseudogene, for which ".
+								"piN vs. piS analysis may not be appropriate.\n";
+								
 							chdir('SNPGenie_Results');
 							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 							# FILE | PRODUCT | SITE | CODON | WARNING
-							print ERROR_FILE "N/A\t$curr_product\t$i\tMid-sequence ".
+							print ERROR_FILE "N/A\t$curr_product\t$j\tMid-sequence ".
 							"STOP codon. Please check your annotations for: (1) incorrect ".
 							"frame; or (2) incorrect starting or ending coordinates. A ".
 							"premature STOP codon may also indicate a pseudogene, for which ".
-							"πN vs. πS analysis may not be appropriate.\n";
+							"piN vs. piS analysis may not be appropriate.\n";
+							close ERROR_FILE;
+							chdir('..');
+						
+					} elsif ( (($j < $stop_site) && # we're in last segment and BEFORE last site
+						(! exists $seen_product_early_stop_hash{$curr_product})) && # we haven't seen the product yet &&
+						($curr_partial_codon eq "TAA" || # it IS a stop codon
+						$curr_partial_codon eq "TAG" ||
+						$curr_partial_codon eq "TGA" ||
+						$curr_partial_codon eq "UAA" ||
+						$curr_partial_codon eq "UAG" ||
+						$curr_partial_codon eq "UGA")
+						) {
+							$seen_product_early_stop_hash{$curr_product} = 1;
+							print "\n## WARNING: Please be aware that there is a ".
+								"mid-sequence STOP codon in the sequence ".
+								"$curr_product|$j.\n## Please check your annotations for: ".
+								"(1) incorrect frame; or (2) incorrect starting or ending coordinates.".
+								"\n## A premature STOP codon may also indicate a pseudogene, for which ".
+								"piN vs. piS analysis may not be appropriate.\n";
+								
+							chdir('SNPGenie_Results');
+							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+							# FILE | PRODUCT | SITE | CODON | WARNING
+							print ERROR_FILE "N/A\t$curr_product\t$j\tMid-sequence ".
+							"STOP codon. Please check your annotations for: (1) incorrect ".
+							"frame; or (2) incorrect starting or ending coordinates. A ".
+							"premature STOP codon may also indicate a pseudogene, for which ".
+							"piN vs. piS analysis may not be appropriate.\n";
 							close ERROR_FILE;
 							chdir('..');
 					}
+					
+					# RESET CODON
+					$curr_partial_codon = '';
+					
+					# RESET POSITION
+					if($j == $stop_site) {
+						$curr_partial_codon_pos = 0;
+					} else {
+						$curr_partial_codon_pos = ($j+1);
+					}
 				}
-			} 
+			}
+		}
+		
+		# WARNING and DIE if the total coding length wasn't a multiple of 3
+		if(($coding_length_sum % 3) != 0) {
+			chdir('SNPGenie_Results');
+			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+			# FILE | PRODUCT | SITE | CODON | WARNING
+			print ERROR_FILE "N/A\t$curr_product\tN/A\tTotal length is not a multiple".
+			" of 3. Please check your annotations; a complete codon set is required.".
+			" SNPGenie terminated.\n";
+			close ERROR_FILE;
+			chdir('..');
+			
+			die "\n## WARNING: For product $curr_product, the total length is not a multiple\n".
+				"## of 3. Please check your annotations; a complete codon set is required.\n".
+				"## SNPGenie terminated.\n";
 		}
 		
 		my @codon_positions_sorted = sort {$a <=> $b} (keys %codon_by_pos_hash);
@@ -5014,37 +4747,16 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		my $codon_counter = 0;
 		my $contiguous_zero_diffs_counter;
 		
-		# Re-set start and stop sites to ORIGINALS if there were two segments
-		if($start_site_2) {
-			$start_site = $hh_product_position_info{$curr_product}->{start};
-			$start_index = ($start_site - 1);
-			$stop_site = $hh_product_position_info{$curr_product}->{stop};
-			$stop_index = ($stop_site - 1);
-			$coding_length = ($stop_site - $start_site + 1);
-			
-			$start_site_2 = $hh_product_position_info{$curr_product}->{start_2};
-			$start_index_2 = ($start_site_2 - 1);
-			$stop_site_2 = $hh_product_position_info{$curr_product}->{stop_2};
-			$stop_index_2 = ($stop_site_2 - 1);
-			$coding_length_2 = ($stop_site_2 - $start_site_2 + 1);
-		}
+		my @coding_positions_sorted = sort {$a <=> $b} @coding_seq_pos_arr;
 		
+		# New segments approach implemented here
 		# Go through all codons and sites within, checking for variants, storing the 
 		# number of nonsynonymous and synonymous changes.
-		foreach (@codon_positions_sorted) {
-			# Check $_, $_+1, and $_ +2
-			my $curr_site = $_;
+		for(my $arr_index = 0; $arr_index < scalar(@coding_positions_sorted); $arr_index+=3) { # $arr_index gives index in array for sorted CODING start genome coordinates			
+			my $curr_site = $coding_positions_sorted[$arr_index];
 			my $site_pos_1 = $curr_site;
-			my $site_pos_2 = ($curr_site + 1);
-			my $site_pos_3 = ($curr_site + 2);
-			
-			# Must account for the fact that the next site might come from segment 2
-			if($site_pos_1 == $stop_site) { # pos1 of this codon is the end of seq1
-				$site_pos_2 = $start_site_2;
-				$site_pos_3 = ($start_site_2 + 1);
-			} elsif($site_pos_2 == $stop_site) { # pos2 of this codon is the end of seq1
-				$site_pos_3 = $start_site_2;
-			}
+			my $site_pos_2 = $coding_positions_sorted[$arr_index+1];
+			my $site_pos_3 = $coding_positions_sorted[$arr_index+2];
 			
 			my $N_diffs_per_comparison = 0;
 			my $S_diffs_per_comparison = 0;
@@ -5502,19 +5214,19 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				my $S_diffs = 0;
 				
 				$N_diffs_per_comparison += 0;
-				$S_diffs_per_comparison += 0;			
-
+				$S_diffs_per_comparison += 0;
+				
 				# Find out what nucleotide it is and give it a num of 1
-				if ($seq_by_pos_hash{$site_pos_1} eq 'A') {
+				if ($seq_by_index_arr[$site_pos_1-1] eq 'A') {
 					$num_1_A = 1;
 					$site_1_num_hash{'A'} = $num_1_A;
-				} elsif ($seq_by_pos_hash{$site_pos_1} eq 'C') {
+				} elsif ($seq_by_index_arr[$site_pos_1-1] eq 'C') {
 					$num_1_C = 1;
 					$site_1_num_hash{'C'} = $num_1_C;
-				} elsif ($seq_by_pos_hash{$site_pos_1} eq 'G') {
+				} elsif ($seq_by_index_arr[$site_pos_1-1] eq 'G') {
 					$num_1_G = 1;
 					$site_1_num_hash{'G'} = $num_1_G;
-				} elsif ($seq_by_pos_hash{$site_pos_1} eq 'T') {
+				} elsif ($seq_by_index_arr[$site_pos_1-1] eq 'T') {
 					$num_1_T = 1;
 					$site_1_num_hash{'T'} = $num_1_T;
 				}
@@ -5863,16 +5575,16 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$S_diffs_per_comparison += 0;	
 				
 				# Find out what nucleotide it is and give it a num of 1
-				if ($seq_by_pos_hash{$site_pos_2} eq 'A') {
+				if ($seq_by_index_arr[$site_pos_2-1] eq 'A') {
 					$num_2_A = 1;
 					$site_2_num_hash{'A'} = $num_2_A;
-				} elsif ($seq_by_pos_hash{$site_pos_2} eq 'C') {
+				} elsif ($seq_by_index_arr[$site_pos_2-1] eq 'C') {
 					$num_2_C = 1;
 					$site_2_num_hash{'C'} = $num_2_C;
-				} elsif ($seq_by_pos_hash{$site_pos_2} eq 'G') {
+				} elsif ($seq_by_index_arr[$site_pos_2-1] eq 'G') {
 					$num_2_G = 1;
 					$site_2_num_hash{'G'} = $num_2_G;
-				} elsif ($seq_by_pos_hash{$site_pos_2} eq 'T') {
+				} elsif ($seq_by_index_arr[$site_pos_2-1] eq 'T') {
 					$num_2_T = 1;
 					$site_2_num_hash{'T'} = $num_2_T;
 				}
@@ -6226,16 +5938,16 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$S_diffs_per_comparison += 0;
 				
 				# Find out what nucleotide it is and give it a num of 1
-				if ($seq_by_pos_hash{$site_pos_3} eq 'A') {
+				if ($seq_by_index_arr[$site_pos_3-1] eq 'A') {
 					$num_3_A = 1;
 					$site_3_num_hash{'A'} = $num_3_A;
-				} elsif ($seq_by_pos_hash{$site_pos_3} eq 'C') {
+				} elsif ($seq_by_index_arr[$site_pos_3-1] eq 'C') {
 					$num_3_C = 1;
 					$site_3_num_hash{'C'} = $num_3_C;
-				} elsif ($seq_by_pos_hash{$site_pos_3} eq 'G') {
+				} elsif ($seq_by_index_arr[$site_pos_3-1] eq 'G') {
 					$num_3_G = 1;
 					$site_3_num_hash{'G'} = $num_3_G;
-				} elsif ($seq_by_pos_hash{$site_pos_3} eq 'T') {
+				} elsif ($seq_by_index_arr[$site_pos_3-1] eq 'T') {
 					$num_3_T = 1;
 					$site_3_num_hash{'T'} = $num_3_T;
 				}
@@ -6266,13 +5978,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			#############################################################################
 			
 			
-			if($progress_period_count < 80) {
-				print ".";
-				$progress_period_count++;
-			} else {
-				print "\n";
-				$progress_period_count = 0;
-			}
+			#if($progress_period_count < 80) {
+			#	print ".";
+			#	$progress_period_count++;
+			#} else {
+			#	print "\n";
+			#	$progress_period_count = 0;
+			#}
 			
 			# These will be SITE-BASED
 			my $pi_N;
@@ -6641,246 +6353,25 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			my $site2_overlap = 0;
 			my $site3_overlap = 0;
 			
-			#foreach my $other_product (@curr_products) {
-			foreach my $other_product (@curr_products_ordered_by_start) {
-				if($other_product ne $curr_product) {
-					my $other_start = $hh_product_position_info{$other_product}->{start};
-					my $other_stop = $hh_product_position_info{$other_product}->{stop};
-					
-					if(($site_pos_1 >= $other_start) && ($site_pos_1 <= $other_stop)) {
-						$site1_num_overlap += 1;
-						$site1_overlap = 1;
-					}
-					
-					if(($site_pos_2 >= $other_start) && ($site_pos_2 <= $other_stop)) {
-						$site2_num_overlap += 1;
-						$site2_overlap = 1;
-					}
-					
-					if(($site_pos_3 >= $other_start) && ($site_pos_3 <= $other_stop)) {
-						$site3_num_overlap += 1;
-						$site3_overlap = 1;
-					}
-					
-					if(exists $hh_product_position_info{$other_product}->{start_2}) {
-						my $other_start2 = $hh_product_position_info{$other_product}->{start_2};
-						my $other_stop2 = $hh_product_position_info{$other_product}->{stop_2};
-						
-						if(($site_pos_1 >= $other_start2) && ($site_pos_1 <= $other_stop2)) {
-							$site1_num_overlap += 1;
-							$site1_overlap = 1;
-						}
-						
-						if(($site_pos_2 >= $other_start2) && ($site_pos_2 <= $other_stop2)) {
-							$site2_num_overlap += 1;
-							$site2_overlap = 1;
-						}
-						
-						if(($site_pos_3 >= $other_start2) && ($site_pos_3 <= $other_stop2)) {
-							$site3_num_overlap += 1;
-							$site3_overlap = 1;
-						}
-					}
-					
-					if($other_start > $site_pos_3) {
-						last;
-					}
-					
-				}			
+			# Recorded NUM OVERLAPPING PRODUCTS: this will give us how many products are at the site
+			# THIS INCLUDES the COMPLEMENT '-' strand
+			# New segments approach 
+			# SITE 1
+			if($hh_nc_position_info{$site_pos_1}->{coding} > 1) {
+				$site1_overlap = 1;
+				$site1_num_overlap = $hh_nc_position_info{$site_pos_1}->{coding} - 1;
 			}
 			
-			# If REVERSE COMPLEMENT MODE, we include these products as overlapping
-			if($complementmode) {
-				if($multi_seq_mode == 0) {
-					foreach my $other_product (@curr_compl_products_ordered_by_start) {
-						if($other_product ne $curr_product) {
-							my $other_start = $hh_compl_position_info{$other_product}->{start};
-							my $other_stop = $hh_compl_position_info{$other_product}->{stop};
-							
-							if(($site_pos_1 >= $other_start) && ($site_pos_1 <= $other_stop)) {
-								$site1_num_overlap += 1;
-								$site1_overlap = 1;
-							}
-							
-							if(($site_pos_2 >= $other_start) && ($site_pos_2 <= $other_stop)) {
-								$site2_num_overlap += 1;
-								$site2_overlap = 1;
-							}
-							
-							if(($site_pos_3 >= $other_start) && ($site_pos_3 <= $other_stop)) {
-								$site3_num_overlap += 1;
-								$site3_overlap = 1;
-							}
-							
-							if(exists $hh_compl_position_info{$other_product}->{start_2}) {
-								my $other_start2 = $hh_compl_position_info{$other_product}->{start_2};
-								my $other_stop2 = $hh_compl_position_info{$other_product}->{stop_2};
-								
-								if(($site_pos_1 >= $other_start2) && ($site_pos_1 <= $other_stop2)) {
-									$site1_num_overlap += 1;
-									$site1_overlap = 1;
-								}
-								
-								if(($site_pos_2 >= $other_start2) && ($site_pos_2 <= $other_stop2)) {
-									$site2_num_overlap += 1;
-									$site2_overlap = 1;
-								}
-								
-								if(($site_pos_3 >= $other_start2) && ($site_pos_3 <= $other_stop2)) {
-									$site3_num_overlap += 1;
-									$site3_overlap = 1;
-								}
-							}
-							
-							if($other_start > $site_pos_3) {
-								last;
-							}
-							
-						}
-					}
-				} else { # MULTI-SEQ MODE
-					# Look through the GTF file for the - strand entries
-					# translate the start and stop sites to + strand sites using $fasta_length
-					#my $rev_complement_seq = &reverse_complement_from_fasta($fasta_to_open);
-					#my $rev_compl_seq = &reverse_complement_from_fasta($fasta_to_open);
-					#my $seq_length = length($rev_compl_seq);
-					
-					my %hh_compl_position_info; # saved with respect to the + strand
-					
-					open(GTF_FILE_AGAIN, "$cds_file") or die "\nCould not open the GTF file $cds_file - $!\n\n";
-					while(<GTF_FILE_AGAIN>) {
-						if($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"gene\:([\w\s\.\:']+)\"/) { # Line is - strand
-							my $rev_compl_start = $1; # Where the gene itself actually STOPS
-							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-							my $this_product = $3;
-							#my $feature_length = ($rev_compl_stop - $rev_compl_start + 1);
-							
-							#my $offset = ($seq_length - $rev_compl_stop);
-							#my $this_start = ($offset + 1);
-							#my $this_stop = ($this_start + $feature_length - 1);
-							
-							if(exists $hh_compl_position_info{$this_product}->{start}) {
-								$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-								$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-							} else {
-								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-							}
-						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
-							my $rev_compl_start = $1; # Where the gene itself actually STOPS
-							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-							my $this_product = $3;
-							
-							if(exists $hh_compl_position_info{$this_product}->{start}) {
-								$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-								$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-							} else {
-								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-							}
-						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"([\w\s\.\:']+)\"/) {
-							my $rev_compl_start = $1; # Where the gene itself actually STOPS
-							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-							my $this_product = $3;
-							
-							if(exists $hh_compl_position_info{$this_product}->{start}) {
-								$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-								$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-							} else {
-								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-							}
-						# NOW, IN CASE transcript_id comes first
-						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"gene\:([\w\s\.\:']+)\"/) {
-							my $rev_compl_start = $1; # Where the gene itself actually STOPS
-							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-							my $this_product = $3;
-							
-							if(exists $hh_compl_position_info{$this_product}->{start}) {
-								$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-								$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-							} else {
-								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-							}
-						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
-							my $rev_compl_start = $1; # Where the gene itself actually STOPS
-							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-							my $this_product = $3;
-							
-							if(exists $hh_compl_position_info{$this_product}->{start}) {
-								$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-								$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-							} else {
-								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-							}
-						} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+)\"/) {
-							my $rev_compl_start = $1; # Where the gene itself actually STOPS
-							my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-							my $this_product = $3;
-							
-							if(exists $hh_compl_position_info{$this_product}->{start}) {
-								$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-								$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-							} else {
-								$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-								$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-							}
-						}	
-					}
-					close GTF_FILE_AGAIN;
-					
-					#my @curr_compl_products = sort(keys %hh_compl_position_info);
-					my @curr_compl_products_ordered_by_start = sort { $hh_compl_position_info{$a}->{start} <=> $hh_compl_position_info{$b}->{start} } keys %hh_compl_position_info;
-					
-					foreach my $other_product (@curr_compl_products_ordered_by_start) {
-						if($other_product ne $curr_product) {
-							my $other_start = $hh_compl_position_info{$other_product}->{start};
-							my $other_stop = $hh_compl_position_info{$other_product}->{stop};
-							
-							if(($site_pos_1 >= $other_start) && ($site_pos_1 <= $other_stop)) {
-								$site1_num_overlap += 1;
-								$site1_overlap = 1;
-							}
-							
-							if(($site_pos_2 >= $other_start) && ($site_pos_2 <= $other_stop)) {
-								$site2_num_overlap += 1;
-								$site2_overlap = 1;
-							}
-							
-							if(($site_pos_3 >= $other_start) && ($site_pos_3 <= $other_stop)) {
-								$site3_num_overlap += 1;
-								$site3_overlap = 1;
-							}
-							
-							if(exists $hh_compl_position_info{$other_product}->{start_2}) {
-								my $other_start2 = $hh_compl_position_info{$other_product}->{start_2};
-								my $other_stop2 = $hh_compl_position_info{$other_product}->{stop_2};
-								
-								if(($site_pos_1 >= $other_start2) && ($site_pos_1 <= $other_stop2)) {
-									$site1_num_overlap += 1;
-									$site1_overlap = 1;
-								}
-								
-								if(($site_pos_2 >= $other_start2) && ($site_pos_2 <= $other_stop2)) {
-									$site2_num_overlap += 1;
-									$site2_overlap = 1;
-								}
-								
-								if(($site_pos_3 >= $other_start2) && ($site_pos_3 <= $other_stop2)) {
-									$site3_num_overlap += 1;
-									$site3_overlap = 1;
-								}
-							}
-							
-							if($other_start > $site_pos_3) {
-								last;
-							}
-							
-						}
-					}
-				}
+			# SITE 2
+			if($hh_nc_position_info{$site_pos_2}->{coding} > 1) {
+				$site2_overlap = 1;
+				$site2_num_overlap = $hh_nc_position_info{$site_pos_2}->{coding} - 1;
+			}
+			
+			# SITE 3
+			if($hh_nc_position_info{$site_pos_3}->{coding} > 1) {
+				$site3_overlap = 1;
+				$site3_num_overlap = $hh_nc_position_info{$site_pos_3}->{coding} - 1;
 			}
 			
 			my $codon_overlap_nts = ($site1_overlap+$site2_overlap+$site3_overlap);
@@ -7130,8 +6621,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				} else {
 					$codonb_category = 'ERROR';
 				}
-				
-				my $pi = $hh_nc_position_info{$site_pos_1}->{pi};
+		
+				my $pi;
+				if($hh_nc_position_info{$site_pos_1}->{pi} > 0) {
+					$pi = $hh_nc_position_info{$site_pos_1}->{pi};
+				} else {
+					$pi = 0;
+				}
 				
 				# Round nucleotide counts to 0 for rounding error to the 9th decimal
 #				if($num_1_A < 0.000000001 && $num_1_A > -0.000000001) {
@@ -7186,8 +6682,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				} else {
 					$codonb_category = 'ERROR';
 				}
-				
-				my $pi = $hh_nc_position_info{$site_pos_2}->{pi};
+			
+				my $pi;
+				if($hh_nc_position_info{$site_pos_2}->{pi} > 0) {
+					$pi = $hh_nc_position_info{$site_pos_2}->{pi};
+				} else {
+					$pi = 0;
+				}
 				
 				# Round nucleotide counts to 0 for rounding error to the 9th decimal
 #				if($num_2_A < 0.000000001 && $num_2_A > -0.000000001) {
@@ -7242,8 +6743,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				} else {
 					$codonb_category = 'ERROR';
 				}
-				
-				my $pi = $hh_nc_position_info{$site_pos_3}->{pi};
+					
+				my $pi;
+				if($hh_nc_position_info{$site_pos_3}->{pi} > 0) {
+					$pi = $hh_nc_position_info{$site_pos_3}->{pi};
+				} else {
+					$pi = 0;
+				}
 				
 				# Round nucleotide counts to 0 for rounding error to the 9th decimal
 #				if($num_3_A < 0.000000001 && $num_3_A > -0.000000001) {
@@ -7521,13 +7027,15 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		$pop_sum_S_gdiv += $sum_gene_diversity_S;
 		$pop_sum_A_gdiv += $sum_gene_diversity_A;
 	} # END LOOP THROUGH ALL PRODUCTS
+	print "COMPLETED.\n";
 	
+	print "\nPerforming final calculations, noncoding overlap analysis, and output... ";
 	# DEAL WITH NONCODING SITES for site file and population summary file	
 	chdir('SNPGenie_Results');
 	open(OUTFILE_GENE_DIV,">>site\_results\.txt");
-	foreach my $curr_site (sort {$a <=> $b} (keys %hh_nc_position_info)) {
+	foreach my $curr_site (sort {$a <=> $b} (keys %hh_nc_position_info)) { # only poly were stored #comeback; we've got an array already
 		if($hh_nc_position_info{$curr_site}->{polymorphic} == 1) { # poly
-			if($hh_nc_position_info{$curr_site}->{coding} != 1) { # poly-noncoding
+			if(! $hh_nc_position_info{$curr_site}->{coding}) { # poly-noncoding
 				my $ref_nt = $hh_nc_position_info{$curr_site}->{reference};
 				my $maj_nt = $hh_nc_position_info{$curr_site}->{maj_nt};
 				my $overlapping_ORFs = 0;
@@ -7538,137 +7046,31 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				my $A = $hh_nc_position_info{$curr_site}->{A};
 				my $C = $hh_nc_position_info{$curr_site}->{C};
 				my $G = $hh_nc_position_info{$curr_site}->{G};
-				my $T = $hh_nc_position_info{$curr_site}->{T};
+				my $T = $hh_nc_position_info{$curr_site}->{T};				
 				
 				# If REVERSE COMPLEMENT MODE, we include these products as overlapping
+				# Go through each product, through each segment
 				if($complementmode) {
-					if($multi_seq_mode == 0) {
-						foreach my $other_product (@curr_compl_products_ordered_by_start) {
-							my $other_start = $hh_compl_position_info{$other_product}->{start};
-							my $other_stop = $hh_compl_position_info{$other_product}->{stop};
+					foreach my $revcom_product (@curr_compl_products_ordered_by_start) {
+						#print "\nProduct: $curr_product, ";
+						
+						my $num_segments = $hh_compl_position_info{$revcom_product}->{num_segments};				
+						
+						#COMEBACK this is computationally very intense.
+						# For each segment, step through each site, label coding
+						for(my $i = 1; $i <= $num_segments; $i++) {
+							my $this_start_key = 'start_' . $i;
+							my $this_stop_key = 'stop_' . $i;
 							
-							if(($curr_site >= $other_start) && ($curr_site <= $other_stop)) {
+							my $this_start = $hh_compl_position_info{$revcom_product}->{$this_start_key};
+							my $this_stop = $hh_compl_position_info{$revcom_product}->{$this_stop_key};
+							
+							if(($curr_site >= $this_start) && ($curr_site <= $this_stop)) {
 								$overlapping_ORFs += 1;
 							}
 							
-							if(exists $hh_compl_position_info{$other_product}->{start_2}) {
-								my $other_start2 = $hh_compl_position_info{$other_product}->{start_2};
-								my $other_stop2 = $hh_compl_position_info{$other_product}->{stop_2};
-								
-								if(($curr_site >= $other_start2) && ($curr_site <= $other_stop2)) {
-									$overlapping_ORFs += 1;
-								}
-							}
-							
-							if($other_start > $curr_site) {
-								last;
-							}
-						}
-					} else { # MULTI-SEQ MODE
-						# Look through the GTF file for the - strand entries
-						# translate the start and stop sites to + strand sites using $fasta_length
-						
-						my %hh_compl_position_info; # saved with respect to the + strand
-						
-						open(GTF_FILE_AGAIN, "$cds_file") or die "\nCould not open the GTF file $cds_file - $!\n\n";
-						while(<GTF_FILE_AGAIN>) {
-							if($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"gene\:([\w\s\.\:']+)\"/) { # Line is - strand
-								my $rev_compl_start = $1; # Where the gene itself actually STOPS
-								my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-								my $this_product = $3;
-								
-								if(exists $hh_compl_position_info{$this_product}->{start}) {
-									$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-									$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-								} else {
-									$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-									$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-								}
-							} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
-								my $rev_compl_start = $1; # Where the gene itself actually STOPS
-								my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-								my $this_product = $3;
-								
-								if(exists $hh_compl_position_info{$this_product}->{start}) {
-									$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-									$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-								} else {
-									$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-									$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-								}
-							} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d+]\t\-\t\d+\tgene_id \"([\w\s\.\:']+)\"/) {
-								my $rev_compl_start = $1; # Where the gene itself actually STOPS
-								my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-								my $this_product = $3;
-								
-								if(exists $hh_compl_position_info{$this_product}->{start}) {
-									$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-									$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-								} else {
-									$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-									$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-								}
-							# NOW, IN CASE transcript_id comes first
-							} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"gene\:([\w\s\.\:']+)\"/) {
-								my $rev_compl_start = $1; # Where the gene itself actually STOPS
-								my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-								my $this_product = $3;
-								
-								if(exists $hh_compl_position_info{$this_product}->{start}) {
-									$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-									$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-								} else {
-									$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-									$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-								}
-							} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
-								my $rev_compl_start = $1; # Where the gene itself actually STOPS
-								my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-								my $this_product = $3;
-								
-								if(exists $hh_compl_position_info{$this_product}->{start}) {
-									$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-									$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-								} else {
-									$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-									$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-								}
-							} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+)\"/) {
-								my $rev_compl_start = $1; # Where the gene itself actually STOPS
-								my $rev_compl_stop = $2; # Where the gene itself actually STARTS
-								my $this_product = $3;
-								
-								if(exists $hh_compl_position_info{$this_product}->{start}) {
-									$hh_compl_position_info{$this_product}->{start_2} = $rev_compl_start;
-									$hh_compl_position_info{$this_product}->{stop_2} = $rev_compl_stop;
-								} else {
-									$hh_compl_position_info{$this_product}->{start} = $rev_compl_start;
-									$hh_compl_position_info{$this_product}->{stop} = $rev_compl_stop;
-								}
-							}	
-						}
-						close GTF_FILE_AGAIN;
-						
-						my @curr_compl_products_ordered_by_start = sort { $hh_compl_position_info{$a}->{start} <=> $hh_compl_position_info{$b}->{start} } keys %hh_compl_position_info;
-						
-						foreach my $other_product (@curr_compl_products_ordered_by_start) {
-							my $other_start = $hh_compl_position_info{$other_product}->{start};
-							my $other_stop = $hh_compl_position_info{$other_product}->{stop};
-							
-							if(($curr_site >= $other_start) && ($curr_site <= $other_stop)) {
-								$overlapping_ORFs += 1;
-							}
-							
-							if(exists $hh_compl_position_info{$other_product}->{start_2}) {
-								my $other_start2 = $hh_compl_position_info{$other_product}->{start_2};
-								my $other_stop2 = $hh_compl_position_info{$other_product}->{stop_2};
-								
-								if(($curr_site >= $other_start2) && ($curr_site <= $other_stop2)) {
-									$overlapping_ORFs += 1;
-								}
-							}
-							
-							if($other_start > $curr_site) {
+							# Assumes that they have been ordered
+							if($this_start > $curr_site) {
 								last;
 							}
 						}
@@ -7777,7 +7179,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		"$num_poly_nc_sites\n";
 	#}
 	
-	$progress_period_count = 0;
+	#$progress_period_count = 0;
 	
 	####### PRINT SNP REPORT TOTALS HERE BEFORE FINISHING WITH CURRENT FILE #########
 	
@@ -7787,7 +7189,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	close POP_SUMMARY;
 	chdir('..');
 	
-	print "\n... DONE with $file_nm\n";
+	print "$file_nm COMPLETED.\n";
 	
 	# Remove temp files
 	#&remove_tempfiles;
@@ -7850,15 +7252,7 @@ sub get_header_names {
 	while (<CURRINFILE>) {
 		#print "$_";
 		if($line == 0) {
-			#chomp;
-			# CHOMP for 3 operating systems
-			if($_ =~ /\r\n$/) {
-				$_ =~ s/\r\n//;
-			} elsif($_ =~ /\r$/) {
-				$_ =~ s/\r//;
-			} elsif($_ =~ /\n$/) {
-				$_ =~ s/\n//;
-			}
+			chomp;
 			
 			if($_ =~/\t\w+\t/) { # it's TAB-delimited
 				@line_arr = split(/\t/,$_);
@@ -7874,15 +7268,7 @@ sub get_header_names {
 		} elsif($line > 0 && $_ =~ /^##/) {
 			$line++;
 		} elsif($line > 0 && ($_ =~ /^#CHROM/)) {
-			#chomp;
-			# CHOMP for 3 operating systems
-			if($_ =~ /\r\n$/) {
-				$_ =~ s/\r\n//;
-			} elsif($_ =~ /\r$/) {
-				$_ =~ s/\r//;
-			} elsif($_ =~ /\n$/) {
-				$_ =~ s/\n//;
-			}
+			chomp;
 			
 			if($_ =~/\t/) { # it's TAB-delimited
 				@line_arr = split(/\t/,$_);
@@ -7904,7 +7290,7 @@ sub get_header_names {
 				$file_nm =~ s/_\w\w\w\w.txt/.txt/;
 				
 				print ERROR_FILE "$filename\tN/A\tN/A\t".
-					"File not TAB(\\t)- or COMMA-delimited, or there is only one column. SNPGenie terminated\n";
+					"File not TAB(\\t)- or COMMA-delimited, or there is only one column. SNPGenie terminated.\n";
 				close ERROR_FILE;
 				chdir('..');
 				
@@ -7926,7 +7312,7 @@ sub get_header_names {
 			$file_nm =~ s/_\w\w\w\w.txt/.txt/;
 			
 			print ERROR_FILE "$filename\tN/A\tN/A\t".
-				"File not TAB(\\t)- or COMMA-delimited, or there is only one column. SNPGenie terminated\n";
+				"File not TAB(\\t)- or COMMA-delimited, or there is only one column. SNPGenie terminated.\n";
 			close ERROR_FILE;
 			chdir('..');
 			
@@ -7944,56 +7330,56 @@ sub get_header_names {
 }
 
 #########################################################################################
-sub get_product_names {
-	my ($curr_snp_report_filename,$index_over_annot) = @_;
-	#print "\n\n$curr_snp_report_filename\n\n";
-	my $line = 0;
-	my %products_hash;
-	open (CURRINFILE, $curr_snp_report_filename);
-	while (<CURRINFILE>) {
-		if ($line == 0) {
-			$line++;
-		} else {
-			#chomp;
-			
-			# CHOMP for 3 operating systems
-			if($_ =~ /\r\n$/) {
-				$_ =~ s/\r\n//;
-			} elsif($_ =~ /\r$/) {
-				$_ =~ s/\r//;
-			} elsif($_ =~ /\n$/) {
-				$_ =~ s/\n//;
-			}
-			
-			my @line_arr = split(/\t/,$_);
-			my $over_annot = $line_arr[$index_over_annot];
-			
-			if ($over_annot =~/Mature peptide: ([\w\s\.']+)/) {
-				if (! exists $products_hash{$1}) {
-					$products_hash{$1} = 1;
-				}
-			} #elsif ($over_annot =~/CDS: (\w+)/) { # ORIGINAL
-			#	if (! exists $products_hash{$1}) {
-			#		$products_hash{$1} = 1;
-			#	}
-			#}
-			
-			if ($over_annot =~/CDS: ([\w\s\.']+)/) {
-				if (! exists $products_hash{$1}) {
-					$products_hash{$1} = 1;
-				}
-			} #elsif ($over_annot =~/Gene: (\w+)/) { # CHANGED THIS TO IGNORE GENE-ONLY ANNOTATIONS: WANT CDS
-			#	if (! exists $products_hash{$1}) {
-			#		$products_hash{$1} = 1;
-			#	}
-			#} 
-		}
-	}
-	close CURRINFILE;
-	my @product_names = keys %products_hash;
-	#print "\n@product_names\n\n";
-	return @product_names;
-}
+#sub get_product_names {
+#	my ($curr_snp_report_filename,$index_over_annot) = @_;
+#	#print "\n\n$curr_snp_report_filename\n\n";
+#	my $line = 0;
+#	my %products_hash;
+#	open (CURRINFILE, $curr_snp_report_filename);
+#	while (<CURRINFILE>) {
+#		if ($line == 0) {
+#			$line++;
+#		} else {
+#			#chomp;
+#			
+#			# CHOMP for 3 operating systems
+#			if($_ =~ /\r\n$/) {
+#				$_ =~ s/\r\n//;
+#			} elsif($_ =~ /\r$/) {
+#				$_ =~ s/\r//;
+#			} elsif($_ =~ /\n$/) {
+#				$_ =~ s/\n//;
+#			}
+#			
+#			my @line_arr = split(/\t/,$_);
+#			my $over_annot = $line_arr[$index_over_annot];
+#			
+#			if ($over_annot =~/Mature peptide: ([\w\s\.']+)/) {
+#				if (! exists $products_hash{$1}) {
+#					$products_hash{$1} = 1;
+#				}
+#			} #elsif ($over_annot =~/CDS: (\w+)/) { # ORIGINAL
+#			#	if (! exists $products_hash{$1}) {
+#			#		$products_hash{$1} = 1;
+#			#	}
+#			#}
+#			
+#			if ($over_annot =~/CDS: ([\w\s\.']+)/) {
+#				if (! exists $products_hash{$1}) {
+#					$products_hash{$1} = 1;
+#				}
+#			} #elsif ($over_annot =~/Gene: (\w+)/) { # CHANGED THIS TO IGNORE GENE-ONLY ANNOTATIONS: WANT CDS
+#			#	if (! exists $products_hash{$1}) {
+#			#		$products_hash{$1} = 1;
+#			#	}
+#			#} 
+#		}
+#	}
+#	close CURRINFILE;
+#	my @product_names = keys %products_hash;
+#	#print "\n@product_names\n\n";
+#	return @product_names;
+#}
 
 #########################################################################################
 sub get_product_names_from_gtf {
@@ -8003,13 +7389,30 @@ sub get_product_names_from_gtf {
 	open (CURRINFILE, $cds_file);
 	while (<CURRINFILE>) {
 		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
-			if($_ =~/gene_id \"gene\:([\w\s\.']+)\"/) {
+			if($_ =~/gene_id \"gene\:([\w\s\.']+)\"/) { # transcript_id not a problem
 				$products_hash{$1} = 1;
+				$seen_sense_strand_products = 1;
 			} elsif($_ =~ /gene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
 				$products_hash{$1} = 1;
+				$seen_sense_strand_products = 1;
 			} elsif($_ =~/gene_id \"([\w\s\.']+)\"/) {
 				$products_hash{$1} = 1;
-			} 
+				$seen_sense_strand_products = 1;
+			} else {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | CODON | WARNING
+				
+				print ERROR_FILE "$cds_file\tN/A\tN/A\t".
+					"CDS annotation(s) does not have a gene_id. SNPGenie terminated.\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				#unlink $curr_snp_report_filename;
+				
+				die "\n\n## WARNING: CDS annotation(s) in $cds_file does not have a ".
+					"gene_id. SNPGenie terminated.\n\n";
+			}
 		}
 	}
 	close CURRINFILE;
@@ -8020,51 +7423,51 @@ sub get_product_names_from_gtf {
 }
 
 #########################################################################################
-sub get_product_names_vcf {
-	my ($gtf_file_nm) = @_;
-	my %products_hash;
-	open (CURRINFILE, $gtf_file_nm);
-	while (<CURRINFILE>) {
-		chomp;
-		# CHOMP for 3 operating systems
-		#if($_ =~ /\r\n$/) {
-		#	$_ =~ s/\r\n//;
-		#} elsif($_ =~ /\r$/) {
-		#	$_ =~ s/\r//;
-		#} elsif($_ =~ /\n$/) {
-		#	$_ =~ s/\n//;
-		#}
-		
-		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
-			if($_ =~/gene_id \"gene\:([\w\s\.']+)\"/) {
-				my $product = $1;
-				
-				if ((! exists $products_hash{$product}) && ($product ne '')) {
-					$products_hash{$product} = 1;
-				}
-			} elsif($_ =~ /gene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
-				my $product = $1;
-				
-				if ((! exists $products_hash{$product}) && ($product ne '')) {
-					$products_hash{$product} = 1;
-				}
-			} elsif($_ =~ /gene_id \"([\w\s\.']+)\"/) {
-				my $product = $1;
-				
-				if ((! exists $products_hash{$product}) && ($product ne '')) {
-					$products_hash{$product} = 1;
-				}
-			}
-		}
-		
-	}
-	close CURRINFILE;
-	my @product_names = keys %products_hash;
-	#foreach (@product_names) {
-	#	print "$_\n";
-	#}
-	return @product_names;
-}
+#sub get_product_names_vcf {
+#	my ($gtf_file_nm) = @_;
+#	my %products_hash;
+#	open (CURRINFILE, $gtf_file_nm);
+#	while (<CURRINFILE>) {
+#		chomp;
+#		# CHOMP for 3 operating systems
+#		#if($_ =~ /\r\n$/) {
+#		#	$_ =~ s/\r\n//;
+#		#} elsif($_ =~ /\r$/) {
+#		#	$_ =~ s/\r//;
+#		#} elsif($_ =~ /\n$/) {
+#		#	$_ =~ s/\n//;
+#		#}
+#		
+#		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
+#			if($_ =~/gene_id \"gene\:([\w\s\.']+)\"/) {
+#				my $product = $1;
+#				
+#				if ((! exists $products_hash{$product}) && ($product ne '')) {
+#					$products_hash{$product} = 1;
+#				}
+#			} elsif($_ =~ /gene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
+#				my $product = $1;
+#				
+#				if ((! exists $products_hash{$product}) && ($product ne '')) {
+#					$products_hash{$product} = 1;
+#				}
+#			} elsif($_ =~ /gene_id \"([\w\s\.']+)\"/) {
+#				my $product = $1;
+#				
+#				if ((! exists $products_hash{$product}) && ($product ne '')) {
+#					$products_hash{$product} = 1;
+#				}
+#			}
+#		}
+#		
+#	}
+#	close CURRINFILE;
+#	my @product_names = keys %products_hash;
+#	#foreach (@product_names) {
+#	#	print "$_\n";
+#	#}
+#	return @product_names;
+#}
 
 #########################################################################################
 sub determine_complement_mode {
@@ -8126,7 +7529,7 @@ sub get_fasta_file_names {
 		#open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		## FILE | PRODUCT | SITE | CODON | WARNING
 		#print ERROR_FILE "N/A\tN/A\tN/A\t".
-		#	"No FASTA (.fa or .fasta) files in directory. SNPGenie terminated\n";
+		#	"No FASTA (.fa or .fasta) files in directory. SNPGenie terminated.\n";
 		#close ERROR_FILE;
 		#chdir('..');
 		
@@ -8146,7 +7549,7 @@ sub get_txt_file_names {
 		#open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		## FILE | PRODUCT | SITE | CODON | WARNING
 		#print ERROR_FILE "N/A\tN/A\tN/A\t".
-		##	"No SNP Reports (.txt) files in directory. SNPGenie terminated\n";
+		##	"No SNP Reports (.txt) files in directory. SNPGenie terminated.\n";
 		#	"No SNP Reports (.txt) files in directory.\n";
 		#close ERROR_FILE;
 		#chdir('..');
@@ -8166,7 +7569,7 @@ sub get_csv_file_names {
 		#open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		## FILE | PRODUCT | SITE | CODON | WARNING
 		#print ERROR_FILE "N/A\tN/A\tN/A\t".
-		##	"No SNP Reports (.txt) files in directory. SNPGenie terminated\n";
+		##	"No SNP Reports (.txt) files in directory. SNPGenie terminated.\n";
 		#	"No SNP Reports (.csv) files in directory.\n";
 		#close ERROR_FILE;
 		#chdir('..');
@@ -8186,7 +7589,7 @@ sub get_vcf_file_names {
 		#open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		## FILE | PRODUCT | SITE | CODON | WARNING
 		#print ERROR_FILE "N/A\tN/A\tN/A\t".
-		##	"No SNP Reports (.txt) files in directory. SNPGenie terminated\n";
+		##	"No SNP Reports (.txt) files in directory. SNPGenie terminated.\n";
 		#	"No SNP Reports (.csv) files in directory.\n";
 		#close ERROR_FILE;
 		#chdir('..');
@@ -8394,15 +7797,15 @@ sub populate_tempfile_clc {
 	my $curr_snp_report_name = $_[0];
 	my $temp_snp_report_name = $_[1];
 	
-	print "\nConverting $curr_snp_report_name to SNPGenie format... ";
+	print "\nConverting $curr_snp_report_name to SNPGenie format...\n";
 	
 	my @header_names_arr = &get_header_names($temp_snp_report_name,$curr_snp_report_name);
 	#print "@header_names_arr";
 	#print "\n\n$_\n\n";
 	
 	my $newline_char = &detect_newline_char($curr_snp_report_name);
-	my $old_newline = $/;
-	$/ = $newline_char;
+	#my $old_newline = $/;
+	#$/ = $newline_char;
 	my $newline_type;
 	
 	if($newline_char eq "\r\n") {
@@ -8413,8 +7816,7 @@ sub populate_tempfile_clc {
 		$newline_type = "Unix (LF, \\n\)";
 	}
 	
-	print "\n\n";
-	print "\n\nIn file $curr_snp_report_name, the newline type is: $newline_type\n\n";
+	print "\nIn file $curr_snp_report_name, the newline type is: $newline_type\n";
 	
 	my $line = 0;
 	open(SNPR_FILE, $curr_snp_report_name) or die "\nCould not open SNP Report file ".
@@ -8545,7 +7947,7 @@ sub populate_tempfile_clc {
 		}
 	}
 	close SNPR_FILE;
-	$/ = $old_newline;
+	#$/ = $old_newline;
 }
 
 
@@ -8570,7 +7972,7 @@ sub populate_tempfile_geneious {
 	# Preparing Geneious' output for SNP Genie by making it tab-delimited and also removing parentheses
 	# ONLY CONSIDERS SNPs of LENGTH 1 -- not the multiple-nt linked ones -- but this seem irrelevant
 
-	print "\nConverting $curr_snp_report_name to SNPGenie format... ";
+	print "\nConverting $curr_snp_report_name to SNPGenie format...\n";
 	
 	## PART 1 ## SNPGENIE_PREP_GENEIOUS
 	my $temp_processed_snp_report_TEMPLATE = "temp_processed_snp_report_XXXX";
@@ -8582,8 +7984,8 @@ sub populate_tempfile_geneious {
 	#print "My temp processed handle is: $TEMP_PROCESSED_SNP_REPORT_HANDLE\n";
 	
 	my $newline_char = &detect_newline_char($curr_snp_report_name);
-	my $old_newline = $/;
-	$/ = $newline_char;
+	#my $old_newline = $/;
+	#$/ = $newline_char;
 	my $newline_type;
 	
 	if($newline_char eq "\r\n") {
@@ -8616,22 +8018,12 @@ sub populate_tempfile_geneious {
 	#	CLOSING CAUSES MAJOR PROBLEMS
 	seek($TEMP_PROCESSED_SNP_REPORT_HANDLE,0,0);
 	
-	$/ = $old_newline;
-	
-	print "\n\n";
+	#$/ = $old_newline;
 	
 	## PART 2 ## SNPGENIE_GENEIOUS_TO_CLC
-
-#	my $file_nm = $ARGV[0]; # this was the name of the SNP report after prep_geneious, 
-	# which is now our $temp_processed_snp_report_name
-	
-	print "\n\nIn file $curr_snp_report_name, the newline type is: $newline_type\n\n";
+	print "\nIn file $curr_snp_report_name, the newline type is: $newline_type\n";
 	
 	my @header_names_arr = &get_header_names($temp_processed_snp_report_name);
-	
-	#foreach (@header_names_arr) {
-	#	print "$_\n";
-	#}
 	
 	my $index_min;
 	my $index_max;
@@ -8696,46 +8088,46 @@ sub populate_tempfile_geneious {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"Minimum\". SNPGenie terminated\n";
+			"Does not contain the column header \"Minimum\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Minimum\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Minimum\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_max == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"Maximum\". SNPGenie terminated\n";
+			"Does not contain the column header \"Maximum\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Maximum\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Maximum\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_poly_type == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"Polymorphism Type\". SNPGenie terminated\n";
+			"Does not contain the column header \"Polymorphism Type\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Polymorphism Type\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Polymorphism Type\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_type == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"Type\". SNPGenie terminated\n";
+			"Does not contain the column header \"Type\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Type\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Type\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_cds_position == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
@@ -8753,49 +8145,49 @@ sub populate_tempfile_geneious {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"Change\". SNPGenie terminated\n";
+			"Does not contain the column header \"Change\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Change\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Change\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_percent == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"Variant Frequency\". SNPGenie terminated\n";
+			"Does not contain the column header \"Variant Frequency\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Variant Frequency\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Variant Frequency\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_cov == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"Coverage\". SNPGenie terminated\n";
+			"Does not contain the column header \"Coverage\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Coverage\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Coverage\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_product == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"product\". SNPGenie terminated\n";
+			"Does not contain the column header \"product\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"product\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"product\". SNPGenie terminated.\n\n";	
 	}
 	
-	my @product_names_arr = &get_product_names_geneious($temp_processed_snp_report_name,$index_product,$index_type);
+#HEREE	my @product_names_arr = &get_product_names_geneious($temp_processed_snp_report_name,$index_product,$index_type);
 	
 	#foreach my $prod (@product_names_arr) {
 	#	print "Product: $prod\n";
@@ -8807,8 +8199,8 @@ sub populate_tempfile_geneious {
 	$line = 0;
 	
 	$newline_char = &detect_newline_char($temp_processed_snp_report_name);
-	$old_newline = $/;
-	$/ = $newline_char;
+	#$old_newline = $/;
+	#$/ = $newline_char;
 	
 	open(OUTFILE,">>$temp_snp_report_name");
 	#open(CURRINFILE, $temp_processed_snp_report_name) or die "Could not open $TEMP_PROCESSED_SNP_REPORT_HANDLE\n";
@@ -8829,16 +8221,7 @@ sub populate_tempfile_geneious {
 			$line++;
 			
 		} else {
-			# CHOMP for 3 operating systems
-			if($_ =~ /\r\n$/) {
-				$_ =~ s/\r\n//;
-			} elsif($_ =~ /\r$/) {
-				$_ =~ s/\r//;
-			} elsif($_ =~ /\n$/) {
-				$_ =~ s/\n//;
-			}
-			
-			#print "$_\n";
+			chomp;
 			
 			my @line_arr = split(/\t/,$_);
 			
@@ -8860,8 +8243,6 @@ sub populate_tempfile_geneious {
 				
 				my $poly_type = $line_arr[$index_poly_type];
 				my $percent = $line_arr[$index_percent];
-				
-				#print "My percent: $percent\n";
 				
 				if(($poly_type =~ /SNP/ || $poly_type =~ /Substitution/) && ($percent > 0)) {
 					#print "Poly Type is SNP\n";
@@ -8899,7 +8280,7 @@ sub populate_tempfile_geneious {
 					if(($product_name ne '') && ($cds_position > 0)) { # STRINGS are 0
 						#print "Product name isn't blank\n";
 						#print "product name is: $product_name\n"; NOPE
-						@cds_coords_arr = &get_product_coordinates($product_name);
+						@cds_coords_arr = @{$product_coordinates_harr{$product_name}->{product_coord_arr}};
 						
 						#print "\n$product_name @cds_coords_arr\n";
 						
@@ -9071,7 +8452,7 @@ sub populate_tempfile_geneious {
 	#close CURRINFILE;
 	close $TEMP_PROCESSED_SNP_REPORT_HANDLE;
 	close OUTFILE;
-	$/ = $old_newline;
+	#$/ = $old_newline;
 	unlink $temp_processed_snp_report_name;
 }
 
@@ -9087,10 +8468,10 @@ sub populate_tempfile_vcf {
 	my $temp_snp_report_name = $_[1]; # what we're populating after processing
 	my $gtf_file_nm = $_[2];
 	
-	print "\nConverting $curr_snp_report_name to SNPGenie format... ";
+	print "\nConverting $curr_snp_report_name to SNPGenie format...\n";
 
 	my $newline_char = &detect_newline_char($curr_snp_report_name);
-	$/ = $newline_char;
+	#$/ = $newline_char;
 	my $newline_type;
 	
 	if($newline_char eq "\r\n") {
@@ -9101,7 +8482,7 @@ sub populate_tempfile_vcf {
 		$newline_type = "Unix (LF, \\n\)";
 	}
 	
-	print "\n\nIn file $curr_snp_report_name, the newline type is: $newline_type\n\n";
+	print "\nIn file $curr_snp_report_name, the newline type is: $newline_type\n";
 	
 	my $index_chrom;
 	my $index_pos;
@@ -9189,117 +8570,97 @@ sub populate_tempfile_vcf {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"CHROM\". SNPGenie terminated\n";
+			"Does not contain the column header \"CHROM\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"CHROM\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"CHROM\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_pos == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"POS\". SNPGenie terminated\n";
+			"Does not contain the column header \"POS\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"POS\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"POS\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_id == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"ID\". SNPGenie terminated\n";
+			"Does not contain the column header \"ID\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"ID\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"ID\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_ref == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"REF\". SNPGenie terminated\n";
+			"Does not contain the column header \"REF\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"REF\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"REF\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_alt == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"ALT\". SNPGenie terminated\n";
+			"Does not contain the column header \"ALT\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"ALT\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"ALT\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_qual == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"QUAL\". SNPGenie terminated\n";
+			"Does not contain the column header \"QUAL\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"QUAL\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"QUAL\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_filter == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"FILTER\". SNPGenie terminated\n";
+			"Does not contain the column header \"FILTER\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FILTER\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FILTER\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_info == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"INFO\". SNPGenie terminated\n";
+			"Does not contain the column header \"INFO\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"INFO\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"INFO\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_format == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"FORMAT\". SNPGenie terminated\n";
+			"Does not contain the column header \"FORMAT\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FORMAT\". SNPGenie terminated\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FORMAT\". SNPGenie terminated.\n\n";	
 	} #elsif ($seen_index_sample1 == 0) {
 #		chdir('SNPGenie_Results');
 #		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 #		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-#			"Does not contain the column header \"sample1\". SNPGenie terminated\n";
+#			"Does not contain the column header \"sample1\". SNPGenie terminated.\n";
 #		close ERROR_FILE;
 #		chdir('..');
 #		
 #		#unlink $curr_snp_report_name;
 #		
-#		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"sample1\". SNPGenie terminated\n\n";	
+#		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"sample1\". SNPGenie terminated.\n\n";	
 #	}
-	
-	# Product names are not included directly in the VCF. Thus we must use the GTF file
-	my @product_names_arr = &get_product_names_vcf($gtf_file_nm);
-	@product_names_arr = sort(@product_names_arr);
 	
 	# NEED TO BUILD A HASH WITH keys as ALL PRODUCT POSITIONS IN THE GENOME, and values being an array
 	# of all PRODUCTS overlapping that position. Do we want all the products just on this strand,
@@ -9310,21 +8671,14 @@ sub populate_tempfile_vcf {
 	# information about how many products actually overlap each site. In other words, we're only
 	# going to worry about this strand's GTF file for the purposes of this subroutine.
 	
-	# Loop through GTF and store product positions with product names in array
-	my %positions_with_product_hash;
-	my %products_hash;
-	
+	# Loop through GTF and store (1) positions having products in %positions_with_product_hash
+	# and (2) product names in keys of %products_hash
+	# For this, the NUMBER of segments for each gene don't matter.
+	my %positions_with_product_hash; # $positions_with_product_hash{SITE}->{@PRODUCTS}
+	my %products_hash; # $products_hash{PRODUCT_NAME}->{1}; this is to check if it yet exists
 	open (GTF_INFILE, $gtf_file_nm);
 	while (<GTF_INFILE>) {
 		chomp;
-		# CHOMP for 3 operating systems
-		#if($_ =~ /\r\n$/) {
-		#	$_ =~ s/\r\n//;
-		#} elsif($_ =~ /\r$/) {
-		#	$_ =~ s/\r//;
-		#} elsif($_ =~ /\n$/) {
-		#	$_ =~ s/\n//;
-		#}
 		
 		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Make sure it's on the + strand
 			my $product;
@@ -9348,6 +8702,7 @@ sub populate_tempfile_vcf {
 				}
 			}
 			
+			# This is not redundant, because we're getting the names now
 			if($product) {
 				if($_ =~ /CDS\t(\d+)\t(\d+)/) {
 					my $start = $1;
@@ -9359,7 +8714,6 @@ sub populate_tempfile_vcf {
 				}
 			}
 		}
-		
 	}
 	close GTF_INFILE;
 	
@@ -9385,16 +8739,7 @@ sub populate_tempfile_vcf {
 	open (ORIGINAL_SNP_REPORT, $curr_snp_report_name);
 	while (<ORIGINAL_SNP_REPORT>) {
 		unless(/^#/) { # lines that begins with "##" or "#" are metadata
-			#print "$_";
 			chomp;
-			# CHOMP for 3 operating systems
-	#		if($_ =~ /\r\n$/) {
-	#			$_ =~ s/\r\n//;
-	#		} elsif($_ =~ /\r$/) {
-	#			$_ =~ s/\r//;
-	#		} elsif($_ =~ /\n$/) {
-	#			$_ =~ s/\n//;
-	#		}
 			
 			my @line_arr = split(/\t/,$_);
 			
@@ -9698,11 +9043,11 @@ sub populate_tempfile_vcf {
 							chdir('SNPGenie_Results');
 							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-								"VCF file $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n";
+								"VCF file $curr_snp_report_name contains AD but not DP data. SNPGenie terminated.\n";
 							close ERROR_FILE;
 							chdir('..');
 							
-							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n\n";	 
+							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated.\n\n";	 
 						}
 						
 						# EXTRACT the VALUE of AD
@@ -9956,11 +9301,11 @@ sub populate_tempfile_vcf {
 							chdir('SNPGenie_Results');
 							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-								"VCF file $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n";
+								"VCF file $curr_snp_report_name contains AD but not DP data. SNPGenie terminated.\n";
 							close ERROR_FILE;
 							chdir('..');
 							
-							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n\n";	 
+							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated.\n\n";	 
 						}
 						
 						# GENERATE a regex for what comes before the VALUE of AD
@@ -10156,11 +9501,11 @@ sub populate_tempfile_vcf {
 							chdir('SNPGenie_Results');
 							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-								"VCF file $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n";
+								"VCF file $curr_snp_report_name contains AD but not DP data. SNPGenie terminated.\n";
 							close ERROR_FILE;
 							chdir('..');
 							
-							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated\n\n";	 
+							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated.\n\n";	 
 						}
 						
 						# EXTRACT the VALUE of AD
@@ -10257,45 +9602,45 @@ sub detect_newline_char {
 }
 
 #########################################################################################
-sub get_product_names_geneious {
-	my ($curr_snp_report_filename,$index_product,$index_type) = @_;
-	my $line = 0;
-	my %products_hash;
-	open (CURRINFILE, $curr_snp_report_filename);
-	while (<CURRINFILE>) {
-		if ($line == 0) {
-			$line++;
-		} else {
-			#chomp;
-			# CHOMP for 3 operating systems
-			if($_ =~ /\r\n$/) {
-				$_ =~ s/\r\n//;
-			} elsif($_ =~ /\r$/) {
-				$_ =~ s/\r//;
-			} elsif($_ =~ /\n$/) {
-				$_ =~ s/\n//;
-			}
-			
-			if($_ =~ /1.40E-19/) {
-				print "\n$_\n\n";
-			}
-			
-			my @line_arr = split(/\t/,$_);
-			my $product = $line_arr[$index_product];
-			my $type = $line_arr[$index_type];
-			
-			if (! exists $products_hash{$product} && 
-				(($type eq 'Polymorphism') || ($type eq 'CDS')) &&
-				($product ne '')) {
-				
-				$products_hash{$product} = 1;
-			}
-		}
-	}
-	close CURRINFILE;
-	my @product_names = keys %products_hash;
-	return @product_names;
-}
+#sub get_product_names_geneious {
+#	my ($curr_snp_report_filename,$index_product,$index_type) = @_;
+#	my $line = 0;
+#	my %products_hash;
+#	open (CURRINFILE, $curr_snp_report_filename);
+#	while (<CURRINFILE>) {
+#		if ($line == 0) {
+#			$line++;
+#		} else {
+#			#chomp;
+#			# CHOMP for 3 operating systems
+#			if($_ =~ /\r\n$/) {
+#				$_ =~ s/\r\n//;
+#			} elsif($_ =~ /\r$/) {
+#				$_ =~ s/\r//;
+#			} elsif($_ =~ /\n$/) {
+#				$_ =~ s/\n//;
+#			}
+#			
+#			if($_ =~ /1.40E-19/) {
+#				print "\n$_\n\n";
+#			}
+#			
+#			my @line_arr = split(/\t/,$_);
+#			my $product = $line_arr[$index_product];
+#			my $type = $line_arr[$index_type];
+#			
+#			if (! exists $products_hash{$product} && 
+#				(($type eq 'Polymorphism') || ($type eq 'CDS')) &&
+#				($product ne '')) {
+#				
+#				$products_hash{$product} = 1;
+#			}
+#		}
+#	}
+#	close CURRINFILE;
+#	my @product_names = keys %products_hash;
+#	return @product_names;
+#}
 
 #########################################################################################
 # (1) Is passed an array of all files to process, assumed to be in the working directory
@@ -10317,7 +9662,7 @@ sub get_cds_file_name {
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		# FILE | PRODUCT | SITE | CODON | WARNING
 		print ERROR_FILE "N/A\tN/A\tN/A\t".
-			"No .gtf file in the working directory for product information. SNPGenie terminated\n";
+			"No .gtf file in the working directory for product information. SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
@@ -10333,92 +9678,75 @@ sub get_cds_file_name {
 # there is an incomplete codon)
 # Returns an array with:
 #	returned[0] = starting site
-#	returned [1] = stop site
+#	returned[1] = stop site
+#	IF MORE SEGMENTS:
+#	returned[2] = starting site 2
+#	returned[3] = stop site 2
+#	etc.
 sub get_product_coordinates {
 	my $product = $_[0];
 	
-	#print "\nproduct: $product\n";
+	#print "\nThis time called for product: $product\n";
 	
-	my $start_site_1;
-	my $stop_site_1;
-	
-	my $start_site_2;
-	my $stop_site_2;
-	
-	my $newline_char = &detect_newline_char($cds_file);
-	my $old_newline = $/;
-	$/ = $newline_char;
+	my %start_site_h; # {segment #}->{start coordinate}
+	my %stop_site_h;
+	my %segment_lengths_h;
 	
 	open (CURRINFILE, $cds_file);
-	while (<CURRINFILE>) {
+	while (<CURRINFILE>) { # go through the GTF file
 		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
 			chomp;
 			
-			# CHOMP for 3 operating systems
-			if($_ =~ /\r\n$/) {
-				$_ =~ s/\r\n//;
-			} elsif($_ =~ /\r$/) {
-				$_ =~ s/\r//;
-			} elsif($_ =~ /\n$/) {
-				$_ =~ s/\n//;
+			my $product_present = 0;
+			my $this_line = $_;
+			my $this_start;
+			my $this_stop;
+			
+			# incomplete segments
+			if ($_ =~/gene_id "$product";/) {
+				if ($_ =~/CDS\t(\d+)\t(\d+)/) {
+					$product_present = 1;
+					$this_start = $1;
+					$this_stop = $2;
+				}
+			} elsif($_ =~/gene_id "gene\:$product";/) {
+				if ($_ =~/CDS\t(\d+)\t(\d+)/) {
+					$product_present = 1;
+					$this_start = $1;
+					$this_stop = $2;
+				}
 			}
 			
-			#print "\nLINE: $_\n";
-			
-			if (! $start_site_1) {
-				if ($_ =~/gene_id "$product";/) {
-					if ($_ =~/CDS\t(\d+)\t(\d+)/) {
-						$start_site_1 = $1;
-						$stop_site_1 = $2;
-					}
-				} elsif($_ =~/gene_id "gene\:$product";/) {
-					if ($_ =~/CDS\t(\d+)\t(\d+)/) {
-						$start_site_1 = $1;
-						$stop_site_1 = $2;
-					}
-				}
-			} else {
-				if ($_ =~/gene_id "$product";/) {
-					if ($_ =~/CDS\t(\d+)\t(\d+)/) {
-						$start_site_2 = $1;
-						$stop_site_2 = $2;
-						last; # This might be changed if we go on to add more segments
-					}
-				} elsif($_ =~/gene_id "gene\:$product";/) {
-					if ($_ =~/CDS\t(\d+)\t(\d+)/) {
-						$start_site_2 = $1;
-						$stop_site_2 = $2;
-						last; # This might be changed if we go on to add more segments
-					}
-				}
+			if($product_present == 1) {
+				my $curr_max_key = max(keys %start_site_h); # this is the number of segments so far
+				#print "curr_max_key is: $curr_max_key\n";
+				my $curr_key = ($curr_max_key + 1);
+				#print "curr_key is: $curr_key\n";
+				$start_site_h{$curr_key} = $this_start;
+				$stop_site_h{$curr_key} = $this_stop;
 			}
 		}
 	}
 	close CURRINFILE;
 	
-	if ((!$start_site_2) && (($stop_site_1 - $start_site_1 + 1) % 3) != 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-		# FILE | PRODUCT | SITE | CODON | WARNING
-		print ERROR_FILE "N/A\t$product\tN/A\t".
-			"Coordinates do not specify complete codon set (nucleotides a multiple of 3). SNPGenie terminated\n";
-		close ERROR_FILE;
-		chdir('..');
-		
-		#unlink $curr_snp_report_name;
-		
-		die "\n\n## WARNING: The CDS coordinates for gene $product in the gtf file ".
-			"do not yield a set of complete codons,\n".
-			"## or are absent from the file. The number of nucleotides must ".
-			"be a multiple of 3.\n## SNPGenie terminated.\n\n";
+	#new incomplete segments
+	my $num_segments = max(keys %start_site_h); # this is the number of segments total
+	#print "\nAfter while, $product num segments: $num_segments\n";
+	my $sum_of_lengths;
+	
+	for(my $i=1; $i<=$num_segments; $i++) {
+		$segment_lengths_h{$i} = ($stop_site_h{$i} - $start_site_h{$i} + 1);
+		$sum_of_lengths += $segment_lengths_h{$i};
 	}
 	
-	if ($start_site_2 && (((($stop_site_1 - $start_site_1 + 1) + ($stop_site_2 - $start_site_2 + 1)) % 3) != 0)) {
+	# Make sure the sum of all nucleotides for this coding product add to a multiple of 3
+	# incomplete segments
+	if (($sum_of_lengths % 3) != 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		# FILE | PRODUCT | SITE | CODON | WARNING
 		print ERROR_FILE "N/A\t$product\tN/A\t".
-			"Coordinates do not specify complete codon set (nucleotides a multiple of 3). SNPGenie terminated\n";
+			"Coordinates do not specify complete codon set (nucleotides a multiple of 3). SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
@@ -10432,16 +9760,21 @@ sub get_product_coordinates {
 	
 	my @coord_arr;
 	
-	if (! $start_site_2) {
-		@coord_arr = ($start_site_1,$stop_site_1);
-	} else {
-		if ($start_site_1 < $start_site_2) {
-			@coord_arr = ($start_site_1,$stop_site_1,$start_site_2,$stop_site_2);
-		} else {
-			@coord_arr = ($start_site_2,$stop_site_2,$start_site_1,$stop_site_1);
-		}
+	# Sort the segments
+	my @sorted_segment_numbers;
+	
+	@sorted_segment_numbers = sort {($start_site_h{$a} <=> $start_site_h{$b}) || ($a <=> $b) } keys %start_site_h;
+	
+	foreach(@sorted_segment_numbers) {
+		push(@coord_arr,$start_site_h{$_});
+		push(@coord_arr,$stop_site_h{$_});
 	}
-	$/ = $old_newline;
+	
+#	for(my $i=1; $i<=$num_segments; $i++) {
+#		push(@coord_arr,$start_site_h{$i});
+#		push(@coord_arr,$stop_site_h{$i});
+#	}
+	
 	return @coord_arr;
 }
 
