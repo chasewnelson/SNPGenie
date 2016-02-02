@@ -1,6 +1,6 @@
 <img src="https://github.com/hugheslab/snpgenie/blob/master/logo1a.jpg?raw=true" alt="SNPGenie logo" width="450" height="175" align="middle">
 
-Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. Just run the main script, **snpgenie-1.2.pl**, in a directory containing the necessary input files, and we take care of the rest! For the earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.
+Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. Just run the main script, **snpgenie-1.2.2.pl**, in a directory containing the necessary input files, and we take care of the rest! For the earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.
 
 ## Contents
 
@@ -36,7 +36,7 @@ SNPGenie version 1.2 is a command-line interface application written in Perl, wi
 2. One file with CDS information in [**Gene Transfer Format**](#gtf) (.gtf); and 
 3. One or more tab-delimited (.txt) [**SNP Reports**](#SNP-Reports) in CLC or Geneious format. If you want another format included, just ask!
 
-For ease and simplicity, one need only run SNPGenie in a directory containing the necessary input files, and SNPGenie takes care of the rest (see [Options](#options) if you wish for more control). To do this, first download the **snpgenie-1.2.pl** script and place it in your system’s PATH, or simply in your working directory. Next, place your SNP report(s), FASTA(s) (.fa/.fasta), and GTF (.gtf) files in your working directory. Open the command line prompt (or Terminal) and navigate to the directory containing these files using the "cd" command in your shell. Finally, simply execute SNPGenie by typing the name of the script and pressing the \<RETURN\> (\<ENTER\>) key. Further details on input are below.
+For ease and simplicity, one need only run SNPGenie in a directory containing the necessary input files, and SNPGenie takes care of the rest (see [Options](#options) if you wish for more control). To do this, first download the **snpgenie-1.2.2.pl** script and place it in your system’s PATH, or simply in your working directory. Next, place your SNP report(s), FASTA(s) (.fa/.fasta), and GTF (.gtf) files in your working directory. Open the command line prompt (or Terminal) and navigate to the directory containing these files using the "cd" command in your shell. Finally, simply execute SNPGenie by typing the name of the script and pressing the \<RETURN\> (\<ENTER\>) key. Further details on input are below.
 
 ### <a name="ref-seq"></a>Reference Sequence
 Only one reference sequence must be provided in a **FASTA** (.fa/.fasta) file. Thus, all SNP coordinates in the SNP reports are called relative to the single reference sequence. This **ONE-SEQUENCE MODE** allows the maximum number of estimations to be performed, and is the only mode of SNPGenie that remains supported. Because of this one-sequence stipulation, a script has been provided to split a multi-sequence FASTA file into its constitutent sequences if need be; see [Additional Scripts](#additional-scripts) below.
@@ -44,7 +44,7 @@ Only one reference sequence must be provided in a **FASTA** (.fa/.fasta) file. T
 >N.B. In the past, a **MULTI-SEQUENCE MODE** was activated if two or more FASTA files were present. In this case, each was assumed to refer to a different protein product, as might occur with a segmented viral genome, and each FASTA file name needed to begin with the name of the product followed by an underscore. For example, if "ORF1" was the name of one of the products in the SNP report, its reference FASTA file was named "ORF1_xxx.fasta". The mode can be found in versions of SNPGenie dating prior to 29 January 2016. It is now recommended simply to run SNPGenie separately for each genome segment in such cases.
 
 ### <a name="gtf"></a>Gene Transfer Format
-The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include *non-redunant* records for all CDS elements (*i.e.*, open reading frames, or ORFs) present in your SNP report(s). Note that SNPGenie expects every coding element to be labeled as type "CDS", and for its product name to follow a "gene\_id" tag. In the case of CLC and Geneious SNP reports, this name must match that present in the SNP report. If a single coding element has multiple segments (*e.g.*, exons) with different coordinates, simply enter one line for each segment, using the same product name. (Although SNPGenie could only handle 2 segments per ORF in the past, there is now no limit. **CHANGE TO BE IMPLEMENTED ON 31 January 2016.**) Finally, for cases with reverse '–' strand features, SNPGenie must be run twice, once for each strand, with that strand's own set of input files (i.e., the '–' strand FASTA, GTF, and SNP report); see [A Note on Reverse Complement ('–' Strand) Records](#revcom) below. For more information about GTF, please visit <a target="_blank" href="http://mblab.wustl.edu/GTF22.html">The Brent Lab</a>. A simple example follows:
+The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include *non-redunant* records for all CDS elements (*i.e.*, open reading frames, or ORFs) present in your SNP report(s). Note that SNPGenie expects every coding element to be labeled as type "CDS", and for its product name to follow a "gene\_id" tag. In the case of CLC and Geneious SNP reports, this name must match that present in the SNP report. If a single coding element has multiple segments (*e.g.*, exons) with different coordinates, simply enter one line for each segment, using the same product name. (Although SNPGenie could only handle 2 segments per ORF in the past, there is now no limit.) Finally, for cases with reverse '–' strand features, SNPGenie must be run twice, once for each strand, with that strand's own set of input files (i.e., the '–' strand FASTA, GTF, and SNP report); see [A Note on Reverse Complement ('–' Strand) Records](#revcom) below. For more information about GTF, please visit <a target="_blank" href="http://mblab.wustl.edu/GTF22.html">The Brent Lab</a>. A simple example follows:
 
 	reference.gbk	CLC	CDS	5694	8369	.	+	0	gene_id "ORF1";
 	reference.gbk	CLC	CDS	8203	8772	.	+	0	gene_id "ORF2";
@@ -124,7 +124,7 @@ In case you want to alter the way SNPGenie works, the following options (impleme
 
 For example, if you wanted to turn on the **sepfiles** option, specify a minimum allele frequency of 1%, and specify your input files, you could enter the command:
 
-	snpgenie-1.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
+	snpgenie-1.2.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
 
 ## <a name="how-snpgenie-works"></a>How SNPGenie Works
 
@@ -250,14 +250,14 @@ Some additional scripts are included to automate some common tasks when preparin
 
 ## <a name="troubleshooting"></a>Troubleshooting
 
-* Using **Windows**? SNPGenie was written for Unix systems (including Mac), which have Perl installed by default. Windows doesn't, but getting Perl installed is as simple as following these <a target="_blank" href="http://learn.perl.org/installing/windows.html">three-minute download instructions</a>, and you'll be good to go! Just open the Windows Command Prompt, and remember to type "perl" first when you run SNPGenie, *i.e.*, type "perl snpgenie-1.2.pl".
+* Using **Windows**? SNPGenie was written for Unix systems (including Mac), which have Perl installed by default. Windows doesn't, but getting Perl installed is as simple as following these <a target="_blank" href="http://learn.perl.org/installing/windows.html">three-minute download instructions</a>, and you'll be good to go! Just open the Windows Command Prompt, and remember to type "perl" first when you run SNPGenie, *i.e.*, type "perl snpgenie-1.2.2.pl".
 * SNPGenie isn't executing? Try preceding the whole command line with "perl" to make sure SNPGenie is being treated as a script. For example:
 
-        perl snpgenie-1.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
+        perl snpgenie-1.2.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
     
 * SNPGenie still isn't executing? You might also try making the script executable at the command line, as follows:
 
-        chmod +x snpgenie-1.2.pl	
+        chmod +x snpgenie-1.2.2.pl	
 
 * Are (end-of-line) newline characters in Unix LF (\n) format? Although SNPGenie was also designed to accept Windows CRLF (\r\n) or Mac CR (\r) formats, these can sometimes introduce problems causing SNPGenie to crash or return all 0 values. Trying changing the newline character to Unix LF using a free program such a <a target="_blank" href="http://www.barebones.com/products/textwrangler/">TextWrangler</a>.
 
