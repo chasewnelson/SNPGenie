@@ -341,28 +341,28 @@ if($complementmode) {
 		my $rev_compl_start; # Where the gene itself actually STOPS
 		my $rev_compl_stop; # Where the gene itself actually STARTS
 
-		if($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"gene\:([\w\s\.\:']+)\"/) { # Line is - strand
+		if($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"gene\:([\w\s\.\-\:']+)\"/) { # Line is - strand
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
 		# NOW, IN CASE transcript_id comes first
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"gene\:([\w\s\.\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"; gene_id \"gene\:([\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+ [\w\s\.\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"; gene_id \"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\:']+\"; gene_id \"([\w\s\.\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"; gene_id \"([\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
@@ -465,13 +465,13 @@ while (<INFILE>) {
 	unless (/>/) {
 		chomp;
 		# CHOMP for 3 operating systems
-		#if($_ =~ /\r\n$/) {
-		#	$_ =~ s/\r\n//;
-		#} elsif($_ =~ /\r$/) {
-		#	$_ =~ s/\r//;
-		#} elsif($_ =~ /\n$/) {
-		#	$_ =~ s/\n//;
-		#}
+		if($_ =~ /\r\n$/) {
+			$_ =~ s/\r\n//;
+		} elsif($_ =~ /\r$/) {
+			$_ =~ s/\r//;
+		} elsif($_ =~ /\n$/) {
+			$_ =~ s/\n//;
+		}
 		
 		$seq .= $_;
 	}
@@ -785,6 +785,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			$line++;
 		} else {
 			chomp;
+			# CHOMP for 3 operating systems
+			if($_ =~ /\r\n$/) {
+				$_ =~ s/\r\n//;
+			} elsif($_ =~ /\r$/) {
+				$_ =~ s/\r//;
+			} elsif($_ =~ /\n$/) {
+				$_ =~ s/\n//;
+			}
 			
 			#if ($_ =~/(.+)\r$/) {
 			#	$_ = $1;
@@ -849,8 +857,9 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							@peptide_coord_arr = @{$product_coordinates_harr{$mature_peptide_name}->{product_coord_arr}};
 						} 
 						
-						if ($over_annot =~/CDS: ([\w\s\.']+)/) {
+						if ($over_annot =~/CDS: ([\w\s\.\-\:']+)/) {
 							$product_name = $1;
+							#print "\n\n$product_name\n\n";
 							@product_coord_arr = @{$product_coordinates_harr{$product_name}->{product_coord_arr}};
 						} 
 						
@@ -3970,13 +3979,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				chdir('SNPGenie_Results');
 				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | WARNING
-				print ERROR_FILE "$file_nm\tNA\t$position\tCoverage does not equal ".
-					"the nucleotide sum.\n";
+				print ERROR_FILE "$file_nm\tNA\t$position\tCoverage ($cov_old_for_comp) does not equal ".
+					"the nucleotide sum ($cov_for_comp).\n";
 				close ERROR_FILE;
 				chdir('..');
 				
 				print "\n## WARNING: In $file_nm, at site $position,\n".
-					"## the coverage does not equal the nucleotide sum.\n";
+					"## the coverage ($cov_old_for_comp) does not equal the nucleotide sum ($cov_for_comp).\n";
 					#."\n\tSITE $position\nA $A\nC $C\nG $G\nT $T\nCOV $cov_old\nSUM $cov\n";
 			}
 			
@@ -7253,6 +7262,14 @@ sub get_header_names {
 		#print "$_";
 		if($line == 0) {
 			chomp;
+			# CHOMP for 3 operating systems
+			if($_ =~ /\r\n$/) {
+				$_ =~ s/\r\n//;
+			} elsif($_ =~ /\r$/) {
+				$_ =~ s/\r//;
+			} elsif($_ =~ /\n$/) {
+				$_ =~ s/\n//;
+			}
 			
 			if($_ =~/\t\w+\t/) { # it's TAB-delimited
 				@line_arr = split(/\t/,$_);
@@ -7269,6 +7286,14 @@ sub get_header_names {
 			$line++;
 		} elsif($line > 0 && ($_ =~ /^#CHROM/)) {
 			chomp;
+			# CHOMP for 3 operating systems
+			if($_ =~ /\r\n$/) {
+				$_ =~ s/\r\n//;
+			} elsif($_ =~ /\r$/) {
+				$_ =~ s/\r//;
+			} elsif($_ =~ /\n$/) {
+				$_ =~ s/\n//;
+			}
 			
 			if($_ =~/\t/) { # it's TAB-delimited
 				@line_arr = split(/\t/,$_);
@@ -7389,13 +7414,13 @@ sub get_product_names_from_gtf {
 	open (CURRINFILE, $cds_file);
 	while (<CURRINFILE>) {
 		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
-			if($_ =~/gene_id \"gene\:([\w\s\.']+)\"/) { # transcript_id not a problem
+			if($_ =~/gene_id \"gene\:([\w\s\.\-\:']+)\"/) { # transcript_id not a problem
 				$products_hash{$1} = 1;
 				$seen_sense_strand_products = 1;
-			} elsif($_ =~ /gene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
+			} elsif($_ =~ /gene_id \"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
 				$products_hash{$1} = 1;
 				$seen_sense_strand_products = 1;
-			} elsif($_ =~/gene_id \"([\w\s\.']+)\"/) {
+			} elsif($_ =~/gene_id \"([\w\s\.\-\:']+)\"/) {
 				$products_hash{$1} = 1;
 				$seen_sense_strand_products = 1;
 			} else {
@@ -7476,6 +7501,14 @@ sub determine_complement_mode {
 	open (CURRINFILE, $gtf_file_nm);
 	while (<CURRINFILE>) {
 		chomp;
+		# CHOMP for 3 operating systems
+		if($_ =~ /\r\n$/) {
+			$_ =~ s/\r\n//;
+		} elsif($_ =~ /\r$/) {
+			$_ =~ s/\r//;
+		} elsif($_ =~ /\n$/) {
+			$_ =~ s/\n//;
+		}
 		
 		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t-/) {
 			$complement_mode = 1;
@@ -7497,6 +7530,15 @@ sub reverse_complement_from_fasta {
 	while(<IN>) {
 		unless(/>/) {
 			chomp;
+			# CHOMP for 3 operating systems
+			if($_ =~ /\r\n$/) {
+				$_ =~ s/\r\n//;
+			} elsif($_ =~ /\r$/) {
+				$_ =~ s/\r//;
+			} elsif($_ =~ /\n$/) {
+				$_ =~ s/\n//;
+			}
+			
 			$seq .= $_;
 		}
 	}
@@ -7830,14 +7872,14 @@ sub populate_tempfile_clc {
 		} else {
 			open(TEMP_FILE,">>$temp_snp_report_name");
 			# First, replace the damned parentheses
-			if($_ =~ /CDS: ""(\w+ \w+)""/) {
+			if($_ =~ /CDS: ""([\w\s\.\-\:']+ [\w\s\.\-\:']+)""/) {
 				my $replacement = $1;
 				#print "\n\nI had a replacement\n\n";
-				$_ =~ s/CDS: ""\w+ \w+""/CDS: $replacement/;
+				$_ =~ s/CDS: ""[\w\s\.\-\:']+ [\w\s\.\-\:']+""/CDS: $replacement/;
 			}
 			
 			# To account for prime (') symbols in the ORF names
-			if($_ =~ /ORF: ([\w\s\.']+), ORF: ([\w\s\.']+), ORF: ([\w\s\.']+)/) {
+			if($_ =~ /ORF: ([\w\s\.\-\:']+)[\.\,] ORF: ([\w\s\.\-\:']+)[\.\,] ORF: ([\w\s\.\-\:']+)/) {
 				#print "We got here2\n\n";
 				my $ORF1 = $1;
 				my $ORF2 = $2;
@@ -7847,14 +7889,14 @@ sub populate_tempfile_clc {
 				my $new_line_ORF2 = $_;
 				my $new_line_ORF3 = $_;
 				
-				$new_line_ORF1 =~ s/ORF: [\w\s\.']+, ORF: [\w\s\.']+, ORF: [\w\s\.']+/CDS: $ORF1/;
-				$new_line_ORF2 =~ s/ORF: [\w\s\.']+, ORF: [\w\s\.']+, ORF: [\w\s\.']+/CDS: $ORF2/;
-				$new_line_ORF3 =~ s/ORF: [\w\s\.']+, ORF: [\w\s\.']+, ORF: [\w\s\.']+/CDS: $ORF3/;
+				$new_line_ORF1 =~ s/ORF: [\w\s\.\-\:']+[\.\,] ORF: [\w\s\.\-\:']+[\.\,] ORF: [\w\s\.\-\:']+/CDS: $ORF1/;
+				$new_line_ORF2 =~ s/ORF: [\w\s\.\-\:']+[\.\,] ORF: [\w\s\.\-\:']+[\.\,] ORF: [\w\s\.\-\:']+/CDS: $ORF2/;
+				$new_line_ORF3 =~ s/ORF: [\w\s\.\-\:']+[\.\,] ORF: [\w\s\.\-\:']+[\.\,] ORF: [\w\s\.\-\:']+/CDS: $ORF3/;
 				
 				print TEMP_FILE $new_line_ORF1;
 				print TEMP_FILE $new_line_ORF2;
 				print TEMP_FILE $new_line_ORF3;
-			} elsif($_ =~ /CDS: ([\w\s\.']+), CDS: ([\w\s\.']+), CDS: ([\w\s\.']+)/) {
+			} elsif($_ =~ /CDS: ([\w\s\.\-\:']+)[\.\,] CDS: ([\w\s\.\-\:']+)[\.\,] CDS: ([\w\s\.\-\:']+)/) {
 				#print "We got here2\n\n";
 				my $ORF1 = $1;
 				my $ORF2 = $2;
@@ -7864,14 +7906,14 @@ sub populate_tempfile_clc {
 				my $new_line_ORF2 = $_;
 				my $new_line_ORF3 = $_;
 				
-				$new_line_ORF1 =~ s/CDS: [\w\s\.']+, CDS: [\w\s\.']+, CDS: [\w\s\.']+/CDS: $ORF1/;
-				$new_line_ORF2 =~ s/CDS: [\w\s\.']+, CDS: [\w\s\.']+, CDS: [\w\s\.']+/CDS: $ORF2/;
-				$new_line_ORF3 =~ s/CDS: [\w\s\.']+, CDS: [\w\s\.']+, CDS: [\w\s\.']+/CDS: $ORF3/;
+				$new_line_ORF1 =~ s/CDS: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+/CDS: $ORF1/;
+				$new_line_ORF2 =~ s/CDS: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+/CDS: $ORF2/;
+				$new_line_ORF3 =~ s/CDS: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+/CDS: $ORF3/;
 				
 				print TEMP_FILE $new_line_ORF1;
 				print TEMP_FILE $new_line_ORF2;
 				print TEMP_FILE $new_line_ORF3;
-			} elsif($_ =~ /ORF: ([\w\s\.']+), CDS: ([\w\s\.']+), CDS: ([\w\s\.']+)/) {
+			} elsif($_ =~ /ORF: ([\w\s\.\-\:']+)[\.\,] CDS: ([\w\s\.\-\:']+)[\.\,] CDS: ([\w\s\.\-\:']+)/) {
 				#print "We got here2\n\n";
 				my $ORF1 = $1;
 				my $ORF2 = $2;
@@ -7881,63 +7923,63 @@ sub populate_tempfile_clc {
 				my $new_line_ORF2 = $_;
 				my $new_line_ORF3 = $_;
 				
-				$new_line_ORF1 =~ s/ORF: [\w\s\.']+, CDS: [\w\s\.']+, CDS: [\w\s\.']+/CDS: $ORF1/;
-				$new_line_ORF2 =~ s/ORF: [\w\s\.']+, CDS: [\w\s\.']+, CDS: [\w\s\.']+/CDS: $ORF2/;
-				$new_line_ORF3 =~ s/ORF: [\w\s\.']+, CDS: [\w\s\.']+, CDS: [\w\s\.']+/CDS: $ORF3/;
+				$new_line_ORF1 =~ s/ORF: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+/CDS: $ORF1/;
+				$new_line_ORF2 =~ s/ORF: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+/CDS: $ORF2/;
+				$new_line_ORF3 =~ s/ORF: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+/CDS: $ORF3/;
 				
 				print TEMP_FILE $new_line_ORF1;
 				print TEMP_FILE $new_line_ORF2;
 				print TEMP_FILE $new_line_ORF3;
-			} elsif($_ =~ /ORF: ([\w\s\.']+), ORF: ([\w\s\.']+)/) {
+			} elsif($_ =~ /ORF: ([\w\s\.\-\:']+)[\.\,] ORF: ([\w\s\.\-\:']+)/) {
 				my $ORF1 = $1;
 				my $ORF2 = $2;
 				
 				my $new_line_ORF1 = $_;
 				my $new_line_ORF2 = $_;
 				
-				$new_line_ORF1 =~ s/ORF: [\w\s\.']+, ORF: [\w\s\.']+/CDS: $ORF1/;
-				$new_line_ORF2 =~ s/ORF: [\w\s\.']+, ORF: [\w\s\.']+/CDS: $ORF2/;
+				$new_line_ORF1 =~ s/ORF: [\w\s\.\-\:']+[\.\,] ORF: [\w\s\.\-\:']+/CDS: $ORF1/;
+				$new_line_ORF2 =~ s/ORF: [\w\s\.\-\:']+[\.\,] ORF: [\w\s\.\-\:']+/CDS: $ORF2/;
 				
 				print TEMP_FILE $new_line_ORF1;
 				print TEMP_FILE $new_line_ORF2;
-			} elsif($_ =~ /CDS: ([\w\s\.']+), CDS: ([\w\s\.']+)/) {
+			} elsif($_ =~ /CDS: ([\w\s\.\-\:']+)[\.\,] CDS: ([\w\s\.\-\:']+)/) {
 				my $ORF1 = $1;
 				my $ORF2 = $2;
 				
 				my $new_line_ORF1 = $_;
 				my $new_line_ORF2 = $_;
 				
-				$new_line_ORF1 =~ s/CDS: [\w\s\.']+, CDS: [\w\s\.']+/CDS: $ORF1/;
-				$new_line_ORF2 =~ s/CDS: [\w\s\.']+, CDS: [\w\s\.']+/CDS: $ORF2/;
+				$new_line_ORF1 =~ s/CDS: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+/CDS: $ORF1/;
+				$new_line_ORF2 =~ s/CDS: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+/CDS: $ORF2/;
 				
 				print TEMP_FILE $new_line_ORF1;
 				print TEMP_FILE $new_line_ORF2;
-			} elsif($_ =~ /ORF: ([\w\s\.']+), CDS: ([\w\s\.']+)/) {
+			} elsif($_ =~ /ORF: ([\w\s\.\-\:']+)[\.\,] CDS: ([\w\s\.\-\:']+)/) {
 				my $ORF1 = $1;
 				my $ORF2 = $2;
 				
 				my $new_line_ORF1 = $_;
 				my $new_line_ORF2 = $_;
 				
-				$new_line_ORF1 =~ s/ORF: [\w\s\.']+, CDS: [\w\s\.']+/CDS: $ORF1/;
-				$new_line_ORF2 =~ s/ORF: [\w\s\.']+, CDS: [\w\s\.']+/CDS: $ORF2/;
+				$new_line_ORF1 =~ s/ORF: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+/CDS: $ORF1/;
+				$new_line_ORF2 =~ s/ORF: [\w\s\.\-\:']+[\.\,] CDS: [\w\s\.\-\:']+/CDS: $ORF2/;
 				
 				print TEMP_FILE $new_line_ORF1;
 				print TEMP_FILE $new_line_ORF2;
-			} elsif($_ =~ /ORF: ([\w\s\.']+)/) {
+			} elsif($_ =~ /ORF: ([\w\s\.\-\:']+)/) {
 				my $ORF1 = $1;
 				
 				my $new_line_ORF1 = $_;
 				
-				$new_line_ORF1 =~ s/ORF: [\w\s\.']+/CDS: $ORF1/;
+				$new_line_ORF1 =~ s/ORF: [\w\s\.\-\:']+/CDS: $ORF1/;
 				
 				print TEMP_FILE $new_line_ORF1;
-			} elsif($_ =~ /CDS: ([\w\s\.']+)/) {
+			} elsif($_ =~ /CDS: ([\w\s\.\-\:']+)/) {
 				my $ORF1 = $1;
 				
 				my $new_line_ORF1 = $_;
 				
-				$new_line_ORF1 =~ s/CDS: [\w\s\.']+/CDS: $ORF1/;
+				$new_line_ORF1 =~ s/CDS: [\w\s\.\-\:']+/CDS: $ORF1/;
 				
 				print TEMP_FILE $new_line_ORF1;
 			} else {
@@ -8222,6 +8264,14 @@ sub populate_tempfile_geneious {
 			
 		} else {
 			chomp;
+			# CHOMP for 3 operating systems
+			if($_ =~ /\r\n$/) {
+				$_ =~ s/\r\n//;
+			} elsif($_ =~ /\r$/) {
+				$_ =~ s/\r//;
+			} elsif($_ =~ /\n$/) {
+				$_ =~ s/\n//;
+			}
 			
 			my @line_arr = split(/\t/,$_);
 			
@@ -8269,6 +8319,7 @@ sub populate_tempfile_geneious {
 							"## from the CDS Position. However, if possible, please try to produce a SNP report without errors.\n";
 					}
 					
+					# New segments approach
 					# We want to USE CDS POSITION to determine the "Minimum" value,
 					# because the given Minimum value is so often incorrect. As in:
 					# SWITCHED BACK FROM THIS FOR THE SIV DATA BECAUSE OF MULTI-SEGMENT PRODUCTS
@@ -8278,79 +8329,51 @@ sub populate_tempfile_geneious {
 					my @cds_coords_arr; # product start site-based
 					# IF there is CDS data AND WE CAN, change the Minimum to match
 					if(($product_name ne '') && ($cds_position > 0)) { # STRINGS are 0
-						#print "Product name isn't blank\n";
-						#print "product name is: $product_name\n"; NOPE
 						@cds_coords_arr = @{$product_coordinates_harr{$product_name}->{product_coord_arr}};
 						
 						#print "\n$product_name @cds_coords_arr\n";
 						
-						if((scalar @cds_coords_arr) == 2) { # ONE SEGMENT PRODUCT
-							#print "One segment product\n";
-							my $product_start_site = $cds_coords_arr[0];
-							if($min != ($product_start_site + $cds_position - 1)) {
-								chdir('SNPGenie_Results');
-								open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-								# FILE | PRODUCT | SITE | WARNING
-								print ERROR_FILE "$curr_snp_report_name\t$product_name\t$min\t".
-									"There is a conflict between the Minimum and the actual site implied by the CDS Position. The ".
-									"latter has been used to determine the correct site; please verify these results\n";
-								close ERROR_FILE;
-								chdir('..');
-								
-								print "\n\n## WARNING: In file $curr_snp_report_name, product $product_name, site $min,\n".
-								"## there is a conflict between the Minimum and the actual site implied by the CDS Position.\n".
-								"## The latter has been used to determine the correct site; please verify these results.\n";
-								
-								$min = ($product_start_site + $cds_position - 1);
-							}
-						} elsif((scalar @cds_coords_arr) == 4) { # TWO SEGMENTS
-							#print "Two segment product\n";
-							my $product_start_site1 = $cds_coords_arr[0];
-							my $product_stop_site1 = $cds_coords_arr[1];
-							my $product_start_site2 = $cds_coords_arr[2];
-							my $product_stop_site2 = $cds_coords_arr[3];
-							
-							my $length_product1 = ($product_stop_site1 - $product_start_site1 + 1);
-							my $length_product2 = ($product_stop_site2 - $product_start_site2 + 1);
-							
-							if($cds_position <= $length_product1) { # within first segment
-								#print "Within first segment\n";
-								if($min != ($product_start_site1 + $cds_position - 1)) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-									# FILE | PRODUCT | SITE | WARNING
-									print ERROR_FILE "$curr_snp_report_name\t$product_name\t$min\t".
-										"There is a conflict between the Minimum and the actual site implied by the CDS Position. The ".
-										"latter has been used to determine the correct site; please verify these results\n";
-									close ERROR_FILE;
-									chdir('..');
-									
-									print "\n\n## WARNING: In file $curr_snp_report_name, product $product_name, site $min,\n".
-									"## there is a conflict between the Minimum and the actual site implied by the CDS Position.\n".
-									"## The latter has been used to determine the correct site; please verify these results.\n";
-									
-									$min = ($product_start_site1 + $cds_position - 1);
-								}
-							} elsif($cds_position <= $length_product2) { # within second segment
-								#print "Within second segment\n";
-								if($min != ($product_start_site2 + ($cds_position - $length_product1) - 1)) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-									# FILE | PRODUCT | SITE | WARNING
-									print ERROR_FILE "$curr_snp_report_name\t$product_name\t$min\t".
-										"There is a conflict between the Minimum and the actual site implied by the CDS Position. The ".
-										"latter has been used to determine the correct site; please verify these results\n";
-									close ERROR_FILE;
-									chdir('..');
-									
-									print "\n\n## WARNING: In file $curr_snp_report_name, product $product_name, site $min,\n".
-									"## there is a conflict between the Minimum and the actual site implied by the CDS Position.\n".
-									"## The latter has been used to determine the correct site; please verify these results.\n";
-									
-									$min = ($product_start_site2 + ($cds_position - $length_product1) - 1);
-								}
-							}
+						my $num_segments = (@cds_coords_arr / 2);
+						my %this_product_starts;
+						my %this_product_stops;
+						for(my $i=1; $i<=scalar(@cds_coords_arr); $i++) {
+							$this_product_starts{$i} = $cds_coords_arr[2*$i-2];
+							$this_product_stops{$i} = $cds_coords_arr[2*$i-1];
 						}
+						
+						my $cumul_length_prev_product = 0;
+						# For each segment, step through each site, add to length and sequence
+						for(my $i = 1; $i <= $num_segments; $i++) {
+							
+							my $segment_start_site = $this_product_starts{$i};
+							my $segment_stop_site = $this_product_stops{$i};
+							my $current_length = $segment_stop_site - $segment_start_site + 1;
+							
+							if($cds_position > $cumul_length_prev_product && $cds_position <= ($cumul_length_prev_product + $current_length)) { # within this segment's range of sites
+								my $actual = ($segment_start_site + ($cds_position - $cumul_length_prev_product) - 1);
+								
+								if($min != $actual) {
+									
+									chdir('SNPGenie_Results');
+									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									# FILE | PRODUCT | SITE | WARNING
+									print ERROR_FILE "$curr_snp_report_name\t$product_name\t$min\t".
+										"There is a conflict between the Minimum ($min) and the actual site ($actual) implied by the CDS Position. The ".
+										"latter has been used to determine the correct site; please verify these results\n";
+									close ERROR_FILE;
+									chdir('..');
+									
+									print "\n\n## WARNING: In file $curr_snp_report_name, product $product_name, site $min,\n".
+									"## there is a conflict between the Minimum ($min) and the actual site ($actual) implied by the CDS Position.\n".
+									"## The latter has been used to determine the correct site; please verify these results.\n";
+									
+									$min = $actual;
+								}
+							}
+							
+							$cumul_length_prev_product += $current_length;
+							
+						}			
 					}
 					
 					# Extract the needed values; the CLC ORDER will be:
@@ -8513,6 +8536,15 @@ sub populate_tempfile_vcf {
 	open (ORIGINAL_SNP_REPORT, $curr_snp_report_name);
 	while (<ORIGINAL_SNP_REPORT>) {	
 		chomp;
+		# CHOMP for 3 operating systems
+		if($_ =~ /\r\n$/) {
+			$_ =~ s/\r\n//;
+		} elsif($_ =~ /\r$/) {
+			$_ =~ s/\r//;
+		} elsif($_ =~ /\n$/) {
+			$_ =~ s/\n//;
+		}
+			
 		if($_ =~ /^#(\w+)/) {
 			$header_line = $_;
 			if(!($_ =~/\t/)) {
@@ -8679,22 +8711,30 @@ sub populate_tempfile_vcf {
 	open (GTF_INFILE, $gtf_file_nm);
 	while (<GTF_INFILE>) {
 		chomp;
+		# CHOMP for 3 operating systems
+		if($_ =~ /\r\n$/) {
+			$_ =~ s/\r\n//;
+		} elsif($_ =~ /\r$/) {
+			$_ =~ s/\r//;
+		} elsif($_ =~ /\n$/) {
+			$_ =~ s/\n//;
+		}
 		
 		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Make sure it's on the + strand
 			my $product;
-			if($_ =~ /gene_id \"gene\:([\w\s\.']+)\"/) {
+			if($_ =~ /gene_id \"gene\:([\w\s\.\-\:']+)\"/) {
 				$product = $1;
 				
 				if ((! exists $products_hash{$product}) && ($product ne '')) {
 					$products_hash{$product} = 1;
 				}
-			} elsif($_ =~ /gene_id \"([\w\s\.']+ [\w\s\.']+)\"/) {
+			} elsif($_ =~ /gene_id \"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
 				$product = $1;
 				
 				if ((! exists $products_hash{$product}) && ($product ne '')) {
 					$products_hash{$product} = 1;
 				}
-			} elsif($_ =~ /gene_id \"([\w\s\.']+)\"/) {
+			} elsif($_ =~ /gene_id \"([\w\s\.\-\:']+)\"/) {
 				$product = $1;
 				
 				if ((! exists $products_hash{$product}) && ($product ne '')) {
@@ -8740,6 +8780,14 @@ sub populate_tempfile_vcf {
 	while (<ORIGINAL_SNP_REPORT>) {
 		unless(/^#/) { # lines that begins with "##" or "#" are metadata
 			chomp;
+			# CHOMP for 3 operating systems
+			if($_ =~ /\r\n$/) {
+				$_ =~ s/\r\n//;
+			} elsif($_ =~ /\r$/) {
+				$_ =~ s/\r//;
+			} elsif($_ =~ /\n$/) {
+				$_ =~ s/\n//;
+			}
 			
 			my @line_arr = split(/\t/,$_);
 			
@@ -9696,6 +9744,14 @@ sub get_product_coordinates {
 	while (<CURRINFILE>) { # go through the GTF file
 		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
 			chomp;
+			# CHOMP for 3 operating systems
+			if($_ =~ /\r\n$/) {
+				$_ =~ s/\r\n//;
+			} elsif($_ =~ /\r$/) {
+				$_ =~ s/\r//;
+			} elsif($_ =~ /\n$/) {
+				$_ =~ s/\n//;
+			}
 			
 			my $product_present = 0;
 			my $this_line = $_;
@@ -26911,6 +26967,15 @@ sub sliding_window {
 			$line++;
 		} else {
 			chomp;
+			# CHOMP for 3 operating systems
+			if($_ =~ /\r\n$/) {
+				$_ =~ s/\r\n//;
+			} elsif($_ =~ /\r$/) {
+				$_ =~ s/\r//;
+			} elsif($_ =~ /\n$/) {
+				$_ =~ s/\n//;
+			}
+			
 			my @line_arr = split(/\t/,$_);
 			
 			my $file = $line_arr[$index_file];
