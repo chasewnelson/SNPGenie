@@ -6,12 +6,13 @@ Perl software for estimating evolutionary parameters from pooled next-generation
 
 * [Introduction](#introduction)
 * [SNPGenie Input](#snpgenie-input)
-	* [Reference Sequence](#ref-seq)
-	* [Gene Transfer Format](#gtf)
-	* [SNP Report(s)](#SNP-Reports)
+	1. [Reference Sequence](#ref-seq)
+	2. [Gene Transfer Format](#gtf)
+	3. [SNP Report(s)](#SNP-Reports)
 		* [CLC](#clc)
 		* [Geneious](#geneious)
 		* [VCF](#vcf)
+	
 	* [A Note on Reverse Complement ('—' Strand) Records](#revcom)
 * [Options](#options)
 * [How SNPGenie Works](#how-snpgenie-works)
