@@ -34,7 +34,7 @@ SNPGenie version 1.2 is a command-line interface application written in Perl, wi
 
 1. One or more [**Reference Sequence**](#ref-seq) files in **FASTA** format (.fa/.fasta); 
 2. One file with CDS information in [**Gene Transfer Format**](#gtf) (.gtf); and 
-3. One or more tab-delimited (.txt) [**SNP Reports**](#SNP-Reports) in CLC, VCF, or Geneious format. If you want another format included, just ask!
+3. One or more tab-delimited (.txt) [**SNP Reports**](#SNP-Reports), each corresponding to a single pooled-sequencing run (*i.e.*, population) in CLC, VCF, or Geneious format. If you want another format included, just ask!
 
 For ease and simplicity, one need only run SNPGenie in a directory containing the necessary input files, and SNPGenie takes care of the rest (see [Options](#options) if you wish for more control). To do this, first download the **snpgenie-1.2.2.pl** script and place it in your system’s PATH, or simply in your working directory. Next, place your SNP report(s), FASTA(s) (.fa/.fasta), and GTF (.gtf) files in your working directory. Open the command line prompt (or Terminal) and navigate to the directory containing these files using the "cd" command in your shell. Finally, simply execute SNPGenie by typing the name of the script and pressing the \<RETURN\> (\<ENTER\>) key. Further details on input are below.
 
@@ -58,6 +58,8 @@ The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include
 	reference.gbk	CLC	CDS	4911	5246	.	+	0	gene_id "ORF8";
 
 ### <a name="SNP-Reports"></a>SNP Reports
+
+Each SNP report should contain variant calls for a single pooled-sequencing run (*i.e.*, population) in one of the following formats:
 
 #### <a name="clc"></a>CLC Genomics Workbench
 At minimum, the <a target="_blank" href="http://www.clcbio.com/products/clc-genomics-workbench/">CLC Genomics Workbench</a> SNP report must include the following 8 default column selections, with the unaltered CLC column headers: 
