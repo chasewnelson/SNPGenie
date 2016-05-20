@@ -1,6 +1,6 @@
 <img src="https://github.com/hugheslab/snpgenie/blob/master/logo1a.jpg?raw=true" alt="SNPGenie logo" width="450" height="175" align="middle">
 
-Perl software for estimating evolutionary parameters from pooled next-generation sequencing single-nucleotide polymorphism data. Just run the main script, **snpgenie-1.2.2.pl**, in a directory containing the necessary input files, and we take care of the rest! For the earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.
+SNPGenie is Perl software for estimating evolutionary parameters, mainly from pooled next-generation sequencing single-nucleotide polymorphism data. SNP reports (accpetable in a variety of formats) much each correspond to a single population, with variants called relative to the same reference sequence. Just run the main script, **snpgenie-1.2.2.pl**, in a directory containing the necessary [input files](#snpgenie-input), and we take care of the rest! For an earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.
 
 ## Contents
 

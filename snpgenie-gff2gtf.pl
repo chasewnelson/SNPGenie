@@ -79,7 +79,9 @@ while (<CURRINFILE>) {
 				my $group = $line_arr[8];
 				
 				my $gene_id;
-				if($group =~ /ID=([\w\s\.']+)/) {
+				if($group =~ /ID=CDS\:([\w\s\.']+)/) {
+					$gene_id = $1;
+				} elsif($group =~ /ID=([\w\s\.']+)/) {
 					$gene_id = $1;
 				} elsif($group =~ /ID=([\w\s\.']+ [\w\s\.']+)/) {
 					$gene_id = $1;
