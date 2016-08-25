@@ -341,28 +341,28 @@ if($complementmode) {
 		my $rev_compl_start; # Where the gene itself actually STOPS
 		my $rev_compl_stop; # Where the gene itself actually STARTS
 
-		if($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"gene\:([\w\s\.\-\:']+)\"/) { # Line is - strand
+		if($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\t\s*gene_id\s*\"gene\:([\w\s\.\-\:']+)\"/) { # Line is - strand
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\t\s*gene_id\s*\"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\tgene_id \"([\w\s\.\-\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\t\s*gene_id\s*\"([\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
 		# NOW, IN CASE transcript_id comes first
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"; gene_id \"gene\:([\w\s\.\-\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"\s*;\s*gene_id\s*\"gene\:([\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"; gene_id \"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"\s*;\s*gene_id\s*\"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"; gene_id \"([\w\s\.\-\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"\s*;\s*gene_id\s*\"([\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
@@ -444,9 +444,7 @@ if(! $seen_sense_strand_products) {
 
 # Determine all product coordinates from the start
 my %product_coordinates_harr;
-foreach my $product_name (@product_names_arr) {	
-	my @product_coord_arr;
-	
+foreach my $product_name (@product_names_arr) {
 	#print "product name is: $product_name\n";
 	my @product_coord_arr = &get_product_coordinates($product_name);
 	#print "\n\n$product_name product_coord arr: @product_coord_arr\n\n";
@@ -478,6 +476,9 @@ while (<INFILE>) {
 }
 close INFILE;
 print "COMPLETED.\n";
+
+# In case it's lowercase
+$seq =~ tr/acgt/ACGT/;
 
 # Record in an array by index (old %seq_by_pos_hash)
 print "\nIndexing sequence... ";
@@ -573,6 +574,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		&populate_tempfile_vcf($curr_snp_report_name,$temp_snp_report_name,$cds_file);
 		$curr_snp_report_name = $temp_snp_report_name;
 	}
+	
 	# Includes the automatic deletion of the tempfile afterwards. 
 	my @new_header_names_arr = &get_header_names($curr_snp_report_name,$file_nm);
 	@header_names_arr = @new_header_names_arr;
@@ -818,7 +820,9 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				my $coverage = $line_arr[$index_cov];
 				my $count = $line_arr[$index_count];
 				my $reference_nt = $line_arr[$index_ref];
+				$reference_nt =~ tr/acgt/ACGT/;
 				my $variant_nt = $line_arr[$index_allele];
+				$variant_nt =~ tr/acgt/ACGT/;
 				my $frequency = $line_arr[$index_freq];
 				my $var_prop = ($count/$coverage);
 				my $ref_prop = (1-$var_prop);
@@ -1196,7 +1200,9 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				my $coverage = $line_arr[$index_cov];
 				my $count = $line_arr[$index_count];
 				my $reference_nt = $line_arr[$index_ref];
+				$reference_nt =~ tr/acgt/ACGT/;
 				my $variant_nt = $line_arr[$index_allele];
+				$variant_nt =~ tr/acgt/ACGT/;
 				my $frequency = $line_arr[$index_freq];
 				my $var_prop = ($count/$coverage);
 				#my $var_prop = ($line_arr[$index_freq])/100;
@@ -7203,6 +7209,147 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	# Remove temp files
 	#&remove_tempfiles;
 	unlink $temp_snp_report_name;
+
+
+#	####### Generate random fastas: create all possible FASTA files	
+#	# This is for later use in between-population mutation rate estimation
+#	print "\nForming randomly generated representative sequences... ";
+#	my @all_possible_seqs;
+#	
+#	# Store data in variables to save room on screen and verify
+#	my $max_cov = 0;
+#	
+#	# Get maximum coverage, which will be the number of sequences we make
+#	foreach (sort {$a <=> $b} keys %hh_nc_position_info) {
+#		my $coverage = $hh_nc_position_info{$_}->{cov};
+#		if($coverage > $max_cov) {
+#			$max_cov = $coverage;
+#		}
+#	}
+#	
+#	foreach (sort {$a <=> $b} keys %hh_nc_position_info) {
+#		if($hh_nc_position_info{$_}->{polymorphic}) {
+#		
+#			my $this_A_prop = $hh_nc_position_info{$_}->{A_prop};
+#			my $this_C_prop = $hh_nc_position_info{$_}->{C_prop};
+#			my $this_G_prop = $hh_nc_position_info{$_}->{G_prop};
+#			my $this_T_prop = $hh_nc_position_info{$_}->{T_prop};
+#			my $this_ref = $hh_nc_position_info{$_}->{reference};
+#			my $this_cov = $hh_nc_position_info{$_}->{cov};
+#			
+#			my $this_A = ($this_A_prop * $max_cov);
+#			my $this_C = ($this_C_prop * $max_cov);
+#			my $this_G = ($this_G_prop * $max_cov);
+#			my $this_T = ($this_T_prop * $max_cov);
+#			
+#			#print "\nsite=$_ A=$this_A C=$this_C G=$this_G T=$this_T";
+#			
+#			# Round to nearest int
+#			$this_A = sprintf("%.0f", $this_A);
+#			$this_C = sprintf("%.0f", $this_C);
+#			$this_G = sprintf("%.0f", $this_G);
+#			$this_T = sprintf("%.0f", $this_T);
+#			
+#			#print "\nsite=$_ A=$this_A C=$this_C G=$this_G T=$this_T";
+#			
+#			# Find maj_nt
+#			my $maj_nt; # a variant nucleotide may have fixed
+#			my $curr_maj_count = 0;
+#			if($this_A > $curr_maj_count) {
+#				$curr_maj_count = $this_A;
+#				$maj_nt = 'A';
+#			}
+#			if($this_C > $curr_maj_count) {
+#				$curr_maj_count = $this_C;
+#				$maj_nt = 'C';
+#			} 
+#			if($this_G > $curr_maj_count) {
+#				$curr_maj_count = $this_G;
+#				$maj_nt = 'G';
+#			} 
+#			if($this_T > $curr_maj_count) {
+#				$curr_maj_count = $this_T;
+#				$maj_nt = 'T';
+#			}
+#			
+#			my $leftover_number = $max_cov - ($this_A + $this_C + $this_G + $this_T);
+#			
+#			if($leftover_number != 0) { # it's negative, our count is too large, take away from maj_nt
+#				# or it's positive, our count is too small, add to maj_nt
+#				if($maj_nt eq 'A') {
+#					$this_A += $leftover_number;
+#				} elsif($maj_nt eq 'C') {
+#					$this_C += $leftover_number;
+#				} elsif($maj_nt eq 'G') {
+#					$this_G += $leftover_number;
+#				} elsif($maj_nt eq 'T') {
+#					$this_T += $leftover_number;
+#				}	
+#			}
+#			
+#			# Now we build an array of all the nucleotides to add at the current site
+#			my @new_nts_arr;
+#			for(my $i = 1; $i <= $this_A; $i++) {
+#				push(@new_nts_arr,'A');
+#			}
+#			for(my $i = 1; $i <= $this_C; $i++) {
+#				push(@new_nts_arr,'C');
+#			}
+#			for(my $i = 1; $i <= $this_G; $i++) {
+#				push(@new_nts_arr,'G');
+#			}
+#			for(my $i = 1; $i <= $this_T; $i++) {
+#				push(@new_nts_arr,'T');
+#			}
+#			
+#			for(my $i = 1; $i <= $max_cov; $i++) {
+#				my $j = $i - 1;
+#				my $rand_nt_index = int(rand(scalar(@new_nts_arr)));
+#				my $rand_nt = $new_nts_arr[$rand_nt_index];
+#				
+#				$all_possible_seqs[$j] .= $rand_nt;
+#				
+#				# Delete element from array
+#				splice(@new_nts_arr, $rand_nt_index, 1);
+#				
+#			}
+#			#print "\nsite=$_ A=$this_A C=$this_C G=$this_G T=$this_T ref=$this_ref cov=$this_cov";
+#			
+#		} else { # just add the reference nucleotide to all
+#			my $this_nt = $seq_by_index_arr[$_ - 1];
+#			
+#			for(my $i = 1; $i <= $max_cov; $i++) {
+#				my $j = $i - 1;
+#				$all_possible_seqs[$j] .= $this_nt;
+#			}
+#		}
+#	}
+#	
+#	#print "\nMaximum coverage is $max_cov\n\n";
+#	
+#	my $counter = 1;
+#	open(OUT_FASTAS, ">>rand_seqs.fasta");
+#	foreach(@all_possible_seqs) {
+#		my $seq_length = length($_);
+#		
+#		print OUT_FASTAS ">seq_num_$counter\n";
+#		
+#		for(my $i=0; $i<$seq_length; $i+=60) {
+#			if($i>($seq_length - 60)) {
+#				my $line = substr($_, $i);
+#				print OUT_FASTAS "$line\n";
+#				last;
+#			} else {
+#				my $line = substr($_, $i, 60);
+#				print OUT_FASTAS "$line\n";
+#			}
+#		}
+#		
+#		$counter++;
+#	}
+#	close OUT_FASTAS;
+#	print "COMPLETED.\n";
+#	#######	End generate random fastas
 	
 } # Finished with SNP Report
 
@@ -7414,13 +7561,14 @@ sub get_product_names_from_gtf {
 	open (CURRINFILE, $cds_file);
 	while (<CURRINFILE>) {
 		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
-			if($_ =~/gene_id \"gene\:([\w\s\.\-\:']+)\"/) { # transcript_id not a problem
+			#print "this_line: $_";
+			if($_ =~/\s*gene_id\s*\"gene\:([\w\s\.\-\:']+)\"/) { # transcript_id not a problem
 				$products_hash{$1} = 1;
 				$seen_sense_strand_products = 1;
-			} elsif($_ =~ /gene_id \"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
+			} elsif($_ =~ /\s*gene_id\s*\"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
 				$products_hash{$1} = 1;
 				$seen_sense_strand_products = 1;
-			} elsif($_ =~/gene_id \"([\w\s\.\-\:']+)\"/) {
+			} elsif($_ =~/\s*gene_id\s*\"([\w\s\.\-\:']+)\"/) {
 				$products_hash{$1} = 1;
 				$seen_sense_strand_products = 1;
 			} else {
@@ -8722,19 +8870,19 @@ sub populate_tempfile_vcf {
 		
 		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Make sure it's on the + strand
 			my $product;
-			if($_ =~ /gene_id \"gene\:([\w\s\.\-\:']+)\"/) {
+			if($_ =~ /\s*gene_id\s*\"gene\:([\w\s\.\-\:']+)\"/) {
 				$product = $1;
 				
 				if ((! exists $products_hash{$product}) && ($product ne '')) {
 					$products_hash{$product} = 1;
 				}
-			} elsif($_ =~ /gene_id \"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
+			} elsif($_ =~ /\s*gene_id\s*\"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
 				$product = $1;
 				
 				if ((! exists $products_hash{$product}) && ($product ne '')) {
 					$products_hash{$product} = 1;
 				}
-			} elsif($_ =~ /gene_id \"([\w\s\.\-\:']+)\"/) {
+			} elsif($_ =~ /\s*gene_id\s*\"([\w\s\.\-\:']+)\"/) {
 				$product = $1;
 				
 				if ((! exists $products_hash{$product}) && ($product ne '')) {
@@ -9759,13 +9907,13 @@ sub get_product_coordinates {
 			my $this_stop;
 			
 			# incomplete segments
-			if ($_ =~/gene_id "$product";/) {
+			if ($_ =~/\s*gene_id\s*"$product"\s*;/) {
 				if ($_ =~/CDS\t(\d+)\t(\d+)/) {
 					$product_present = 1;
 					$this_start = $1;
 					$this_stop = $2;
 				}
-			} elsif($_ =~/gene_id "gene\:$product";/) {
+			} elsif($_ =~/\s*gene_id\s*"gene\:$product"\s*;/) {
 				if ($_ =~/CDS\t(\d+)\t(\d+)/) {
 					$product_present = 1;
 					$this_start = $1;
