@@ -283,7 +283,7 @@ When using this software, please refer to and cite:
 
 ## <a name="studies-using-snpgenie"></a>Studies Using SNPGenie
 
-* Bailey AL, Lauck M, Ghai RR, Nelson CW, Heimbruch K, Hughes AL, Goldberg TL, Kuhn JH, Jasinska AJ, Freimer NB, Apetrei C, O’Connor DH (2016) Arteriviruses, pegiviruses, and lentiviruses are common among wild African monkeys. PLoS Pathogens, *in review*.
+* Bailey AL, Lauck M, Ghai RR, Nelson CW, Heimbruch K, Hughes AL, Goldberg TL, Kuhn JH, Jasinska AJ, Freimer NB, Apetrei C, O’Connor DH (2016) <a target="_blank" href="http://jvi.asm.org/content/90/15/6724.abstract">Arteriviruses, pegiviruses, and lentiviruses are common among wild African monkeys</a>. *Journal of Virology* **90**(15):6724-6737.
 * Moncla LH, Zhong G, Nelson CW, Dinis JM, Mutschler J, Hughes AL, Watanabe T, Kawaoka Y, Friedrich TC (2016) <a target="_blank" href="http://www.cell.com/cell-host-microbe/abstract/S1931-3128(16)30010-5">Selective bottlenecks shape evolutionary pathways taken during mammalian adaptation of a 1918-like avian influenza virus</a>. *Cell Host & Microbe* **19**(2):169-80.
 * Gellerup D, Balgeman A, Nelson CW, Ericsen A, Scarlotta M, Hughes AL, O’Connor S (2015) <a target="_blank" href="http://jvi.asm.org/content/early/2015/10/16/JVI.02587-15.abstract">Conditional immune escape during chronic SIV infection</a>. *Journal of Virology* **90**(1):545-52.
 * Nelson CW, Hughes AL (2015) <a target="_blank" href="http://www.sciencedirect.com/science/article/pii/S1567134814004468">Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing</a>. *Infection, Genetics and Evolution* **30**:1-7.
