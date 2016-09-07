@@ -229,7 +229,7 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 
 Some additional scripts are included to automate some common tasks when preparing SNPGenie input. These currently are:
 
-* **snpgenie-gb2gtf.pl**. At the command line, provide this script with one argument: a GenBank (.gbk) file. It will extract the coding element annotations to produce a Gene Transfer Format (.gtf) file ready for SNPGenie. Not working? Let us know, and we'll improve it! Here's an example:
+* **snpgenie-gb2gtf.pl**. At the command line, provide this script with one argument: a GenBank (.gbk) file. It will extract the coding element (CDS) annotations to produce a Gene Transfer Format (.gtf) file ready for SNPGenie. Not working? Let us know, and we'll improve it! Here's an example:
 
         snpgenie-gb2gtf.pl my_genbank_file.gbk
         
