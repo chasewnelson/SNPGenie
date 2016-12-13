@@ -2,6 +2,8 @@
 
 SNPGenie is a Perl script for estimating evolutionary parameters, mainly from pooled next-generation sequencing (NGS) single-nucleotide polymorphism (SNP) variant data. SNP reports (acceptable in a variety of formats) much each correspond to a single population, with variants called relative to a single reference sequence (one sequence in one FASTA file). Just run the main script, **snpgenie-1.2.2.pl**, in a directory containing the necessary [input files](#snpgenie-input), and we take care of the rest! For the earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.
 
+**UPDATE FOR VCF INPUT:** given the preponderance of distinct VCF formats in use, it is now necessary to specify the specific format of the VCF SNP report input using the **--vcfformat** argument. See the section on [VCF](#vcf).
+
 ## Contents
 
 * [Introduction](#introduction)
@@ -95,16 +97,32 @@ At minimum, the <a target="_blank" href="https://github.com/samtools/hts-specs">
 * **CHROM**, the name of the reference genome;
 * **POS**, which refers to the start site of the polymorphism within the reference FASTA sequence;
 * **REF**, the reference nucleotide(s) at that site(s);
-* **ALT**, the variant nucleotide(s) at that site(s);
+* **ALT**, the variant nucleotide(s) at that site(s), with multiple variants at the same site separated by commas (,);
 * **QUAL**, the Phred quality score for the variant;
 * **FILTER**, the filter status, based on such metrics as minimum frequencies and minimum quality scores;
-* **INFO**, additional necessary information, including entries for:
-	* If a *pooled* VCF (*i.e.*, the SNPs are called from a pooled sequencing sample):
-		* **DP4**, containing the number of reference and variant reads on the forward and reverse strands (*e.g.*, "DP4=11,9,219,38")
-	* If a *summary* VCF (*i.e.*, the SNPs from multiple individual sequencing samples are being summarized):
-		* **NS**, the number of samples (*i.e.*, individual sequencing experiments) being summarized, and **AF**, the allele frequency(-ies) for the variant alleles in the same order as listed in the ALT column (*e.g.*, "NS=30" and "AF=0.200") **(N.B.: not yet supported)**
-* **FORMAT** and **SAMPLE** as an alternative to INFO for the *pooled* VCF approach (*i.e.*, the SNPs are called from a pooled sequencing sample), with data entries for:
-	* **AD**, the allele depth for the reference, followed by that for the variant allele(s) in the same order as listed in the ALT column (*e.g.*, "AD" in the FORMAT column and "75,77" in the SAMPLE column), and **DP**, the coverage or total read depth (*e.g.*, "DP" in the FORMAT column and "152" in the SAMPLE column)
+* **INFO**, information regarding read depth and/or allele frequencies; 
+* **FORMAT**, sometimes an alternative to the **INFO** column for read depth and/or allele frequency data; 
+* **\<SAMPLE\>**, a column with variable names depending on user specification, and another occasional alternative to the **INFO** column for read depth and/or allele frequency data.
+
+**SNPGenie now requires** its users to specify exactly which VCF format is being submitted using the **--vcfformat** argument. New formats are being added on a case-by-case basis; users should [contact the author](#contact) to have new formats incorporated. Current formats are:
+
+1. **FORMAT 1: --vcfformat=1**. Multiple individual genomes have been sequenced separated, following SNP summarization in the VCF file. SNPGenie will require the following in the **INFO** column:
+	* **NS**, the number of samples (*i.e.*, individual sequencing experiments) being summarized (*e.g.*, "NS=30"); 
+	* **AF**, the fractional allele frequency(-ies) for the variant alleles in the same order as listed in the ALT column (*e.g.*, "AF=0.200"). If multiple variants exist at the time, their frequencies must be separated by commans (*e.g.*, "AF=0.200,0.087").
+
+2. **FORMAT 2:  --vcfformat=2**. Variants have been called from a pooled (deep) sequencing sample containing genomes from multiple individuals. SNPGenie will require the following in the **INFO** column:
+	* **DP**, the coverage or total read depth (*e.g.*, "DP=4249");
+	* **AF**, the fractional allele frequency(-ies) for the variant alleles in the same order as listed in the ALT column (*e.g.*, "AF=0.01247"; "AF=0.01247,0.08956" for two variants; etc.).
+
+3. **FORMAT 3: --vcfformat=3**. Like format 2, variants have been called from a pooled (deep) sequencing sample containing genomes from multiple individuals. However, SNPGenie will instead require the following in the **INFO** column:
+	* **DP4**, containing the number of reference and variant reads on the forward and reverse strands in the format *DP4=\<num. fw ref reads\>,\<num. rev ref reads\>,\<num. fw var reads\>,\<num. rev var reads\>* (*e.g.*, "DP4=11,9,219,38").
+	* **N.B.**: if multiple single nucleotide variants exist at the same site, this format does not specify the number of reads for each variant. SNPGenie thus approximates by dividing the number of non-reference reads evenly amongst the variant alleles.
+
+4. **FORMAT 4:  --vcfformat=4**. Like formats 2 and 3, variants have been called from a pooled (deep) sequencing sample containing genomes from multiple individuals. However, SNPGenie will instead require data in the **FORMAT** and **\<SAMPLE\>** columns, with the data tag in the former and the data value in the latter, and with order preserved between the two columns:
+	* For reference allele depth, include the **AD** tag in the **FORMAT** column and the read depth for each allele in the **\<SAMPLE\>** column, with values for variant allele(s) in the same order as listed in the **ALT** column (*e.g.*, "AD" in the FORMAT column and "75,77" in the SAMPLE column);
+	* For coverage (total read depth), include **DP** in the **FORMAT** column and the total read depth in the **\<SAMPLE\>** column (*e.g.*, "DP" in the FORMAT column and "152" in the SAMPLE column).
+
+
 
 As usual, you will want to make sure to maintain the VCF file's features, such as TAB(\t)-delimited columns. Unlike some other formats, the allele frequency in VCF is a decimal.
 

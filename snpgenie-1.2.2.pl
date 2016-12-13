@@ -47,6 +47,7 @@ my $local_time1 = localtime;
 # Initialize variables
 my $minfreq; # the min. allele freq. to be considered (prop., not percentage)
 my $snpreport;
+my $vcfformat; ##SAMVCF
 my $fastafile;
 my $gtffile;
 my $sepfiles;
@@ -70,6 +71,7 @@ my $param_file_contents = "SNPGenie version 1.2 parameter log.\n\n";
 # Get user input, if given. If a Boolean argument is passed, its value is 1; else undef
 GetOptions(	"minfreq:f" => \$minfreq, # optional floating point parameter
 			"snpreport:s" => \$snpreport, # optional string parameter
+			"vcfformat:i" => \$vcfformat, # optional integer parameter ##SAMVCF
 			"fastafile:s" => \$fastafile, # optional string parameter
 			"gtffile:s" => \$gtffile, # optional string parameter
 			"sepfiles" => \$sepfiles, # optional Boolean; set to false if not given
@@ -445,13 +447,13 @@ if(! $seen_sense_strand_products) {
 # Determine all product coordinates from the start
 my %product_coordinates_harr;
 foreach my $product_name (@product_names_arr) {
-	#print "product name is: $product_name\n";
+	#print "\nproduct name is: $product_name\n";
 	my @product_coord_arr = &get_product_coordinates($product_name);
-	#print "\n\n$product_name product_coord arr: @product_coord_arr\n\n";
+	#print "\n$product_name product_coord arr: @product_coord_arr\n";
 	
 	# Save to a hash of arrays
 	push(@{$product_coordinates_harr{$product_name}->{product_coord_arr}},@product_coord_arr);
-	#print "\n\n$product_name product_coord arr in harr: @{$product_coordinates_harr{$product_name}->{product_coord_arr}} \n\n";
+	#print "\n$product_name product_coord arr in harr: @{$product_coordinates_harr{$product_name}->{product_coord_arr}} \n\n";
 }
 
 # Streamline bulding of sequence
@@ -543,11 +545,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		}
 	}
 	
-	if($geneious_mode == 1 && $clc_mode == 0 && $vcf_mode == 0) {
+	##SAMVCF: changed to simple Boolean
+	if($geneious_mode && ! $clc_mode && ! $vcf_mode) {
 		print "GENEIOUS format detected\n";
-	} elsif($geneious_mode == 0 && $clc_mode == 1 && $vcf_mode == 0) {
+	} elsif(! $geneious_mode && $clc_mode && ! $vcf_mode) {
 		print "CLC GENOMICS WORKBENCH format detected\n";
-	} elsif($geneious_mode == 0 && $clc_mode == 0 && $vcf_mode == 1) {
+	} elsif(! $geneious_mode && ! $clc_mode && $vcf_mode) {
 		print "VCF format detected\n";
 	} else {
 		die "\n## WARNING: Conflicting SNP Report formats detected. Please contact author. ".
@@ -561,16 +564,22 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		tempfile($temp_snp_report_TEMPLATE, SUFFIX => ".txt", UNLINK => 1);
 	#print "\n\n\nTEMP FILE: $temp_snp_report_name\n\n\n";
 	
+	##SAMVCF: changed to simple Boolean
 	# POPULATE the temporary file based on FORMAT MODE
-	if($clc_mode == 1) {
+	if($clc_mode) {
 		&populate_tempfile_clc($curr_snp_report_name,$temp_snp_report_name);
 		$curr_snp_report_name = $temp_snp_report_name;
-	} elsif($geneious_mode == 1) {
+	} elsif($geneious_mode) {
 		# (1) snpgenie_prep_geneious;
 		# (2) snpgnie_geneious_to_clc;
 		&populate_tempfile_geneious($curr_snp_report_name,$temp_snp_report_name);
 		$curr_snp_report_name = $temp_snp_report_name;
-	} elsif($vcf_mode == 1) {
+	} elsif($vcf_mode) {
+		if(! $vcfformat) {
+			die "\n## WARNING: User must specify VCF format, e.g., --vcfformat=1. ".
+				"## SNPGenie TERMINATED.\n\n";
+		}
+		
 		&populate_tempfile_vcf($curr_snp_report_name,$temp_snp_report_name,$cds_file);
 		$curr_snp_report_name = $temp_snp_report_name;
 	}
@@ -846,7 +855,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						my @peptide_coord_arr;
 						
 						# EXPERIMENTAL
-						if ($over_annot =~/Mature peptide: ([\w\s\.']+)/) {
+						if ($over_annot =~/Mature peptide: ([\w\s\.\-\:\'\"]+)/) {
 							chdir('SNPGenie_Results');
 							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 							print ERROR_FILE "$file_nm\tNA\tNA\t".
@@ -857,13 +866,28 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							print "\n## WARNING: \"Mature peptide\" annotation must take into account\n".
 							"### MNV records for CLC SNP Reports.\n";
+							
 							$mature_peptide_name = $1;
+							
+							# Process product_name for leading or trailing quote marks
+							$mature_peptide_name =~ s/^"//;
+							$mature_peptide_name =~ s/^'//;
+							$mature_peptide_name =~ s/"$//;
+							$mature_peptide_name =~ s/'$//;
+							
 							@peptide_coord_arr = @{$product_coordinates_harr{$mature_peptide_name}->{product_coord_arr}};
 						} 
 						
-						if ($over_annot =~/CDS: ([\w\s\.\-\:']+)/) {
+						if ($over_annot =~/CDS: ([\w\s\.\-\:\'\"]+)/) {
 							$product_name = $1;
-							#print "\n\n$product_name\n\n";
+							
+							# Process product_name for leading or trailing quote marks
+							$product_name =~ s/^"//;
+							$product_name =~ s/^'//;
+							$product_name =~ s/"$//;
+							$product_name =~ s/'$//;
+							
+							#print "\n\nproduct name: $product_name\n\n";
 							@product_coord_arr = @{$product_coordinates_harr{$product_name}->{product_coord_arr}};
 						} 
 						
@@ -1014,8 +1038,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							$peptide_stops{$i} = $peptide_coord_arr[2*$i-1];
 						}
 						
-						# NOTE: Mature peptide is never the same as CDS. If Mature peptide is
-						# present, then it is HA1, and CDS is HA
+						# NOTE: Mature peptide is never the same as CDS in examples.
 						if ($mature_peptide_name) {
 							if (! exists $hh_product_position_info{$mature_peptide_name}->{$position}) { # Product/position HAVEN'T been seen
 								chdir('SNPGenie_Results');
@@ -1123,7 +1146,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								}
 							}
 						}
-					} elsif($line_arr[$index_over_annot] eq '') { # NON-CODING SNV VARIANT
+					} elsif($line_arr[$index_over_annot] eq '' || $line_arr[$index_over_annot] =~ "\' UTR") { # NON-CODING SNV VARIANT
 						#print "\n\nWe have a non-coding variant at site $position\n";
 	
 						if(! exists $hh_nc_position_info{$position}) { # First time seeing this 
@@ -1235,9 +1258,16 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							"### MNV records for CLC SNP Reports.\n";
 						} 
 						
-						if ($over_annot =~/CDS: ([\w\s\.']+)/) {
+						if ($over_annot =~/CDS: ([\w\s\.\-\:\'\"]+)/) {
 							$product_name = $1;
 							#print "product name is: $product_name\n";
+							
+							# Process product_name for leading or trailing quote marks
+							$product_name =~ s/^"//;
+							$product_name =~ s/^'//;
+							$product_name =~ s/"$//;
+							$product_name =~ s/'$//;
+							
 							@product_coord_arr = @{$product_coordinates_harr{$product_name}->{product_coord_arr}};
 						}
 						
@@ -2621,7 +2651,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						}	
 					
 					# NON-CODING MULTI-NUCLEOTIDE VARIANTS (nc MNVs)	
-					} elsif($line_arr[$index_over_annot] eq '') { # NON-CODING VARIANT
+					} elsif($line_arr[$index_over_annot] eq '' || $line_arr[$index_over_annot] =~ "\' UTR") { # NON-CODING VARIANT
 						#print "\n\nWe have a non-coding variant at site $position\n";
 						
 						if($warn_5nt == 0) {
@@ -2630,7 +2660,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						}
 						
 						#my $fasta_file = $product_to_fasta_file{$product_name}; # SHOULDN'T MATTER
-#comback						my $fasta_file = $the_fasta_file;
+						#my $fasta_file = $the_fasta_file; # COMEBACK [why?]
 						
 						#my $A_count = 0;
 						#my $C_count = 0;
@@ -4042,12 +4072,29 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		}
 	}
 
-	
 	# Calculate total pi values
 	my $num_sites_total = ($num_coding_sites + $num_nc_sites);
-	my $pi_total = ($sum_mean_pw_diffs / $num_sites_total);
-	my $pi_coding = ($sum_mean_pw_diffs_coding / $num_coding_sites);
-	my $pi_nc = ($sum_mean_pw_diffs_nc / $num_nc_sites);
+	
+	my $pi_total;
+	if($num_sites_total > 0) {
+		$pi_total = ($sum_mean_pw_diffs / $num_sites_total);
+	} else {
+		$pi_total = '*';
+	}
+	
+	my $pi_coding;
+	if($num_coding_sites > 0) {
+		$pi_coding = ($sum_mean_pw_diffs_coding / $num_coding_sites);
+	} else {
+		$pi_coding = '*';
+	}
+	
+	my $pi_nc;
+	if($num_nc_sites > 0) {
+		$pi_nc = ($sum_mean_pw_diffs_nc / $num_nc_sites);
+	} else {
+		$pi_nc = '*';
+	}
 	
 	my $mean_gdiv;
 	if($num_sites_total > 0) {
@@ -8628,6 +8675,7 @@ sub populate_tempfile_geneious {
 }
 
 
+## DIFFERENT FORMATS DIVEGRE WITHIN
 #########################################################################################
 sub populate_tempfile_vcf {
 	if(scalar @_ != 3) {
@@ -8820,16 +8868,16 @@ sub populate_tempfile_vcf {
 		chdir('..');
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"INFO\". SNPGenie terminated.\n\n";	
-	} elsif ($seen_index_format == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
-		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"FORMAT\". SNPGenie terminated.\n";
-		close ERROR_FILE;
-		chdir('..');
-		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FORMAT\". SNPGenie terminated.\n\n";	
-	} #elsif ($seen_index_sample1 == 0) {
+	} #elsif ($seen_index_format == 0) {
+#		chdir('SNPGenie_Results');
+#		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+#		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
+#			"Does not contain the column header \"FORMAT\". SNPGenie terminated.\n";
+#		close ERROR_FILE;
+#		chdir('..');
+#		
+#		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FORMAT\". SNPGenie terminated.\n\n";	
+#	} #elsif ($seen_index_sample1 == 0) {
 #		chdir('SNPGenie_Results');
 #		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 #		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
@@ -9055,14 +9103,19 @@ sub populate_tempfile_vcf {
 			my $product_entry = '';
 			if($equal_lengths_variants) {
 				if($variant3) { # THERE ARE THREE VARIANTS -- ADD A FLAG!
-					if($info_value =~ /NS=(\d+)/) { # We've got a VCF SUMMARIZING INDIVIDUALS
+					
+					##SAMVCF VCF FORMAT #1
+					if($vcfformat == 1) {
+					#if($info_value =~ /NS=(\d+)/) { # We've got a VCF SUMMARIZING INDIVIDUALS
 						if($warn_file_type_not_supported == 0) {
-							print "\n### WARNING: SNP REPORT FILE TYPE NOT FULLY SUPPORTED ###\n";
+							print "\n### WARNING: VCF FORMAT TYPE 1 IS NOT FULLY SUPPORTED ###\n";
 							$warn_file_type_not_supported ++;
 						}
 						
 						my $num_samples;
-						$num_samples = $1;
+						if($info_value =~ /NS=(\d+)/) {
+							$num_samples = $1;
+						}
 						
 						my $variant_freq1;
 						my $variant_freq2;
@@ -9135,7 +9188,96 @@ sub populate_tempfile_vcf {
 							}
 						}
 						
-					} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
+					##SAMVCF VCF FORMAT #2	
+					} elsif($vcfformat == 2) { # We've got a VCF of POOL ##SAMVCF
+						
+						my $coverage;
+						my $variant_freq1;
+						my $variant_freq2;
+						my $variant_freq3;
+						
+						if($info_value =~ /DP=(\d+)/) { # We've got a VCF of POOL
+							$coverage = $1;
+						} else {
+							die "\n\n## WARNING: $curr_snp_report_name does no conform to ".
+								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
+						}
+						
+						if($info_value =~ /AF=([\d\.]+),([\d\.]+),([\d\.]+)/) { # We've got a VCF of POOL
+							$variant_freq1 = $1;
+							$variant_freq2 = $2;
+							$variant_freq3 = $3;
+						} else {
+							die "\n\n## WARNING: $curr_snp_report_name does no conform to ".
+								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
+						}
+						
+						# COUNTS and FREQS
+						my $variant_count1 = $variant_freq1 * $coverage;
+						my $variant_count2 = $variant_freq2 * $coverage;
+						my $variant_count3 = $variant_freq3 * $coverage;
+						
+						my $alt_count = ($variant_count1 + $variant_count2 + $variant_count3);
+						my $ref_count = $coverage - $alt_count;
+						
+						my $variant_pct1 = (100 * $variant_freq1);
+						my $variant_pct2 = (100 * $variant_freq2);
+						my $variant_pct3 = (100 * $variant_freq3);
+						
+						$product_entry = '';
+						if(@this_site_products) {
+							foreach my $product (@this_site_products) {
+								$product_entry = 'CDS: ' . $product;
+								
+								# PRINT 3 LINES TO FILE
+								if($variant_freq1 > 0) {
+									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line1";
+								}
+								
+								if($variant_freq2 > 0) {
+									my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line2";
+								}
+								
+								if($variant_freq3 > 0) {
+									my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line3";
+								}
+							}
+						} else {
+							# PRINT 3 LINES TO FILE
+							if($variant_freq1 > 0) {
+								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+									"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+								
+								print TEMP_FILE "$this_line1";
+							}
+							
+							if($variant_freq2 > 0) {
+								my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+									"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+								
+								print TEMP_FILE "$this_line2";
+							}
+							
+							if($variant_freq3 > 0) {
+								my $this_line3 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+									"$variant3\t$variant_count3\t$coverage\t$variant_pct3\t$product_entry\n";
+								
+								print TEMP_FILE "$this_line3";
+							}
+						}
+						
+					##SAMVCF VCF FORMAT #3
+					} elsif($vcfformat == 3) {
+					#} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
 						chdir('SNPGenie_Results');
 						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 						print ERROR_FILE "$curr_snp_report_name\t". $this_site_products[0] .
@@ -9145,11 +9287,18 @@ sub populate_tempfile_vcf {
 						close ERROR_FILE;
 						chdir('..');
 						
-						# These are high-quality reads, so may be less that the actual coverage
-						my $fwd_ref_reads = $1;
-						my $rev_ref_reads = $2;
-						my $fwd_alt_reads = $3;
-						my $rev_alt_reads = $4;
+						my $fwd_ref_reads;
+						my $rev_ref_reads;
+						my $fwd_alt_reads;
+						my $rev_alt_reads;
+						
+						if($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) {
+							# These are high-quality reads, so may be less that the actual coverage
+							$fwd_ref_reads = $1;
+							$rev_ref_reads = $2;
+							$fwd_alt_reads = $3;
+							$rev_alt_reads = $4;
+						}
 						
 						# COUNTS and FREQS
 						my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
@@ -9219,9 +9368,28 @@ sub populate_tempfile_vcf {
 							}
 						}
 						
-					} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
+					##SAMVCF VCF FORMAT #4
+					} elsif($vcfformat == 4) {	
+					#} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
+						# Die if there wasn't a FORMAT column, necessary for this format
+						if ($seen_index_format == 0) {
+							chdir('SNPGenie_Results');
+							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
+								"Does not contain the column header \"FORMAT\". SNPGenie terminated.\n";
+							close ERROR_FILE;
+							chdir('..');
+		
+							die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FORMAT\". SNPGenie terminated.\n\n";	
+						}
+						
 						# Find out how many ":" appear before AD, if any
-						my $prior_to_AD = $`;
+						my $prior_to_AD;
+						
+						if($format_value =~ /AD/) {
+							$prior_to_AD = $`;
+						}
+						
 						my @colons_prior_to_AD = $prior_to_AD =~ /\:/g; 
 						my $colon_count_before_AD = @colons_prior_to_AD;
 						#print "\n\nColon count before AD: $colon_count_before_AD\n";
@@ -9348,13 +9516,19 @@ sub populate_tempfile_vcf {
 					}
 					
 				} elsif($variant2) { # THERE ARE TWO VARIANTS -- ADD A FLAG!
-					if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
+					
+					##SAMVCF VCF FORMAT #1
+					if($vcfformat == 1) {
+					#if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
 						if($warn_file_type_not_supported == 0) {
 							print "\n### WARNING: SNP REPORT FILE TYPE NOT FULLY SUPPORTED ###\n";
 							$warn_file_type_not_supported ++;
 						}
+						
 						my $num_samples;
-						$num_samples = $1;
+						if($info_value =~ /NS=(\d+)/) {
+							$num_samples = $1;
+						}
 						
 						my $variant_freq1;
 						my $variant_freq2;
@@ -9410,7 +9584,78 @@ sub populate_tempfile_vcf {
 							}
 						}
 						
-					} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
+					##SAMVCF VCF FORMAT #2	
+					} elsif($vcfformat == 2) { # We've got a VCF of POOL ##SAMVCF
+						
+						my $coverage;
+						my $variant_freq1;
+						my $variant_freq2;
+						
+						if($info_value =~ /DP=(\d+)/) { # We've got a VCF of POOL
+							$coverage = $1;
+						} else {
+							die "\n\n## WARNING: $curr_snp_report_name does no conform to ".
+								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
+						}
+						
+						if($info_value =~ /AF=([\d\.]+),([\d\.]+)/) { # We've got a VCF of POOL
+							$variant_freq1 = $1;
+							$variant_freq2 = $2;
+						} else {
+							die "\n\n## WARNING: $curr_snp_report_name does no conform to ".
+								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
+						}
+						
+						# COUNTS and FREQS
+						my $variant_count1 = $variant_freq1 * $coverage;
+						my $variant_count2 = $variant_freq2 * $coverage;
+						
+						my $alt_count = ($variant_count1 + $variant_count2);
+						my $ref_count = $coverage - $alt_count;
+						
+						my $variant_pct1 = (100 * $variant_freq1);
+						my $variant_pct2 = (100 * $variant_freq2);
+						
+						$product_entry = '';
+						if(@this_site_products) {
+							foreach my $product (@this_site_products) {
+								$product_entry = 'CDS: ' . $product;
+								
+								# PRINT 2 LINES TO FILE
+								if($variant_freq1 > 0) {
+									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line1";
+								}
+								
+								if($variant_freq2 > 0) {
+									my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+									
+									print TEMP_FILE "$this_line2";
+								}
+							}
+						} else {
+							# PRINT 2 LINES TO FILE
+							if($variant_freq1 > 0) {
+								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+									"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+								
+								print TEMP_FILE "$this_line1";
+							}
+								
+							if($variant_freq2 > 0) {
+								my $this_line2 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+									"$variant2\t$variant_count2\t$coverage\t$variant_pct2\t$product_entry\n";
+								
+								print TEMP_FILE "$this_line2";
+							}
+						}
+					
+					##SAMVCF VCF FORMAT #3
+					} elsif($vcfformat == 3) { # We've got a VCF of POOL ##SAMVCF
+					#} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
 						chdir('SNPGenie_Results');
 						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 						print ERROR_FILE "$curr_snp_report_name\t". $this_site_products[0] .
@@ -9420,11 +9665,18 @@ sub populate_tempfile_vcf {
 						close ERROR_FILE;
 						chdir('..');
 						
-						# These are high-quality reads, so may be less that the actual coverage
-						my $fwd_ref_reads = $1;
-						my $rev_ref_reads = $2;
-						my $fwd_alt_reads = $3;
-						my $rev_alt_reads = $4;
+						my $fwd_ref_reads;
+						my $rev_ref_reads;
+						my $fwd_alt_reads;
+						my $rev_alt_reads;
+						
+						if($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) {
+							# These are high-quality reads, so may be less that the actual coverage
+							$fwd_ref_reads = $1;
+							$rev_ref_reads = $2;
+							$fwd_alt_reads = $3;
+							$rev_alt_reads = $4;
+						}
 						
 						# COUNTS and FREQS
 						my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
@@ -9476,10 +9728,29 @@ sub populate_tempfile_vcf {
 								print TEMP_FILE "$this_line2";
 							}
 						}
+					
+					##SAMVCF VCF FORMAT #4
+					} elsif($vcfformat == 4) {	
+					#} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
+						# Die if there wasn't a FORMAT column, necessary for this format
+						if ($seen_index_format == 0) {
+							chdir('SNPGenie_Results');
+							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
+								"Does not contain the column header \"FORMAT\". SNPGenie terminated.\n";
+							close ERROR_FILE;
+							chdir('..');
+		
+							die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FORMAT\". SNPGenie terminated.\n\n";	
+						}
 						
-					} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
 						# Find out how many ":" appear before AD, if any
-						my $prior_to_AD = $`;
+						my $prior_to_AD;
+						
+						if($format_value =~ /AD/) {
+							$prior_to_AD = $`;
+						}	
+					
 						my @colons_prior_to_AD = $prior_to_AD =~ /\:/g; 
 						my $colon_count_before_AD = @colons_prior_to_AD;
 						#print "\n\nColon count before AD: $colon_count_before_AD\n";
@@ -9591,15 +9862,21 @@ sub populate_tempfile_vcf {
 							}
 						}
 					}
-					
+				
 				} elsif($variant1) { # THERE IS ONE VARIANT -- no flag needed
-					if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
+					
+					##SAMVCF VCF FORMAT #1
+					if($vcfformat == 1) {
+					#if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
 						if($warn_file_type_not_supported == 0) {
 							print "\n### WARNING: SNP REPORT FILE TYPE NOT FULLY SUPPORTED ###\n";
 							$warn_file_type_not_supported ++;
 						}
+						
 						my $num_samples;
-						$num_samples = $1;
+						if($info_value =~ /NS=(\d+)/) {
+							$num_samples = $1;
+						}
 						
 						my $variant_freq1;
 						if($info_value =~ /AF=([\d\.]+)/) {
@@ -9636,13 +9913,74 @@ sub populate_tempfile_vcf {
 								print TEMP_FILE "$this_line1";
 							}
 						}
+					
+					##SAMVCF VCF FORMAT #2	
+					} elsif($vcfformat == 2) { # We've got a VCF of POOL ##SAMVCF
 						
-					} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
-						# These are high-quality reads, so may be less that the actual coverage
-						my $fwd_ref_reads = $1;
-						my $rev_ref_reads = $2;
-						my $fwd_alt_reads = $3;
-						my $rev_alt_reads = $4;
+						my $coverage;
+						my $variant_freq1;
+						
+						if($info_value =~ /DP=(\d+)/) { # We've got a VCF of POOL
+							$coverage = $1;
+						} else {
+							die "\n\n## WARNING: $curr_snp_report_name does no conform to ".
+								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
+						}
+						
+						if($info_value =~ /AF=([\d\.]+)/) { # We've got a VCF of POOL
+							$variant_freq1 = $1;
+						} else {
+							die "\n\n## WARNING: $curr_snp_report_name does no conform to ".
+								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
+						}
+						
+						# COUNTS and FREQS
+						my $variant_count1 = $variant_freq1 * $coverage;
+						
+						my $alt_count = ($variant_count1);
+						my $ref_count = $coverage - $alt_count;
+						
+						my $variant_pct1 = (100 * $variant_freq1);
+						
+						$product_entry = '';
+						if(@this_site_products) {
+							foreach my $product (@this_site_products) {
+								$product_entry = 'CDS: ' . $product;
+								
+								# PRINT 1 LINE TO FILE
+								if($variant_freq1 > 0) {
+									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+										"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+								
+									print TEMP_FILE "$this_line1";
+								}
+							}
+						} else {
+							# PRINT 1 LINE TO FILE; $product_entry remains BLANK
+							if($variant_freq1 > 0) {
+								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
+									"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
+								
+								print TEMP_FILE "$this_line1";
+							}
+						}
+					
+					##SAMVCF VCF FORMAT #3
+					} elsif($vcfformat == 3) { # We've got a VCF of POOL ##SAMVCF
+					#} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
+						
+						my $fwd_ref_reads;
+						my $rev_ref_reads;
+						my $fwd_alt_reads;
+						my $rev_alt_reads;
+						
+						if($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) {
+							# These are high-quality reads, so may be less that the actual coverage
+							$fwd_ref_reads = $1;
+							$rev_ref_reads = $2;
+							$fwd_alt_reads = $3;
+							$rev_alt_reads = $4;
+						}
 						
 						# COUNTS and FREQS
 						my $ref_count = ($fwd_ref_reads + $rev_ref_reads);
@@ -9677,9 +10015,29 @@ sub populate_tempfile_vcf {
 								print TEMP_FILE "$this_line1";
 							}
 						}
-					} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
+						
+					##SAMVCF VCF FORMAT #4
+					} elsif($vcfformat == 4) {
+					#} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
+						# Die if there wasn't a FORMAT column, necessary for this format
+						if ($seen_index_format == 0) {
+							chdir('SNPGenie_Results');
+							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
+								"Does not contain the column header \"FORMAT\". SNPGenie terminated.\n";
+							close ERROR_FILE;
+							chdir('..');
+		
+							die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FORMAT\". SNPGenie terminated.\n\n";	
+						}
+						
 						# Find out how many ":" appear before AD, if any
-						my $prior_to_AD = $`;
+						my $prior_to_AD;
+						
+						if($format_value =~ /AD/) {
+							$prior_to_AD = $`;
+						}		
+
 						my @colons_prior_to_AD = $prior_to_AD =~ /\:/g; 
 						my $colon_count_before_AD = @colons_prior_to_AD;
 						#print "\n\nColon count before AD: $colon_count_before_AD\n";
@@ -9890,7 +10248,7 @@ sub get_product_coordinates {
 	
 	open (CURRINFILE, $cds_file);
 	while (<CURRINFILE>) { # go through the GTF file
-		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
+		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand #COMEBACK to \d+]
 			chomp;
 			# CHOMP for 3 operating systems
 			if($_ =~ /\r\n$/) {
