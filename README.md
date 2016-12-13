@@ -135,6 +135,7 @@ In case you want to alter the way SNPGenie works, the following options (impleme
 
 * **--minfreq**: optional floating point parameter specifying the minimum allele (SNP) frequency to include. Enter as a proportion/decimal (*e.g.*, 0.01), **not** as a percentage (*e.g.*, 1.0%). Default: 0.
 * **--snpreport**: optional string parameter specifying the (one) SNP report to analyze. Default: auto-detect .txt and .csv file(s).
+* **--vcfformat**: optional integer parameter for use with VCF SNP reports, specifying the exact format of VCF input. See [VCF](#vcf).
 * **--fastafile**: optional string parameter specifying the (one) reference sequence. Default: auto-detect .fa and/or .fasta file(s).
 * **--gtffile**: optional string parameter specifying the one file with CDS annotations. Default: auto-detect the .gtf file.
 * **--sepfiles**: optional Boolean (flag) parameter specifying whether to product separate results (codon) files for each SNP report (all results already included together in the codon_results.txt file). Simply include in the command line to activate. Default: not included.
