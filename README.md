@@ -1,6 +1,6 @@
 <img src="https://github.com/hugheslab/snpgenie/blob/master/logo1a.jpg?raw=true" alt="SNPGenie logo" width="450" height="175" align="middle">
 
-SNPGenie is a Perl script for estimating evolutionary parameters, mainly from pooled next-generation sequencing (NGS) single-nucleotide polymorphism (SNP) variant data. SNP reports (acceptable in a variety of formats) much each correspond to a single population, with variants called relative to a single reference sequence (one sequence in one FASTA file). Just run the main script, **snpgenie-1.2.2.pl**, in a directory containing the necessary [input files](#snpgenie-input), and we take care of the rest! For the earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.
+SNPGenie is a Perl script for estimating evolutionary parameters, mainly from pooled next-generation sequencing (NGS) single-nucleotide polymorphism (SNP) variant data. SNP reports (acceptable in a variety of formats) much each correspond to a single population, with variants called relative to a single reference sequence (one sequence in one FASTA file). Just run the main script, **snpgenie.pl**, in a directory containing the necessary [input files](#snpgenie-input), and we take care of the rest! For the earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.
 
 **UPDATE FOR VCF INPUT:** given the preponderance of distinct VCF formats in use, it is now necessary to specify the specific format of the VCF SNP report input using the **--vcfformat** argument. See the section on [VCF](#vcf).
 
@@ -32,13 +32,13 @@ New applications of next-generation sequencing (NGS) use pooled samples containi
 
 ## <a name="snpgenie-input"></a>SNPGenie Input
 
-SNPGenie version 1.2 is a command-line interface application written in Perl, with no additional dependencies. As such, it is limited only by the memory and processing capabilities of the local hardware. As input, it accepts:
+SNPGenie is a command-line interface application written in Perl, with no additional dependencies beyond the standard Perl package. As such, it is limited only by the memory and processing capabilities of the local hardware. As input, it accepts:
 
 1. One [**Reference Sequence**](#ref-seq) file, containing one reference sequence, in **FASTA** format (.fa/.fasta); 
 2. One file with CDS information in [**Gene Transfer Format**](#gtf) (.gtf); and 
 3. One or more tab-delimited (.txt) [**SNP Reports**](#SNP-Reports), each corresponding to a single pooled-sequencing run (*i.e.*, population) in CLC, VCF, or Geneious format, with variants called relative to the reference sequence. If you want another format included, just ask!
 
-For ease and simplicity, one need only run SNPGenie in a directory containing the necessary input files, and SNPGenie takes care of the rest (see [Options](#options) if you wish for more control). To do this, first download the **snpgenie-1.2.2.pl** script and place it in your system’s PATH, or simply in your working directory. Next, place your SNP report(s), FASTA (.fa/.fasta), and GTF (.gtf) files in your working directory. Open the command line prompt (or Terminal) and navigate to the directory containing these files using the "cd" command in your shell. Finally, simply execute SNPGenie by typing the name of the script and pressing the \<RETURN\> (\<ENTER\>) key. Further details on input are below.
+For ease and simplicity, one need only run SNPGenie in a directory containing the necessary input files, and SNPGenie takes care of the rest (see [Options](#options) if you wish for more control). To do this, first download the **snpgenie.pl** script and place it in your system’s PATH, or simply in your working directory. Next, place your SNP report(s), FASTA (.fa/.fasta), and GTF (.gtf) files in your working directory. Open the command line prompt (or Terminal) and navigate to the directory containing these files using the "cd" command in your shell. Finally, simply execute SNPGenie by typing the name of the script and pressing the \<RETURN\> (\<ENTER\>) key. Further details on input are below.
 
 ### <a name="ref-seq"></a>Reference Sequence
 Only one reference sequence must be provided in a **FASTA** (.fa/.fasta) file (one file containing one sequence). Thus, all SNP coordinates in the SNP reports are called relative to the single reference sequence. This **ONE-SEQUENCE MODE** allows the maximum number of estimations to be performed, and is the only mode of SNPGenie that remains supported. Because of this one-sequence stipulation, a script has been provided to split a multi-sequence FASTA file into its constituent sequences if need be; see [Additional Scripts](#additional-scripts) below.
@@ -145,7 +145,7 @@ In case you want to alter the way SNPGenie works, the following options (impleme
 
 For example, if you wanted to turn on the **sepfiles** option, specify a minimum allele frequency of 1%, and specify your input files, you could enter the command:
 
-	snpgenie-1.2.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
+	snpgenie.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
 
 ## <a name="how-snpgenie-works"></a>How SNPGenie Works
 
@@ -271,14 +271,14 @@ Some additional scripts are included to automate some common tasks when preparin
 
 ## <a name="troubleshooting"></a>Troubleshooting
 
-* Using **Windows**? SNPGenie was written for Unix systems (including Mac), which have Perl installed by default. Windows doesn't, but getting Perl installed is as simple as following these <a target="_blank" href="http://learn.perl.org/installing/windows.html">three-minute download instructions</a>, and you'll be good to go! Just open the Windows Command Prompt, and remember to type "perl" first when you run SNPGenie, *i.e.*, type "perl snpgenie-1.2.2.pl".
+* Using **Windows**? SNPGenie was written for Unix systems (including Mac), which have Perl installed by default. Windows doesn't, but getting Perl installed is as simple as following these <a target="_blank" href="http://learn.perl.org/installing/windows.html">three-minute download instructions</a>, and you'll be good to go! Just open the Windows Command Prompt, and remember to type "perl" first when you run SNPGenie, *i.e.*, type "perl snpgenie.pl".
 * SNPGenie isn't executing? Try preceding the whole command line with "perl" to make sure SNPGenie is being treated as a script. For example:
 
-        perl snpgenie-1.2.2.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
+        perl snpgenie.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
     
 * SNPGenie still isn't executing? You might also try making the script executable at the command line, as follows:
 
-        chmod +x snpgenie-1.2.2.pl	
+        chmod +x snpgenie.pl	
 
 * Are (end-of-line) newline characters in Unix LF (\n) format? Although SNPGenie was also designed to accept Windows CRLF (\r\n) or Mac CR (\r) formats, these can sometimes introduce problems causing SNPGenie to crash or return all 0 values. Trying changing the newline character to Unix LF using a free program such a <a target="_blank" href="http://www.barebones.com/products/textwrangler/">TextWrangler</a>.
 
