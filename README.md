@@ -1,6 +1,9 @@
 <img src="https://github.com/hugheslab/snpgenie/blob/master/logo1a.jpg?raw=true" alt="SNPGenie logo" width="450" height="175" align="middle">
 
-SNPGenie is a Perl script for estimating evolutionary parameters, mainly from pooled next-generation sequencing (NGS) single-nucleotide polymorphism (SNP) variant data. SNP reports (acceptable in a variety of formats) much each correspond to a single population, with variants called relative to a single reference sequence (one sequence in one FASTA file). Just run the main script, **snpgenie.pl**, in a directory containing the necessary [input files](#snpgenie-input), and we take care of the rest! For the earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.
+SNPGenie is a Perl script for estimating evolutionary parameters from next-generation sequencing (NGS) single-nucleotide polymorphism (SNP) variant data. Three different analyses are possible:
+
+1. For an analysis of **POOLED NGS SNP DATA**, run the script **snpgenie.pl**. SNP reports (acceptable in a variety of formats) much each correspond to a single population, with variants called relative to a single reference sequence (one sequence in one FASTA file). SNP reports may summarize either single sequencing runs where the input was DNA pooled from multiple individuals, or may be summary files for multiple individual sequences. Just run the script in a directory containing the necessary [input files](#snpgenie-input), and we take care of the rest! For the earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.
+2. **COMING SOON!** For a traditional **BETWEEN-GROUP ANALYSIS** with groups of FASTA sequences such as possible using the MEGA software, run the script **snpgenie\_between\_group.pl**. This script is being released for use with datasets which exceed the processing and memory capabilities of the MEGA software. Just run the script in a directory containing the necessary [between-group input files](#snpgenie-input-between), and we take care of the rest!
 
 **UPDATE FOR VCF INPUT:** given the preponderance of distinct VCF formats in use, it is now necessary to specify the specific format of the VCF SNP report input using the **--vcfformat** argument. See the section on [VCF](#vcf).
 
@@ -189,12 +192,12 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* *num_overlap_ORF_nts*. The number of nucleotides in this codon (up to 3) which overlap other ORFs (in addition to the current "product" annotation).
 	* *mean_nonsyn_diffs*. The mean number of pairwise nucleotide comparisons in this codon which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of *π*<sub>N</sub>.
 	* *mean_syn_diffs*. The mean number of pairwise nucleotide comparisons in this codon which are synonymous (i.e., amino acid-conserving) in the pooled sequence sample. The numerator of *π*<sub>S</sub>.
-	* *nonsyn_sites*. The mean number of sites in this codon which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *π*<sub>N</sub> versus the reference.
-	* *syn_sites*. The mean number of sites in this codon which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> mean *π*<sub>S</sub> versus the reference.
+	* *nonsyn_sites*. The mean number of sites in this codon which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *d*<sub>N</sub> versus the reference.
+	* *syn_sites*. The mean number of sites in this codon which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> mean *d*<sub>S</sub> versus the reference.
 	* *nonsyn_sites_ref*. The number of sites in this codon which are nonsynonymous in the reference sequence.
 	* *syn_sites_ref*. The number of sites in this codon which are synonymous in the reference sequence.
-	* *mean_nonsyn_diffs_vs_ref*. This codon's mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *π*<sub>N</sub> versus the reference.
-	* *mean_syn_diffs_vs_ref*. This codon's mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *π*<sub>S</sub> versus the reference.
+	* *mean_nonsyn_diffs_vs_ref*. This codon's mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *d*<sub>N</sub> versus the reference.
+	* *mean_syn_diffs_vs_ref*. This codon's mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *d*<sub>S</sub> versus the reference.
 	* *mean_gdiv*. Mean gene diversity (observed heterozygosity) for this codon's nucleotide sites.
 	* *mean_nonsyn_gdiv*. Mean gene diversity for this codon's nonsynonymous polymorphic sites.
 	* *mean_syn_gdiv*. Mean gene diversity for this codon's synonymous polymorphic sites.
@@ -208,8 +211,8 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* *mean_syn_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are synonymous (i.e., amino acid-conserving) in the pooled sequence sample. The numerator of *π*<sub>S</sub>.
 	* *mean_nonsyn_diffs_vs_ref*. The sum over all codons in this product of the mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *π*<sub>N</sub> versus the reference.
 	* *mean_syn_diffs_vs_ref*. The sum over all codons in this product of the mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *π*<sub>S</sub> versus the reference.
-	* *nonsyn_sites*. The mean number of sites in this product which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *π*<sub>N</sub> versus the reference.
-	* *syn_sites*. The mean number of sites in this product which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> and mean *π*<sub>S</sub> versus the reference.
+	* *nonsyn_sites*. The mean number of sites in this product which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *d*<sub>N</sub> versus the reference.
+	* *syn_sites*. The mean number of sites in this product which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> and mean *d*<sub>S</sub> versus the reference.
 	* *piN*. (*π*<sub>N</sub>.) The mean number of pairwise nonsynonymous differences per nonsynonymous site in this product.
 	* *piS*. (*π*<sub>S</sub>.) The mean number of pairwise synonymous differences per synonymous site in this product.
 	* *mean_dN_vs_ref*. The mean number of nonsynonymous differences from the reference per nonsynonymous site in this product.
@@ -226,8 +229,8 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* *pi*. Mean number of pairwise differences per site in the pooled sample across the whole genome.
 	* *pi_coding*. Mean number of pairwise differences per site in the pooled sample across all coding sites in the genome.
 	* *pi_noncoding*. Mean number of pairwise differences per site in the pooled sample across all noncoding sites in the genome.
-	* *nonsyn_sites*. The mean number of sites in the genome which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *π*<sub>N</sub> versus the reference.
-	* *syn_sites*. The mean number of sites in the genome which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> and mean *π*<sub>S</sub> versus the reference.
+	* *nonsyn_sites*. The mean number of sites in the genome which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *d*<sub>N</sub> versus the reference.
+	* *syn_sites*. The mean number of sites in the genome which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> and mean *d*<sub>S</sub> versus the reference.
 	* *piN*. The mean number of pairwise nonsynonymous differences per nonsynonymous site across the genome of the pooled sample.
 	* *piS*. The mean number of pairwise synonymous differences per synonymous site across the genome of the pooled sample.
 	* *mean_dN_vs_ref*. The mean number of nonsynonymous differences from the reference per nonsynonymous site across the genome of the pooled sample.
@@ -243,6 +246,14 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* *sites_noncoding_poly*. The number of sites in the genome of the pooled sample which are polymorphic and do not code for a protein product, given the CDS annotations in the GTF file.
 
 8. **sliding_window_length<Length>_results.txt**, containing codon-based results over a sliding window, with a default length of 9 codons.
+
+## <a name="snpgenie-input-between"></a>SNPGenie Between-Group
+
+**COMING SOON!** The script **snpgenie\_between\_group.pl** can be used to calculate mean dN and dS between two or more groups of sequences in FASTA format. Users who have access to a computer cluster may wish to use this parallelized version of SNPGenie for datasets which exceed the processing and memory capabilities of the MEGA software. 
+
+## <a name="snpgenie-input-within"></a>SNPGenie Within-Group
+
+**COMING SOON!** The script **snpgenie\_within\_group.pl** will be used to calculate mean dN and dS within a group of sequences in FASTA format. Like the between-group script, this will be able to perform analyses on sequence data that outsize what can be handled by MEGA and other software platforms. Note that within-group mean dN and dS are equivalent to πN and πS when groups are samples from a single population.
 
 ## <a name="additional-scripts"></a>Additional Scripts
 
