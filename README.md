@@ -1,4 +1,4 @@
-<img src="https://github.com/hugheslab/snpgenie/blob/master/logo1a.jpg?raw=true" alt="SNPGenie logo" width="450" height="175" align="middle">
+<img src="https://github.com/chasewnelson/snpgenie/blob/master/logo1a.jpg?raw=true" alt="SNPGenie logo" width="450" height="175" align="middle">
 
 SNPGenie is a Perl script for estimating evolutionary parameters from next-generation sequencing (NGS) single-nucleotide polymorphism (SNP) variant data. Three different analyses are possible:
 
@@ -249,11 +249,21 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 
 ## <a name="snpgenie-input-between"></a>SNPGenie Between-Group
 
-**COMING SOON!** The script **snpgenie\_between\_group.pl** can be used to calculate mean dN and dS between two or more groups of sequences in FASTA format. Users who have access to a computer cluster may wish to use this parallelized version of SNPGenie for datasets which exceed the processing and memory capabilities of the MEGA software. 
+**COMING SOON!** The script **snpgenie\_between\_group.pl** can be used to calculate mean dN and dS between two or more groups of sequences in FASTA format. Users who have access to a computer cluster may wish to use this parallelized version of SNPGenie for datasets which exceed the processing and memory capabilities of the MEGA software. Just run the script in a directory containing the necessary input files:
+
+1. **Two or more FASTA files**, each containing a group of aligned sequences which are also aligned to one another across groups (files), ending with a .fa, .fas, or .fasta extension. For example, one might wish to compare sequences of the West Nile Virus 2K gene derived from three different mosquito vectors. In such a case, all sequences would first be aligned. Next, all sequences from mosquito 1 would be placed together in one FASTA file; all sequences from mosquito 2 would be placed in a second FASTA file; and all sequences from mosquito 3 would be placed in a third FASTA file.
+2. **One GTF file** with CDS data, ending with a .gtf extension. See [Gene Transfer Format](#gtf) above for details on GTF format.
+
+SNPGenie automatically detects both filetype and runs the analysis. 
+ 
+### How it works:
+
+The main advantage of using SNPGenie over other platforms, such a MEGA, is to perform analyses on sequence data that outsizes what can be handled by MEGA. In order to make dN/dS analyses tractable with large datasets, SNPGenie has been parallelized using the Perl module **Parallel::ForkManager**. Three processes have been parallelized: (1) detection of polymorphic codons; (2) pairwise analysis of each codon positions; and (3) bootstrapping. By default, SNPGenie attempts to detect the number of computer cores availably BY using the **nproc** command. If that command fails, the number will default to a conservative estimate of 4, appropriate for many personal computers... For more control, the user can input the number of cores (parallel processes) to run BY...
 
 ## <a name="snpgenie-input-within"></a>SNPGenie Within-Group
 
 **COMING SOON!** The script **snpgenie\_within\_group.pl** will be used to calculate mean dN and dS within a group of sequences in FASTA format. Like the between-group script, this will be able to perform analyses on sequence data that outsize what can be handled by MEGA and other software platforms. Note that within-group mean dN and dS are equivalent to πN and πS when groups are samples from a single population.
+
 
 ## <a name="additional-scripts"></a>Additional Scripts
 
@@ -309,19 +319,29 @@ Some additional scripts are included to automate some common tasks when preparin
 
 When using this software, please refer to and cite:
 
->Nelson CW, Moncla LH, Hughes AL (2015) <a target="_blank" href="http://bioinformatics.oxfordjournals.org/content/31/22/3709.long">SNPGenie: estimating evolutionary parameters to detect natural selection using pooled next-generation sequencing data</a>. *Bioinformatics* **31**(22):3709-11, doi: 10.1093/bioinformatics/btv449.
+>Nelson CW, Moncla LH, Hughes AL (2015) <a target="_blank" href="http://bioinformatics.oxfordjournals.org/content/31/22/3709.long">SNPGenie: estimating evolutionary parameters to detect natural selection using pooled next-generation sequencing data</a>. *Bioinformatics* **31**(22):3709-11. doi: 10.1093/bioinformatics/btv449.
+
+and this page:
+
+>https://github.com/chasewnelson/snpgenie
 
 ## <a name="studies-using-snpgenie"></a>Studies Using SNPGenie
 
-* Bailey AL, Lauck M, Ghai RR, Nelson CW, Heimbruch K, Hughes AL, Goldberg TL, Kuhn JH, Jasinska AJ, Freimer NB, Apetrei C, O’Connor DH (2016) <a target="_blank" href="http://jvi.asm.org/content/90/15/6724.abstract">Arteriviruses, pegiviruses, and lentiviruses are common among wild African monkeys</a>. *Journal of Virology* **90**(15):6724-6737.
-* Moncla LH, Zhong G, Nelson CW, Dinis JM, Mutschler J, Hughes AL, Watanabe T, Kawaoka Y, Friedrich TC (2016) <a target="_blank" href="http://www.cell.com/cell-host-microbe/abstract/S1931-3128(16)30010-5">Selective bottlenecks shape evolutionary pathways taken during mammalian adaptation of a 1918-like avian influenza virus</a>. *Cell Host & Microbe* **19**(2):169-80.
-* Gellerup D, Balgeman A, Nelson CW, Ericsen A, Scarlotta M, Hughes AL, O’Connor S (2015) <a target="_blank" href="http://jvi.asm.org/content/early/2015/10/16/JVI.02587-15.abstract">Conditional immune escape during chronic SIV infection</a>. *Journal of Virology* **90**(1):545-52.
-* Nelson CW, Hughes AL (2015) <a target="_blank" href="http://www.sciencedirect.com/science/article/pii/S1567134814004468">Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing</a>. *Infection, Genetics and Evolution* **30**:1-7.
-* Bailey AL, Lauck A, Weiler A, Sibley SD, Dinis JM, Bergman Z, Nelson CW, Correll M, Gleicher M, Hyeroba D, Tumukunde A, Weny G, Chapman C, Kuhn JH, Hughes AL, Friedrich TC, Goldberg TL, O’Connor DH (2014) <a target="_blank" href="http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0090714">High genetic diversity and adaptive potential of two simian hemorrhagic fever viruses in a wild primate population</a>. *PLoS ONE* **9**(3):e90714.
-* Wilker PR, Dinis JM, Starrett G, Imai M, Hatta M, Nelson CW, O’Connor DH, Hughes AL, Neumann G, Kawaoka Y, Friedrich TC (2013) <a target="_blank" href="http://www.nature.com/ncomms/2013/131023/ncomms3636/abs/ncomms3636.html?message-global=remove">Selection on haemagglutinin imposes a bottleneck during mammalian transmission of reassortant H5N1 influenza viruses</a>. *Nature Communications* **4**:2636.
+* Mirabello L, *et al.* (2017) <a target="_blank" href="http://www.cell.com/cell/abstract/S0092-8674(17)30889-9">HPV16 E7 genetic conservation is critical to carcinogenesis</a>. *Cell* **170**(6): 1164-74.
+* Blanc-Mathieu R, *et al.* (2017). <a target="_blank" href="http://advances.sciencemag.org/lookup/doi/10.1126/sciadv.1700239">Population genomics of picophytoplankton unveils novel chromosome hypervariability</a>. *Science Advances* **3**(7):e1700239.
+* Kutnjak D, Elena SF, and Ravnikar M (2017).  <a target="_blank" href="http://jvi.asm.org/content/91/16/e00690-17.long">Time-Sampled Population Sequencing Reveals the Interplay of Selection and Genetic Drift in Experimental Evolution of *Potato Virus Y*</a>. *Journal of Virology* **91**(16):e00690-17.
+* Stam R, Scheikl D, and Tellier A (2016). <a target="_blank" href="https://academic.oup.com/gbe/article-lookup/doi/10.1093/gbe/evw094">Pooled Enrichment Sequencing Identifies Diversity and Evolutionary Pressures at NLR Resistance Genes within a Wild Tomato Population</a>. *Genome Biology and Evolution* **8**(5):1501–1515.
+* Bailey AL, *et al.* (2016) <a target="_blank" href="http://jvi.asm.org/content/90/15/6724.abstract">Arteriviruses, pegiviruses, and lentiviruses are common among wild African monkeys</a>. *Journal of Virology* **90**(15):6724-6737.
+* Moncla LH, *et al.* (2016) <a target="_blank" href="http://www.cell.com/cell-host-microbe/abstract/S1931-3128(16)30010-5">Selective bottlenecks shape evolutionary pathways taken during mammalian adaptation of a 1918-like avian influenza virus</a>. *Cell Host & Microbe* **19**(2):169-80.
+* Gellerup D, *et al.* (2015) <a target="_blank" href="http://jvi.asm.org/content/early/2015/10/16/JVI.02587-15.abstract">Conditional immune escape during chronic SIV infection</a>. *Journal of Virology* **90**(1):545-52.
+* Nelson CW and Hughes AL (2015) <a target="_blank" href="http://www.sciencedirect.com/science/article/pii/S1567134814004468">Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing</a>. *Infection, Genetics and Evolution* **30**:1-7.
+* Bailey AL, *et al.* (2014) <a target="_blank" href="http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0090714">High genetic diversity and adaptive potential of two simian hemorrhagic fever viruses in a wild primate population</a>. *PLoS ONE* **9**(3):e90714.
+* Wilker PR, *et al.* (2013) <a target="_blank" href="http://www.nature.com/ncomms/2013/131023/ncomms3636/abs/ncomms3636.html?message-global=remove">Selection on haemagglutinin imposes a bottleneck during mammalian transmission of reassortant H5N1 influenza viruses</a>. *Nature Communications* **4**:2636.
 
 ## <a name="contact"></a>Contact
-Please note that, given the unexpected and unfortunate passing of our friend, mentor, and colleague Dr. Austin L. Hughes, all correspondance should be addressed to Chase W. Nelson at: nelsoncw <**AT**> email <**DOT**> sc <**DOT**> edu.
+Please note that, given the unexpected and unfortunate passing of our friend, mentor, and colleague Dr. Austin L. Hughes, all correspondance should be addressed to Chase W. Nelson at the American Museum of Natural History: 
+
+* cnelson <**AT**> amnh <**DOT**> org
 
 ## <a name="references"></a>References
 
