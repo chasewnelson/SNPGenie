@@ -247,6 +247,10 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 
 8. **sliding_window_length<Length>_results.txt**, containing codon-based results over a sliding window, with a default length of 9 codons.
 
+## <a name="snpgenie-input-within"></a>SNPGenie Within-Group
+
+**COMING SOON!** The script **snpgenie\_within\_group.pl** will be used to calculate mean dN and dS within a group of sequences in FASTA format. Like the between-group script, this will be able to perform analyses on sequence data that outsize what can be handled by MEGA and other software platforms. Note that within-group mean dN and dS are equivalent to πN and πS when groups are samples from a single population.
+
 ## <a name="snpgenie-input-between"></a>SNPGenie Between-Group
 
 **COMING SOON!** The script **snpgenie\_between\_group.pl** can be used to calculate mean dN and dS between two or more groups of sequences in FASTA format. Users who have access to a computer cluster may wish to use this parallelized version of SNPGenie for datasets which exceed the processing and memory capabilities of the MEGA software. Just run the script in a directory containing the necessary input files:
@@ -260,35 +264,9 @@ SNPGenie automatically detects both filetype and runs the analysis.
 
 The main advantage of using SNPGenie over other platforms, such a MEGA, is to perform analyses on sequence data that outsizes what can be handled by MEGA. In order to make dN/dS analyses tractable with large datasets, SNPGenie has been parallelized using the Perl module **Parallel::ForkManager**. Three processes have been parallelized: (1) detection of polymorphic codons; (2) pairwise analysis of each codon positions; and (3) bootstrapping. By default, SNPGenie attempts to detect the number of computer cores availably BY using the **nproc** command. If that command fails, the number will default to a conservative estimate of 4, appropriate for many personal computers... For more control, the user can input the number of cores (parallel processes) to run BY...
 
-## <a name="snpgenie-input-within"></a>SNPGenie Within-Group
-
-**COMING SOON!** The script **snpgenie\_within\_group.pl** will be used to calculate mean dN and dS within a group of sequences in FASTA format. Like the between-group script, this will be able to perform analyses on sequence data that outsize what can be handled by MEGA and other software platforms. Note that within-group mean dN and dS are equivalent to πN and πS when groups are samples from a single population.
-
-
 ## <a name="additional-scripts"></a>Additional Scripts
 
-Some additional scripts are included to automate some common tasks when preparing SNPGenie input. These currently are:
-
-* **snpgenie-gb2gtf.pl**. At the command line, provide this script with one argument: a GenBank (.gbk) file. It will extract the coding element (CDS) annotations to produce a Gene Transfer Format (.gtf) file ready for SNPGenie. Not working? Let us know, and we'll improve it! Here's an example:
-
-        snpgenie-gb2gtf.pl my_genbank_file.gbk
-        
-* **snpgenie-gff2gtf.pl**. At the command line, provide this script with one argument: a General Feature Format (.gff) file. It will extract the coding element annotations to produce a Gene Transfer Format (.gtf) file ready for SNPGenie, with "gene_id" annotations identified using the GFF "ID" tag. Not working, or need a different tag? Let us know, and we'll improve it! Here's an example:
-
-        snpgenie-gbk2gtf.pl my_gff_file.gff
-
-* **snpgenie-split_fasta.pl**. At the command line, provide this script with one argument: a FASTA (.fa or .fasta) file containing multiple sequences. This script will create multiple files in the working directory, each containing one of the sequences. Here's an example:
-
-        snpgenie-split_fasta.pl my_multi_fasta_file.fasta
-
-* **snpgenie-vcf2revcom.pl**. This script automates the creation of the reverse complement input files. At the command line, provide this script with three arguments, in the following order: 
-	1. A '+' strand FASTA (.fa or .fasta) file containing the reference sequence against which SNPs were called;
-	2. A '+' strand GTF file containing both '+' and '–' strand products from the '+' strand point of view; and 
-	3. A '+' strand SNP report in VCF format.
-
-	This script will then create a '-' strand (reverse complement) version of each file in the working directory, with "_revcom" concatenated to the original file name. Here's an example:
-
-        snpgenie-vcf2revcom.pl my_snp_report.vcf my_reference_sequence.fasta my_cds_file.gtf
+Additional scripts, provided to help in the preparation of SNPGenie input, have moved to the <a target="_blank" href="https://github.com/chasewnelson/CHASeq">CHASeq</a> repository. There you can find gb2gtf.pl, gff2gtf.pl, split_fasta.pl, vcf2revcom.pl, and lots of other useful stuff. Enjoy!
 
 ## <a name="troubleshooting"></a>Troubleshooting
 
