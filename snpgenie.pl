@@ -1,30 +1,44 @@
 #! /usr/bin/perl
 
-# SNPGenie for CLC and Geneious output
-# PROGRAM: Perl program to calculate evolutionary paramaters from NGS SNP Reports
-# generated from pooled DNA samples.
+# PROGRAM: SNPGenie is a Perl program that calculates dN/dS, piN/piS, and gene diversity
+# from NGS SNP Reports generated from pooled DNA samples.
 
-# Copyright (C) 2015, 2016 Chase W. Nelson
+# Copyright (C) 2015, 2016, 2017 Chase W. Nelson
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################
+## LICENSE
+## This program is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################
 
 # DATE CREATED: April 10, 2015
+
 # AUTHOR: Chase W. Nelson
-# CONTACT1: nelsoncw@email.sc.edu
+
+# CONTACT1: cnelson@amnh.org
 # CONTACT2: cwnelson88@gmail.com
-# AFFILIATION1: Austin L. Hughes lab, University of South Carolina (Columbia, SC, USA)
-# AFFILIATION2: Wen-Hsiung Li lab, Academia Sinica (Taipei, Taiwan)
+
+# AFFILIATION1: Sackler Institute for Comparative Genomics, American Museum of Natural
+#     History, New York, NY 10024, USA
+# AFFILIATION2: Special Volunteer, Division of Cancer Epidemiology & Genetics, National
+#     Cancer Institute, National Institutes of Health, Rockville, MD 20850, USA
+# AFFILIATION3: BigPlant Consortium, Center for Genomics and Systems Biology, New York 
+#     University, New York, NY 10003, USA
+
+# CITATION1: SNPGenie, https://github.com/chasewnelson/snpgenie
+# CITATION2: Nelson CW, Moncla LH, Hughes AL (2015) SNPGenie: estimating evolutionary 
+#	parameters to detect natural selection using pooled next-generation sequencing data. 
+#	Bioinformatics 31(22):3709-11, doi: 10.1093/bioinformatics/btv449.
 
 use strict;
 #use warnings;
@@ -32,7 +46,7 @@ use IO::Handle;
 use Data::Dumper;
 use File::Temp qw(tempfile);
 use Getopt::Long;
-use List::Util qw(max);
+use List::Util qw(max sum);
 
 my $time1 = time;
 my $local_time1 = localtime;
@@ -55,16 +69,20 @@ my $slidingwindow;
 my $ratiomode;
 my $sitebasedmode; # not supported or recommended; site (not codon) contexts
 my $complementmode;
+#my $prop_diff_threshold = 0.01;
 
+# Flag variables
 my $clc_mode = 0;
 my $geneious_mode = 0;
 my $vcf_mode = 0;
+my $generate_random_fastas = 0;
 #my $progress_period_count = 0;
 my @snp_report_file_names_arr;
 my $the_fasta_file = '';
 my @fasta_file_names_arr;
 my $fasta_arr_size;
 my $cds_file;
+my $multi_fasta_mode;
 
 my $param_file_contents = "SNPGenie version 1.2 parameter log.\n\n";
 
@@ -73,12 +91,14 @@ GetOptions(	"minfreq:f" => \$minfreq, # optional floating point parameter
 			"snpreport:s" => \$snpreport, # optional string parameter
 			"vcfformat:i" => \$vcfformat, # optional integer parameter ##SAMVCF
 			"fastafile:s" => \$fastafile, # optional string parameter
+			"multi_fasta_mode" => \$multi_fasta_mode, # optional Boolean parameter
 			"gtffile:s" => \$gtffile, # optional string parameter
 			"sepfiles" => \$sepfiles, # optional Boolean; set to false if not given
 			"slidingwindow:i" => \$slidingwindow, # optional integer parameter
 			"ratiomode" => \$ratiomode, # optional Boolean; set to false if not given
 			"sitebasedmode" => \$sitebasedmode) # optional Boolean; set to false if not given
 #			"complementmode" => \$complementmode) # optional Boolean; set to false if not given
+#			"prop_diff_threshold:f" => \$prop_diff_threshold)
 			
 			or die "\n## WARNING: Error in command line arguments. SNPGenie terminated.\n\n"; 
 
@@ -134,7 +154,15 @@ if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to ch
 		$param_file_contents .= "SITE-BASED MODE: Default used; No\n";
 	} else {
 		$sitebasedmode = 1;
-		$param_file_contents .= "SITE-BASED MODE: Default used; Yes\n";
+		$param_file_contents .= "SITE-BASED MODE: Yes\n";
+	}
+	
+	if(! $multi_fasta_mode) {
+		$multi_fasta_mode = 0; # default behavior: no separate codon files for each SNP Report
+		$param_file_contents .= "MULTI-FASTA MODE: Default used; No\n";
+	} else {
+		$multi_fasta_mode = 1;
+		$param_file_contents .= "MULTI-FASTA MODE: Yes\n";
 	}
 	
 	# Get SNP Report name(s)
@@ -153,6 +181,14 @@ if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to ch
 	
 	if (scalar (@snp_report_file_names_arr) == 0) {
 		die "\n\n## WARNING: There are no SNP Reports. SNPGenie terminated.\n\n";
+	} else {
+		foreach(@snp_report_file_names_arr) {
+			if($_ =~ /\.vcf/ && ! $vcfformat) {
+				rmdir('SNPGenie_Results');
+				die "\n\n### WARNING: User must specify the specific SNP report format when using\n".
+					"### VCF files. Use the --vcfformat option. SNPGENIE TERMINATED.\n\n";
+			}
+		}
 	}
 	
 	if(! $fastafile) {
@@ -166,11 +202,35 @@ if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to ch
 	
 	$fasta_arr_size = scalar(@fasta_file_names_arr);
 	#print "\nThe size of the fasta array is $fasta_arr_size\n";
+	
+	
+	
 	if($fasta_arr_size > 1) {
-		die "\n\n## WARNING: There are multiple FASTA (.fa or .fasta) files in the working directory.\n".
-		"## There must be only one reference genome. SNPGenie terminated.\n\n";
+		
+		if(! $multi_fasta_mode) {
+			die "\n\n## WARNING: There are multiple FASTA (.fa or .fasta) files in the working directory.\n".
+			"## There must be only one reference genome in single-FASTA mode. SNPGenie terminated.\n\n";
+		}
+		
 	} elsif($fasta_arr_size == 1) {
 		$the_fasta_file = $fasta_file_names_arr[0];
+		
+		# Go through FASTA to make sure there's only one sequence
+		my $seen_seq = 0;
+		open (INFILE, $the_fasta_file);
+		while (<INFILE>) {
+			if (/>/) {
+				if($seen_seq == 0) {
+					$seen_seq = 1;
+				} else {
+					die "\n\n### WARNING: There are multiple sequences in the FASTA file.\n".
+						"### There must be only one reference genome. SNPGenie terminated.\n\n";
+				}
+			}
+		}
+		close INFILE;
+		
+		
 	} else {
 		die "\n\n## WARNING: There are no FASTA (.fa or .fasta) files in the working directory. ".
 		"SNPGenie terminated.\n\n";
@@ -458,37 +518,49 @@ foreach my $product_name (@product_names_arr) {
 
 # Streamline bulding of sequence
 # Using the fasta file, record the sequence in a variable
-print "\nReading in FASTA file... ";
+
 my $seq;
-open (INFILE, $the_fasta_file);
-while (<INFILE>) {
-	unless (/>/) {
-		chomp;
-		# CHOMP for 3 operating systems
-		if($_ =~ /\r\n$/) {
-			$_ =~ s/\r\n//;
-		} elsif($_ =~ /\r$/) {
-			$_ =~ s/\r//;
-		} elsif($_ =~ /\n$/) {
-			$_ =~ s/\n//;
-		}
-		
-		$seq .= $_;
-	}
-}
-close INFILE;
-print "COMPLETED.\n";
-
-# In case it's lowercase
-$seq =~ tr/acgt/ACGT/;
-
-# Record in an array by index (old %seq_by_pos_hash)
-print "\nIndexing sequence... ";
 my @seq_by_index_arr;
-for (my $i = 0; $i < length($seq); $i++) {
-	$seq_by_index_arr[$i] = substr($seq,$i,1); # This is $position - 1
+
+if(! $multi_fasta_mode) {
+
+	print "\nReading in FASTA file... ";
+	open (INFILE, $the_fasta_file);
+	while (<INFILE>) {
+		unless (/>/) {
+			chomp;
+			# CHOMP for 3 operating systems
+			if($_ =~ /\r\n$/) {
+				$_ =~ s/\r\n//;
+			} elsif($_ =~ /\r$/) {
+				$_ =~ s/\r//;
+			} elsif($_ =~ /\n$/) {
+				$_ =~ s/\n//;
+			}
+			
+			$seq .= $_;
+		}
+	}
+	close INFILE;
+	print "COMPLETED.\n";
+	
+	# In case it's lowercase
+	#$seq =~ tr/acgt/ACGT/;
+	$seq = uc($seq);
+	$seq =~ tr/U/T/;
+	
+	# Record in an array by index (old %seq_by_pos_hash)
+	print "\nIndexing sequence... ";
+	
+	for (my $i = 0; $i < length($seq); $i++) {
+		$seq_by_index_arr[$i] = substr($seq,$i,1); # This is $position - 1
+	}
+	print "COMPLETED.\n";
+	
 }
-print "COMPLETED.\n";
+
+# FOR METAPOPULATION STORAGE -- provided all sites are with respect to the same reference
+my %master_frequencies_hh; # $master_frequencies_hh -> {site_num} -> {@A_props_arr}/{@C_props_arr}/{@G_props_arr}/{@T_props_arr}
 
 # PROCESS THE SNP REPORTS
 foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
@@ -503,6 +575,68 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	"$file_nm... ";
 	
 	#print "\n\n$_\n\n";
+	
+	if($multi_fasta_mode) {
+		my $did_we_detect = 0;
+		
+		my $snp_report_prefix;
+		if($file_nm =~ /^([\w\.]+?)_/) {
+			$snp_report_prefix = $1;
+		}
+		
+		foreach my $potential_fasta (@fasta_file_names_arr) {
+			my $potential_fasta_prefix;
+			
+			if($potential_fasta =~ /^$snp_report_prefix\_/) {
+				$the_fasta_file = $potential_fasta;
+				$did_we_detect = 1;
+				last;
+			}
+		}
+		
+		unless($did_we_detect == 1) {
+			die "\n\nWe did not detect a FASTA for $file_nm in multi-fasta mode\n\n";
+		}
+		
+		print "\nReading in FASTA file $the_fasta_file\... ";
+		
+		$seq = '';
+		
+		open (INFILE, $the_fasta_file);
+		while (<INFILE>) {
+			unless (/>/) {
+				chomp;
+				# CHOMP for 3 operating systems
+				if($_ =~ /\r\n$/) {
+					$_ =~ s/\r\n//;
+				} elsif($_ =~ /\r$/) {
+					$_ =~ s/\r//;
+				} elsif($_ =~ /\n$/) {
+					$_ =~ s/\n//;
+				}
+				
+				$seq .= $_;
+			}
+		}
+		close INFILE;
+		print "COMPLETED.\n";
+		
+		# In case it's lowercase
+		#$seq =~ tr/acgt/ACGT/;
+		$seq = uc($seq);
+		$seq =~ tr/U/T/;
+		
+		# Record in an array by index (old %seq_by_pos_hash)
+		print "\nIndexing sequence... ";
+		
+		# THIS WILL OVERWRITE
+		for (my $i = 0; $i < length($seq); $i++) {
+			$seq_by_index_arr[$i] = substr($seq,$i,1); # This is $position - 1
+		}
+		print "COMPLETED.\n";
+		
+	} # end recording of individual FASTA in multi-FASTA mode
+	
 	
 	# Generate new file name prefix
 	my $new_file_prefix;
@@ -4030,6 +4164,46 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			my $G_prop = ($G / $cov);
 			my $T_prop = ($T / $cov);
 			
+	
+			# METAPOPULATION
+			if($file_nm =~ /B/) { # BIRD
+				#print "\nIt's a bird and we've got A=$A_prop C=$C_prop G=$G_prop T=$T_prop\n";
+				push(@{$master_frequencies_hh{$position}->{BIRD}->{A_props_arr}}, $A_prop);
+				push(@{$master_frequencies_hh{$position}->{BIRD}->{C_props_arr}}, $C_prop);
+				push(@{$master_frequencies_hh{$position}->{BIRD}->{G_props_arr}}, $G_prop);
+				push(@{$master_frequencies_hh{$position}->{BIRD}->{T_props_arr}}, $T_prop);
+				
+##				if($position == 4543) {
+##					print "\nFreq of BIRD A at nonpoly $position is $A_prop\n";
+##					print "\nFreq of BIRD C at nonpoly $position is $C_prop\n";
+##					print "\nFreq of BIRD G at nonpoly $position is $G_prop\n";
+##					print "\nFreq of BIRD T at nonpoly $position is $T_prop\n";
+##				}
+				
+			} else { # MOSQ
+				push(@{$master_frequencies_hh{$position}->{MOSQ}->{A_props_arr}}, $A_prop);
+				push(@{$master_frequencies_hh{$position}->{MOSQ}->{C_props_arr}}, $C_prop);
+				push(@{$master_frequencies_hh{$position}->{MOSQ}->{G_props_arr}}, $G_prop);
+				push(@{$master_frequencies_hh{$position}->{MOSQ}->{T_props_arr}}, $T_prop);
+				
+##				if($position == 4543) {
+##					print "\nFreq of MOSQ A at nonpoly $position is $A_prop\n";
+##					print "\nFreq of MOSQ C at nonpoly $position is $C_prop\n";
+##					print "\nFreq of MOSQ G at nonpoly $position is $G_prop\n";
+##					print "\nFreq of MOSQ T at nonpoly $position is $T_prop\n";
+##				}
+			}
+			
+			# FST purposes
+			if($file_nm =~ /^([\w\.]+?)_/) {
+				my $sample_name = $1;
+				$master_frequencies_hh{$position}->{$sample_name}->{A_freq} = $A_prop;
+				$master_frequencies_hh{$position}->{$sample_name}->{C_freq} = $C_prop;
+				$master_frequencies_hh{$position}->{$sample_name}->{G_freq} = $G_prop;
+				$master_frequencies_hh{$position}->{$sample_name}->{T_freq} = $T_prop;
+			}
+			
+			
 			my $gdiv = (1 - ($A_prop * $A_prop) - ($C_prop * $C_prop) - 
 				($G_prop * $G_prop) - ($T_prop * $T_prop));
 			#print "$position\t$gdiv\n";
@@ -4061,6 +4235,76 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		} else { # nonpoly
 			# Save the reference nucleotide
 			#print "\nSite $position is not polymorphic\n";
+			
+			my $A_prop;
+			my $C_prop;
+			my $G_prop;
+			my $T_prop;
+			
+			if($ref_nt eq 'A') {
+				$A_prop = 1;
+				$C_prop = 0;
+				$G_prop = 0;
+				$T_prop = 0;
+			} elsif($ref_nt eq 'C') {
+				$A_prop = 0;
+				$C_prop = 1;
+				$G_prop = 0;
+				$T_prop = 0;
+			} elsif($ref_nt eq 'G') {
+				$A_prop = 0;
+				$C_prop = 0;
+				$G_prop = 1;
+				$T_prop = 0;
+			} elsif($ref_nt eq 'T') {
+				$A_prop = 0;
+				$C_prop = 0;
+				$G_prop = 0;
+				$T_prop = 1;
+			} else {
+				warn "\n\nThere's an N in the reference sequence!\n\n";
+			}
+			
+			
+			# METAPOPULATION
+			if($file_nm =~ /B/) { # BIRD
+				push(@{$master_frequencies_hh{$position}->{BIRD}->{A_props_arr}}, $A_prop);
+				push(@{$master_frequencies_hh{$position}->{BIRD}->{C_props_arr}}, $C_prop);
+				push(@{$master_frequencies_hh{$position}->{BIRD}->{G_props_arr}}, $G_prop);
+				push(@{$master_frequencies_hh{$position}->{BIRD}->{T_props_arr}}, $T_prop);
+				
+##				if($position == 4543) {
+##					print "\nFreq of BIRD A at nonpoly $position is $A_prop\n";
+##					print "\nFreq of BIRD C at nonpoly $position is $C_prop\n";
+##					print "\nFreq of BIRD G at nonpoly $position is $G_prop\n";
+##					print "\nFreq of BIRD T at nonpoly $position is $T_prop\n";
+##				}
+				
+				
+				
+			} else { # MOSQ
+				push(@{$master_frequencies_hh{$position}->{MOSQ}->{A_props_arr}}, $A_prop);
+				push(@{$master_frequencies_hh{$position}->{MOSQ}->{C_props_arr}}, $C_prop);
+				push(@{$master_frequencies_hh{$position}->{MOSQ}->{G_props_arr}}, $G_prop);
+				push(@{$master_frequencies_hh{$position}->{MOSQ}->{T_props_arr}}, $T_prop);
+				
+##				if($position == 4543) {
+##					print "\nFreq of MOSQ A at nonpoly $position is $A_prop\n";
+##					print "\nFreq of MOSQ C at nonpoly $position is $C_prop\n";
+##					print "\nFreq of MOSQ G at nonpoly $position is $G_prop\n";
+##					print "\nFreq of MOSQ T at nonpoly $position is $T_prop\n";
+##				}
+			}
+			
+			# FST purposes
+			if($file_nm =~ /^([\w\.]+?)_/) {
+				my $sample_name = $1;
+				$master_frequencies_hh{$position}->{$sample_name}->{A_freq} = $A_prop;
+				$master_frequencies_hh{$position}->{$sample_name}->{C_freq} = $C_prop;
+				$master_frequencies_hh{$position}->{$sample_name}->{G_freq} = $G_prop;
+				$master_frequencies_hh{$position}->{$sample_name}->{T_freq} = $T_prop;
+			}
+			
 			
 			if($hh_nc_position_info{$position}->{coding} > 0) { # nonpoly-coding site
 				$num_coding_sites ++;
@@ -7256,147 +7500,151 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	# Remove temp files
 	#&remove_tempfiles;
 	unlink $temp_snp_report_name;
-
-
-#	####### Generate random fastas: create all possible FASTA files	
-#	# This is for later use in between-population mutation rate estimation
-#	print "\nForming randomly generated representative sequences... ";
-#	my @all_possible_seqs;
-#	
-#	# Store data in variables to save room on screen and verify
-#	my $max_cov = 0;
-#	
-#	# Get maximum coverage, which will be the number of sequences we make
-#	foreach (sort {$a <=> $b} keys %hh_nc_position_info) {
-#		my $coverage = $hh_nc_position_info{$_}->{cov};
-#		if($coverage > $max_cov) {
-#			$max_cov = $coverage;
-#		}
-#	}
-#	
-#	foreach (sort {$a <=> $b} keys %hh_nc_position_info) {
-#		if($hh_nc_position_info{$_}->{polymorphic}) {
-#		
-#			my $this_A_prop = $hh_nc_position_info{$_}->{A_prop};
-#			my $this_C_prop = $hh_nc_position_info{$_}->{C_prop};
-#			my $this_G_prop = $hh_nc_position_info{$_}->{G_prop};
-#			my $this_T_prop = $hh_nc_position_info{$_}->{T_prop};
-#			my $this_ref = $hh_nc_position_info{$_}->{reference};
-#			my $this_cov = $hh_nc_position_info{$_}->{cov};
-#			
-#			my $this_A = ($this_A_prop * $max_cov);
-#			my $this_C = ($this_C_prop * $max_cov);
-#			my $this_G = ($this_G_prop * $max_cov);
-#			my $this_T = ($this_T_prop * $max_cov);
-#			
-#			#print "\nsite=$_ A=$this_A C=$this_C G=$this_G T=$this_T";
-#			
-#			# Round to nearest int
-#			$this_A = sprintf("%.0f", $this_A);
-#			$this_C = sprintf("%.0f", $this_C);
-#			$this_G = sprintf("%.0f", $this_G);
-#			$this_T = sprintf("%.0f", $this_T);
-#			
-#			#print "\nsite=$_ A=$this_A C=$this_C G=$this_G T=$this_T";
-#			
-#			# Find maj_nt
-#			my $maj_nt; # a variant nucleotide may have fixed
-#			my $curr_maj_count = 0;
-#			if($this_A > $curr_maj_count) {
-#				$curr_maj_count = $this_A;
-#				$maj_nt = 'A';
-#			}
-#			if($this_C > $curr_maj_count) {
-#				$curr_maj_count = $this_C;
-#				$maj_nt = 'C';
-#			} 
-#			if($this_G > $curr_maj_count) {
-#				$curr_maj_count = $this_G;
-#				$maj_nt = 'G';
-#			} 
-#			if($this_T > $curr_maj_count) {
-#				$curr_maj_count = $this_T;
-#				$maj_nt = 'T';
-#			}
-#			
-#			my $leftover_number = $max_cov - ($this_A + $this_C + $this_G + $this_T);
-#			
-#			if($leftover_number != 0) { # it's negative, our count is too large, take away from maj_nt
-#				# or it's positive, our count is too small, add to maj_nt
-#				if($maj_nt eq 'A') {
-#					$this_A += $leftover_number;
-#				} elsif($maj_nt eq 'C') {
-#					$this_C += $leftover_number;
-#				} elsif($maj_nt eq 'G') {
-#					$this_G += $leftover_number;
-#				} elsif($maj_nt eq 'T') {
-#					$this_T += $leftover_number;
-#				}	
-#			}
-#			
-#			# Now we build an array of all the nucleotides to add at the current site
-#			my @new_nts_arr;
-#			for(my $i = 1; $i <= $this_A; $i++) {
-#				push(@new_nts_arr,'A');
-#			}
-#			for(my $i = 1; $i <= $this_C; $i++) {
-#				push(@new_nts_arr,'C');
-#			}
-#			for(my $i = 1; $i <= $this_G; $i++) {
-#				push(@new_nts_arr,'G');
-#			}
-#			for(my $i = 1; $i <= $this_T; $i++) {
-#				push(@new_nts_arr,'T');
-#			}
-#			
-#			for(my $i = 1; $i <= $max_cov; $i++) {
-#				my $j = $i - 1;
-#				my $rand_nt_index = int(rand(scalar(@new_nts_arr)));
-#				my $rand_nt = $new_nts_arr[$rand_nt_index];
-#				
-#				$all_possible_seqs[$j] .= $rand_nt;
-#				
-#				# Delete element from array
-#				splice(@new_nts_arr, $rand_nt_index, 1);
-#				
-#			}
-#			#print "\nsite=$_ A=$this_A C=$this_C G=$this_G T=$this_T ref=$this_ref cov=$this_cov";
-#			
-#		} else { # just add the reference nucleotide to all
-#			my $this_nt = $seq_by_index_arr[$_ - 1];
-#			
-#			for(my $i = 1; $i <= $max_cov; $i++) {
-#				my $j = $i - 1;
-#				$all_possible_seqs[$j] .= $this_nt;
-#			}
-#		}
-#	}
-#	
-#	#print "\nMaximum coverage is $max_cov\n\n";
-#	
-#	my $counter = 1;
-#	open(OUT_FASTAS, ">>rand_seqs.fasta");
-#	foreach(@all_possible_seqs) {
-#		my $seq_length = length($_);
-#		
-#		print OUT_FASTAS ">seq_num_$counter\n";
-#		
-#		for(my $i=0; $i<$seq_length; $i+=60) {
-#			if($i>($seq_length - 60)) {
-#				my $line = substr($_, $i);
-#				print OUT_FASTAS "$line\n";
-#				last;
-#			} else {
-#				my $line = substr($_, $i, 60);
-#				print OUT_FASTAS "$line\n";
-#			}
-#		}
-#		
-#		$counter++;
-#	}
-#	close OUT_FASTAS;
-#	print "COMPLETED.\n";
-#	#######	End generate random fastas
+	
+	
+	
+	####### Generate random fastas: create all possible FASTA files	
+	# This is for later use in between-population mutation rate estimation
+	if($generate_random_fastas) {
+		print "\nForming randomly generated representative sequences... ";
+		my @all_possible_seqs;
+		
+		# Store data in variables to save room on screen and verify
+		my $max_cov = 0;
+		
+		# Get maximum coverage, which will be the number of sequences we make
+		foreach (sort {$a <=> $b} keys %hh_nc_position_info) {
+			my $coverage = $hh_nc_position_info{$_}->{cov};
+			if($coverage > $max_cov) {
+				$max_cov = $coverage;
+			}
+		}
+		
+		foreach (sort {$a <=> $b} keys %hh_nc_position_info) {
+			if($hh_nc_position_info{$_}->{polymorphic}) {
+			
+				my $this_A_prop = $hh_nc_position_info{$_}->{A_prop};
+				my $this_C_prop = $hh_nc_position_info{$_}->{C_prop};
+				my $this_G_prop = $hh_nc_position_info{$_}->{G_prop};
+				my $this_T_prop = $hh_nc_position_info{$_}->{T_prop};
+				my $this_ref = $hh_nc_position_info{$_}->{reference};
+				my $this_cov = $hh_nc_position_info{$_}->{cov};
+				
+				my $this_A = ($this_A_prop * $max_cov);
+				my $this_C = ($this_C_prop * $max_cov);
+				my $this_G = ($this_G_prop * $max_cov);
+				my $this_T = ($this_T_prop * $max_cov);
+				
+				#print "\nsite=$_ A=$this_A C=$this_C G=$this_G T=$this_T";
+				
+				# Round to nearest int
+				$this_A = sprintf("%.0f", $this_A);
+				$this_C = sprintf("%.0f", $this_C);
+				$this_G = sprintf("%.0f", $this_G);
+				$this_T = sprintf("%.0f", $this_T);
+				
+				#print "\nsite=$_ A=$this_A C=$this_C G=$this_G T=$this_T";
+				
+				# Find maj_nt
+				my $maj_nt; # a variant nucleotide may have fixed
+				my $curr_maj_count = 0;
+				if($this_A > $curr_maj_count) {
+					$curr_maj_count = $this_A;
+					$maj_nt = 'A';
+				}
+				if($this_C > $curr_maj_count) {
+					$curr_maj_count = $this_C;
+					$maj_nt = 'C';
+				} 
+				if($this_G > $curr_maj_count) {
+					$curr_maj_count = $this_G;
+					$maj_nt = 'G';
+				} 
+				if($this_T > $curr_maj_count) {
+					$curr_maj_count = $this_T;
+					$maj_nt = 'T';
+				}
+				
+				my $leftover_number = $max_cov - ($this_A + $this_C + $this_G + $this_T);
+				
+				if($leftover_number != 0) { # it's negative, our count is too large, take away from maj_nt
+					# or it's positive, our count is too small, add to maj_nt
+					if($maj_nt eq 'A') {
+						$this_A += $leftover_number;
+					} elsif($maj_nt eq 'C') {
+						$this_C += $leftover_number;
+					} elsif($maj_nt eq 'G') {
+						$this_G += $leftover_number;
+					} elsif($maj_nt eq 'T') {
+						$this_T += $leftover_number;
+					}	
+				}
+				
+				# Now we build an array of all the nucleotides to add at the current site
+				my @new_nts_arr;
+				for(my $i = 1; $i <= $this_A; $i++) {
+					push(@new_nts_arr,'A');
+				}
+				for(my $i = 1; $i <= $this_C; $i++) {
+					push(@new_nts_arr,'C');
+				}
+				for(my $i = 1; $i <= $this_G; $i++) {
+					push(@new_nts_arr,'G');
+				}
+				for(my $i = 1; $i <= $this_T; $i++) {
+					push(@new_nts_arr,'T');
+				}
+				
+				for(my $i = 1; $i <= $max_cov; $i++) {
+					my $j = $i - 1;
+					
+					srand();
+					my $rand_nt_index = int(rand(scalar(@new_nts_arr)));
+					my $rand_nt = $new_nts_arr[$rand_nt_index];
+					
+					$all_possible_seqs[$j] .= $rand_nt;
+					
+					# Delete element from array
+					splice(@new_nts_arr, $rand_nt_index, 1);
+					
+				}
+				#print "\nsite=$_ A=$this_A C=$this_C G=$this_G T=$this_T ref=$this_ref cov=$this_cov";
+				
+			} else { # not polymorphic, so just add the reference nucleotide to all
+				my $this_nt = $seq_by_index_arr[$_ - 1];
+				
+				for(my $i = 1; $i <= $max_cov; $i++) {
+					my $j = $i - 1;
+					$all_possible_seqs[$j] .= $this_nt;
+				}
+			}
+		}
+		
+		#print "\nMaximum coverage is $max_cov\n\n";
+		
+		my $counter = 1;
+		open(OUT_FASTAS, ">>rand_seqs.fasta");
+		foreach(@all_possible_seqs) {
+			my $seq_length = length($_);
+			
+			print OUT_FASTAS ">seq_num_$counter\n";
+			
+			for(my $i=0; $i<$seq_length; $i+=60) {
+				if($i>($seq_length - 60)) {
+					my $line = substr($_, $i);
+					print OUT_FASTAS "$line\n";
+					last;
+				} else {
+					my $line = substr($_, $i, 60);
+					print OUT_FASTAS "$line\n";
+				}
+			}
+			
+			$counter++;
+		}
+		close OUT_FASTAS;
+		print "COMPLETED.\n";
+	} #######	End generate random fastas
 	
 } # Finished with SNP Report
 
@@ -7405,6 +7653,516 @@ if($slidingwindow) {
 	print "\n\nPerforming sliding window for all files, length $slidingwindow codons...\n\n";
 	&sliding_window($slidingwindow);
 }
+
+
+# GROUP and METAPOPULATION ANALYSES
+### my %site_sample_props;
+### 
+### # MANUALLY CHANGE THIS
+### my @sorted_groups = qw/BIRD MOSQ/;
+### print "\nSorted groups are: @sorted_groups\n";
+### 
+### my @sorted_samples; # = sort (keys %{$master_frequencies_hh{1}}); # grab first site's
+### #print "\nSorted samples are: @sorted_samples\n";
+### 
+### foreach my $sample_name (sort (keys %{$master_frequencies_hh{1}})) {
+### 	my $group_name_match = 0;
+### 	
+### 	foreach my $group_name (@sorted_groups) {
+### 		if($group_name eq $sample_name) {
+### 			$group_name_match = 1;
+### 		}
+### 	}
+### 	
+### 	unless($group_name_match == 1) {
+### 		push(@sorted_samples, $sample_name);
+### 	}
+### }
+### 
+### print "\nCleansed sorted samples are: @sorted_samples\n";
+### 
+### 
+### 
+### # METAPOPULATION ANALYSIS # push(@{$master_frequencies_hh{$position}-> {BIRD} -> {A_props_arr}} , $A_prop);
+### open(OUT_METAPOP, ">>snpgenie_metapop_results.txt");
+### my $metapop_header = "site\t";
+### my @nucleotides = qw(A C G T);
+### 
+### foreach my $sample (@sorted_groups) {
+### 	$metapop_header .= "$sample\_n\t";
+### }
+### 
+### foreach my $nucleotide (@nucleotides) {
+### 	foreach my $sample (@sorted_groups) {
+### 		$metapop_header .= "$sample\_$nucleotide\t";
+### 	}
+### }
+### 
+### $metapop_header .= "curr_max_diff_nt\tcurr_max_diff";
+### 
+### print OUT_METAPOP "$metapop_header\n";
+### 		
+### for (my $i = 0; $i < length($seq); $i++) {
+### 	my $position = $i+1;
+### 	
+### 	my $output_line = "$position\t";
+### 	
+### 	foreach my $sample (@sorted_groups) {
+### 	
+### 		my $sample_size = scalar(@{$master_frequencies_hh{$position}->{$sample}->{A_props_arr}}); # The A's will do for sample size
+### 		$output_line .= "$sample_size\t";
+### 		
+### 	}
+### 	
+### 	# MUST MAINTAIN ORDER OF NUCLEOTIDES HERE
+### 	#my $interesting_site = '';
+### 	my $curr_max_diff = 0;
+### 	my $curr_max_diff_nt;
+### 	
+### 	my $last_A_prop = '';
+	
+##	# QUICK FIX
+##	my @A_freqs_BIRD = @{$master_frequencies_hh{$position}->{BIRD}->{A_props_arr}};
+##	my @A_freqs_MOSQ = @{$master_frequencies_hh{$position}->{MOSQ}->{A_props_arr}};
+##	
+##	my $A_BIRD_numerator = sum(@A_freqs_BIRD);
+##	my $A_BIRD_denominator = scalar(@A_freqs_BIRD);
+##	my $A_BIRD_mean_prop = $A_BIRD_numerator / $A_BIRD_denominator;
+##	
+##	
+##	my $A_MOSQ_numerator = sum(@A_freqs_MOSQ);
+##	my $A_MOSQ_denominator = scalar(@A_freqs_MOSQ);
+##	my $A_MOSQ_mean_prop = $A_MOSQ_numerator / $A_MOSQ_denominator;
+##	
+##	
+##	
+##	my @C_freqs_BIRD = @{$master_frequencies_hh{$position}->{BIRD}->{C_props_arr}};
+##	my @C_freqs_MOSQ = @{$master_frequencies_hh{$position}->{MOSQ}->{C_props_arr}};
+##	
+##	my $C_BIRD_numerator = sum(@C_freqs_BIRD);
+##	my $C_BIRD_denominator = scalar(@C_freqs_BIRD);
+##	my $C_BIRD_mean_prop = $C_BIRD_numerator / $C_BIRD_denominator;
+##	
+##	
+##	my $C_MOSQ_numerator = sum(@C_freqs_MOSQ);
+##	my $C_MOSQ_denominator = scalar(@C_freqs_MOSQ);
+##	my $C_MOSQ_mean_prop = $C_MOSQ_numerator / $C_MOSQ_denominator;
+##	
+##	
+##	
+##	my @G_freqs_BIRD = @{$master_frequencies_hh{$position}->{BIRD}->{G_props_arr}};
+##	my @G_freqs_MOSQ = @{$master_frequencies_hh{$position}->{MOSQ}->{G_props_arr}};
+##	
+##	my @G_freqs_BIRD = @{$master_frequencies_hh{$position}->{BIRD}->{G_props_arr}};
+##	my @G_freqs_MOSQ = @{$master_frequencies_hh{$position}->{MOSQ}->{G_props_arr}};
+##	
+##	my $G_BIRD_numerator = sum(@G_freqs_BIRD);
+##	my $G_BIRD_denominator = scalar(@G_freqs_BIRD);
+##	my $G_BIRD_mean_prop = $G_BIRD_numerator / $G_BIRD_denominator;
+##	
+##	
+##	my $G_MOSQ_numerator = sum(@G_freqs_MOSQ);
+##	my $G_MOSQ_denominator = scalar(@G_freqs_MOSQ);
+##	my $G_MOSQ_mean_prop = $G_MOSQ_numerator / $G_MOSQ_denominator;
+##	
+##	
+##	
+##	
+##	my @T_freqs_BIRD = @{$master_frequencies_hh{$position}->{BIRD}->{T_props_arr}};
+##	my @T_freqs_MOSQ = @{$master_frequencies_hh{$position}->{MOSQ}->{T_props_arr}};
+##	
+##	
+##	my @T_freqs_BIRD = @{$master_frequencies_hh{$position}->{BIRD}->{T_props_arr}};
+##	my @T_freqs_MOSQ = @{$master_frequencies_hh{$position}->{MOSQ}->{T_props_arr}};
+##	
+##	my $T_BIRD_numerator = sum(@T_freqs_BIRD);
+##	my $T_BIRD_denominator = scalar(@T_freqs_BIRD);
+##	my $T_BIRD_mean_prop = $T_BIRD_numerator / $T_BIRD_denominator;
+##	
+##	
+##	my $T_MOSQ_numerator = sum(@T_freqs_MOSQ);
+##	my $T_MOSQ_denominator = scalar(@T_freqs_MOSQ);
+##	my $T_MOSQ_mean_prop = $T_MOSQ_numerator / $T_MOSQ_denominator;
+##	
+##	
+##	if($position == 4543) {
+##		print "\nFreq of BIRD A at $position is @A_freqs_BIRD, mean $A_BIRD_mean_prop\n";
+##		print "\nFreq of MOSQ A at $position is @A_freqs_MOSQ, mean $A_MOSQ_mean_prop\n";
+##		print "\nFreq of BIRD C at $position is @C_freqs_BIRD, mean $C_BIRD_mean_prop\n";
+##		print "\nFreq of MOSQ C at $position is @C_freqs_MOSQ, mean $C_MOSQ_mean_prop\n";
+##		print "\nFreq of BIRD G at $position is @G_freqs_BIRD, mean $G_BIRD_mean_prop\n";
+##		print "\nFreq of MOSQ G at $position is @G_freqs_MOSQ, mean $G_MOSQ_mean_prop\n";
+##		print "\nFreq of BIRD T at $position is @T_freqs_BIRD, mean $T_BIRD_mean_prop\n";
+##		print "\nFreq of MOSQ T at $position is @T_freqs_MOSQ, mean $T_MOSQ_mean_prop\n";
+##	}
+	
+	
+	
+### 	# THIS DOES NOT WORK RIGHT, frequencies being attributed to incorrect nucleotides
+### 	foreach my $sample (@sorted_groups) {
+### 		
+### 		my @A_freqs = @{$master_frequencies_hh{$position}->{$sample}->{A_props_arr}};
+### 		my $A_numerator = sum(@A_freqs);
+### 		my $A_denominator = scalar(@A_freqs);
+### 		my $A_mean_prop = $A_numerator / $A_denominator;
+### 		#print "\nFreq of $sample A at $position is @A_freqs, mean $A_mean_prop\n";
+### 		
+### 		if($position == 4543) {
+### 			print "\nsite=$position sample=$sample A A_num=$A_numerator A_denom=$A_denominator A_prop=$A_mean_prop\nA_freqs: @A_freqs\n";
+### 		}
+### 		
+### 		if($last_A_prop eq '') {
+### 			$last_A_prop = $A_mean_prop;
+### 		} else {
+### #			if(abs($A_mean_prop - $last_A_prop) >= $prop_diff_threshold) {
+### #				$interesting_site = 1;
+### #			}
+### 			if(abs($A_mean_prop - $last_A_prop) > $curr_max_diff) {
+### 				$curr_max_diff = abs($A_mean_prop - $last_A_prop);
+### 				$curr_max_diff_nt = 'A';
+### 			}
+### 		}
+### 		
+### 		$output_line .= "$A_mean_prop\t";
+### 	}
+### 	
+### 	my $last_C_prop = '';
+### 	
+### 	foreach my $sample (@sorted_groups) {
+### 		
+### 		my @C_freqs = @{$master_frequencies_hh{$position}->{$sample}->{C_props_arr}};
+### 		my $C_numerator = sum(@C_freqs);
+### 		my $C_denominator = scalar(@C_freqs);
+### 		my $C_mean_prop = $C_numerator / $C_denominator;
+### 		#print "\nFreq of $sample C at $position is @C_freqs, mean $C_mean_prop\n";
+### 		
+### 		if($position == 4543) {
+### 			print "\nsite=$position sample=$sample C C_num=$C_numerator C_denom=$C_denominator C_prop=$C_mean_prop\nC_freqs: @C_freqs\n";
+### 		}
+### 		
+### 		if($last_C_prop eq '') {
+### 			$last_C_prop = $C_mean_prop;
+### 		} else {
+### 			if(abs($C_mean_prop - $last_C_prop) > $curr_max_diff) {
+### 				$curr_max_diff = abs($C_mean_prop - $last_C_prop);
+### 				$curr_max_diff_nt = 'C';
+### 			}
+### 		}
+### 		
+### 		$output_line .= "$C_mean_prop\t";
+### 	}
+### 	
+### 	my $last_G_prop = '';
+### 	
+### 	foreach my $sample (@sorted_groups) {
+### 		
+### 		my @G_freqs = @{$master_frequencies_hh{$position}->{$sample}->{G_props_arr}};
+### 		my $G_numerator = sum(@G_freqs);
+### 		my $G_denominator = scalar(@G_freqs);
+### 		my $G_mean_prop = $G_numerator / $G_denominator;
+### 		#print "\nFreq of $sample G at $position is @G_freqs, mean $G_mean_prop\n";
+### 		
+### 		if($position == 4543) {
+### 			print "\nsite=$position sample=$sample G G_num=$G_numerator G_denom=$G_denominator G_prop=$G_mean_prop\nG_freqs: @G_freqs\n";
+### 		}
+### 		
+### 		if($last_G_prop eq '') {
+### 			$last_G_prop = $G_mean_prop;
+### 		} else {
+### 			if(abs($G_mean_prop - $last_G_prop) > $curr_max_diff) {
+### 				$curr_max_diff = abs($G_mean_prop - $last_G_prop);
+### 				$curr_max_diff_nt = 'G';
+### 			}
+### 		}
+### 		
+### 		
+### 		$output_line .= "$G_mean_prop\t";
+### 	}
+### 	
+### 	my $last_T_prop = '';
+### 	
+### 	foreach my $sample (@sorted_groups) {
+### 	
+### 		my @T_freqs = @{$master_frequencies_hh{$position}->{$sample}->{T_props_arr}};
+### 		my $T_numerator = sum(@T_freqs);
+### 		my $T_denominator = scalar(@T_freqs);
+### 		my $T_mean_prop = $T_numerator / $T_denominator;
+### 		#print "\nFreq of $sample T at $position is @T_freqs, mean $T_mean_prop\n";
+### 		
+### 		if($position == 4543) {
+### 			print "\nsite=$position sample=$sample T T_num=$T_numerator T_denom=$T_denominator T_prop=$T_mean_prop\nT_freqs: @T_freqs\n";
+### 		}
+### 		
+### 		if($last_T_prop eq '') {
+### 			$last_T_prop = $T_mean_prop;
+### 		} else {
+### 			if(abs($T_mean_prop - $last_T_prop) > $curr_max_diff) {
+### 				$curr_max_diff = abs($T_mean_prop - $last_T_prop);
+### 				$curr_max_diff_nt = 'T';
+### 			}
+### 		}
+### 		
+### 		
+### 		$output_line .= "$T_mean_prop\t";
+### 	}
+### 	
+### 	$output_line .= "$curr_max_diff_nt\t$curr_max_diff";
+### 	
+### 	print OUT_METAPOP "$output_line\n";
+### 	
+### }
+### 
+### close OUT_METAPOP;
+
+
+
+### 
+### # FST ANALYSIS # push(@{$master_frequencies_hh{$position}-> {BIRD} -> {A_props_arr}} , $A_prop);
+### #				^ this includes all, not just polymorphic sites
+### 
+### open(OUT_FST, ">>snpgenie_FST_results.txt");
+### 
+### # First column is population ID
+### my $fst_header = "population\t";
+### 
+### # Subsequent columns are sites. Could do all, or just polymorphic. Start with all.
+### # While doing this, determine meta-consensus nucleotides at each site
+### 
+### my %meta_consensus_nts; # $meta_consensus_nts{site}->{nt/freq} = 'A'/0.75
+### 
+### for (my $i = 0; $i < length($seq); $i++) {
+### 	my $site = $i+1;
+### 
+### 	my @this_site_A_freqs;
+### 	my @this_site_C_freqs;
+### 	my @this_site_G_freqs;
+### 	my @this_site_T_freqs;
+### 	
+### 	foreach my $sample_name (@sorted_samples) { # GROUP names (e.g., BIRD and MOSQ) have been removed
+### 		push(@this_site_A_freqs, $master_frequencies_hh{$site}->{$sample_name}->{A_freq});
+### 		push(@this_site_C_freqs, $master_frequencies_hh{$site}->{$sample_name}->{C_freq});
+### 		push(@this_site_G_freqs, $master_frequencies_hh{$site}->{$sample_name}->{G_freq});
+### 		push(@this_site_T_freqs, $master_frequencies_hh{$site}->{$sample_name}->{T_freq});
+### 	}
+### 	
+### 	# Find meta-consensus nt and its mean freq
+### 	my $meta_A_freq = sum(@this_site_A_freqs) / scalar(@this_site_A_freqs);
+### 	my $meta_C_freq = sum(@this_site_C_freqs) / scalar(@this_site_C_freqs);
+### 	my $meta_G_freq = sum(@this_site_G_freqs) / scalar(@this_site_G_freqs);
+### 	my $meta_T_freq = sum(@this_site_T_freqs) / scalar(@this_site_T_freqs);
+### 	
+### 	my $meta_consensus_nt;
+### 	my $meta_consensus_nt_freq = 0;
+### 	
+### 	if($meta_A_freq > $meta_consensus_nt_freq) {
+### 		$meta_consensus_nt = 'A';
+### 		$meta_consensus_nt_freq = $meta_A_freq;
+### 	}
+### 	
+### 	if($meta_C_freq > $meta_consensus_nt_freq) {
+### 		$meta_consensus_nt = 'C';
+### 		$meta_consensus_nt_freq = $meta_C_freq;
+### 	}
+### 	
+### 	if($meta_G_freq > $meta_consensus_nt_freq) {
+### 		$meta_consensus_nt = 'G';
+### 		$meta_consensus_nt_freq = $meta_G_freq;
+### 	}
+### 	
+### 	if($meta_T_freq > $meta_consensus_nt_freq) {
+### 		$meta_consensus_nt = 'T';
+### 		$meta_consensus_nt_freq = $meta_T_freq;
+### 	}
+### 	
+### 	$meta_consensus_nts{$site}->{nt} = $meta_consensus_nt;
+### 	$meta_consensus_nts{$site}->{freq} = $meta_consensus_nt_freq;
+### 	
+### 	$fst_header .= "site_$site\_$meta_consensus_nt\t";
+### 	
+### }
+### 
+### chop($fst_header);
+### 
+### #my @nucleotides = qw(A C G T); # done above
+### 
+### print OUT_FST "$fst_header\n";
+### 
+### 
+### 
+### 
+### 
+### 
+### foreach my $sample_name (@sorted_samples) { # each LINE of output is a sample
+### 	my $this_sample_out_line = "$sample_name\t";
+### 	
+### 	for (my $i = 0; $i < length($seq); $i++) {
+### 		my $site = $i+1;
+### 		my $site_meta_consensus_nt = $meta_consensus_nts{$site}->{nt};
+### 		
+### 		my $freq_key = "$site_meta_consensus_nt\_freq";
+### 		my $meta_consensus_freq_here = $master_frequencies_hh{$site}->{$sample_name}->{$freq_key};
+### 		
+### 		$this_sample_out_line .= "$meta_consensus_freq_here\t";
+### 	}
+### 	
+### 	chop($this_sample_out_line);
+### 	print OUT_FST "$this_sample_out_line\n";
+### 	
+### }
+
+
+
+#for (my $i = 0; $i < length($seq); $i++) {
+#	my $position = $i+1;
+#	
+#	my $output_line = "$position\t";
+#	
+#	foreach my $sample (@sorted_groups) {
+#	
+#		my $sample_size = scalar(@{$master_frequencies_hh{$position}->{$sample}->{A_props_arr}}); # The A's will do for sample size
+#		$output_line .= "$sample_size\t";
+#		
+#	}
+#	
+#	# MUST MAINTAIN ORDER OF NUCLEOTIDES HERE
+#	#my $interesting_site = '';
+#	my $curr_max_diff = 0;
+#	my $curr_max_diff_nt;
+#	
+#	my $last_A_prop = '';	
+#	
+#	# THIS DOES NOT WORK RIGHT, frequencies being attributed to incorrect nucleotides
+#	foreach my $sample (@sorted_groups) {
+#		
+#		my @A_freqs = @{$master_frequencies_hh{$position}->{$sample}->{A_props_arr}};
+#		my $A_numerator = sum(@A_freqs);
+#		my $A_denominator = scalar(@A_freqs);
+#		my $A_mean_prop = $A_numerator / $A_denominator;
+#		#print "\nFreq of $sample A at $position is @A_freqs, mean $A_mean_prop\n";
+#		
+#		if($position == 4543) {
+#			print "\nsite=$position sample=$sample A A_num=$A_numerator A_denom=$A_denominator A_prop=$A_mean_prop\nA_freqs: @A_freqs\n";
+#		}
+#		
+#		if($last_A_prop eq '') {
+#			$last_A_prop = $A_mean_prop;
+#		} else {
+##			if(abs($A_mean_prop - $last_A_prop) >= $prop_diff_threshold) {
+##				$interesting_site = 1;
+##			}
+#			if(abs($A_mean_prop - $last_A_prop) > $curr_max_diff) {
+#				$curr_max_diff = abs($A_mean_prop - $last_A_prop);
+#				$curr_max_diff_nt = 'A';
+#			}
+#		}
+#		
+#		$output_line .= "$A_mean_prop\t";
+#	}
+#	
+#	my $last_C_prop = '';
+#	
+#	foreach my $sample (@sorted_groups) {
+#		
+#		my @C_freqs = @{$master_frequencies_hh{$position}->{$sample}->{C_props_arr}};
+#		my $C_numerator = sum(@C_freqs);
+#		my $C_denominator = scalar(@C_freqs);
+#		my $C_mean_prop = $C_numerator / $C_denominator;
+#		#print "\nFreq of $sample C at $position is @C_freqs, mean $C_mean_prop\n";
+#		
+#		if($position == 4543) {
+#			print "\nsite=$position sample=$sample C C_num=$C_numerator C_denom=$C_denominator C_prop=$C_mean_prop\nC_freqs: @C_freqs\n";
+#		}
+#		
+#		if($last_C_prop eq '') {
+#			$last_C_prop = $C_mean_prop;
+#		} else {
+#			if(abs($C_mean_prop - $last_C_prop) > $curr_max_diff) {
+#				$curr_max_diff = abs($C_mean_prop - $last_C_prop);
+#				$curr_max_diff_nt = 'C';
+#			}
+#		}
+#		
+#		$output_line .= "$C_mean_prop\t";
+#	}
+#	
+#	my $last_G_prop = '';
+#	
+#	foreach my $sample (@sorted_groups) {
+#		
+#		my @G_freqs = @{$master_frequencies_hh{$position}->{$sample}->{G_props_arr}};
+#		my $G_numerator = sum(@G_freqs);
+#		my $G_denominator = scalar(@G_freqs);
+#		my $G_mean_prop = $G_numerator / $G_denominator;
+#		#print "\nFreq of $sample G at $position is @G_freqs, mean $G_mean_prop\n";
+#		
+#		if($position == 4543) {
+#			print "\nsite=$position sample=$sample G G_num=$G_numerator G_denom=$G_denominator G_prop=$G_mean_prop\nG_freqs: @G_freqs\n";
+#		}
+#		
+#		if($last_G_prop eq '') {
+#			$last_G_prop = $G_mean_prop;
+#		} else {
+#			if(abs($G_mean_prop - $last_G_prop) > $curr_max_diff) {
+#				$curr_max_diff = abs($G_mean_prop - $last_G_prop);
+#				$curr_max_diff_nt = 'G';
+#			}
+#		}
+#		
+#		
+#		$output_line .= "$G_mean_prop\t";
+#	}
+#	
+#	my $last_T_prop = '';
+#	
+#	foreach my $sample (@sorted_groups) {
+#	
+#		my @T_freqs = @{$master_frequencies_hh{$position}->{$sample}->{T_props_arr}};
+#		my $T_numerator = sum(@T_freqs);
+#		my $T_denominator = scalar(@T_freqs);
+#		my $T_mean_prop = $T_numerator / $T_denominator;
+#		#print "\nFreq of $sample T at $position is @T_freqs, mean $T_mean_prop\n";
+#		
+#		if($position == 4543) {
+#			print "\nsite=$position sample=$sample T T_num=$T_numerator T_denom=$T_denominator T_prop=$T_mean_prop\nT_freqs: @T_freqs\n";
+#		}
+#		
+#		if($last_T_prop eq '') {
+#			$last_T_prop = $T_mean_prop;
+#		} else {
+#			if(abs($T_mean_prop - $last_T_prop) > $curr_max_diff) {
+#				$curr_max_diff = abs($T_mean_prop - $last_T_prop);
+#				$curr_max_diff_nt = 'T';
+#			}
+#		}
+#		
+#		
+#		$output_line .= "$T_mean_prop\t";
+#	}
+#	
+#	$output_line .= "$curr_max_diff_nt\t$curr_max_diff";
+#	
+#	print OUT_FST "$output_line\n";
+#	
+#}
+
+
+
+### close OUT_FST;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Print a completion message to screen
 &end_the_program;
@@ -9120,10 +9878,18 @@ sub populate_tempfile_vcf {
 						my $variant_freq1;
 						my $variant_freq2;
 						my $variant_freq3;
-						if($info_value =~ /AF=([\d\.]+),([\d\.]+),([\d\.]+)/) {
+						if($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+),([\d\.\e\-]+)/) {
 							$variant_freq1 = $1;
 							$variant_freq2 = $2;
 							$variant_freq3 = $3;
+						} elsif($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+)/) {
+							$variant_freq1 = $1;
+							$variant_freq2 = $2;
+						} elsif($info_value =~ /AF=([\d\.\e\-]+)/) {
+							$variant_freq1 = $1;
+						} else {
+							die "\n\n## WARNING: $curr_snp_report_name does not conform to ".
+								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
 						
 						# COUNTS and PERCENTS
@@ -9199,16 +9965,21 @@ sub populate_tempfile_vcf {
 						if($info_value =~ /DP=(\d+)/) { # We've got a VCF of POOL
 							$coverage = $1;
 						} else {
-							die "\n\n## WARNING: $curr_snp_report_name does no conform to ".
+							die "\n\n## WARNING: $curr_snp_report_name does not conform to ".
 								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
 						
-						if($info_value =~ /AF=([\d\.]+),([\d\.]+),([\d\.]+)/) { # We've got a VCF of POOL
+						if($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+),([\d\.\e\-]+)/) { # We've got a VCF of POOL
 							$variant_freq1 = $1;
 							$variant_freq2 = $2;
 							$variant_freq3 = $3;
+						} elsif($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+)/) {
+							$variant_freq1 = $1;
+							$variant_freq2 = $2;
+						} elsif($info_value =~ /AF=([\d\.\e\-]+)/) {
+							$variant_freq1 = $1;
 						} else {
-							die "\n\n## WARNING: $curr_snp_report_name does no conform to ".
+							die "\n\n## WARNING: $curr_snp_report_name does not conform to ".
 								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
 						
@@ -9229,7 +10000,7 @@ sub populate_tempfile_vcf {
 							foreach my $product (@this_site_products) {
 								$product_entry = 'CDS: ' . $product;
 								
-								# PRINT 3 LINES TO FILE
+								# PRINT UP TO 3 LINES TO FILE
 								if($variant_freq1 > 0) {
 									my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
 										"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
@@ -9252,7 +10023,7 @@ sub populate_tempfile_vcf {
 								}
 							}
 						} else {
-							# PRINT 3 LINES TO FILE
+							# PRINT UP TO 3 LINES TO FILE
 							if($variant_freq1 > 0) {
 								my $this_line1 = "$curr_snp_report_name\t$ref_pos\t$clc_type\t$reference_nts\t".
 									"$variant1\t$variant_count1\t$coverage\t$variant_pct1\t$product_entry\n";
@@ -9594,7 +10365,7 @@ sub populate_tempfile_vcf {
 						if($info_value =~ /DP=(\d+)/) { # We've got a VCF of POOL
 							$coverage = $1;
 						} else {
-							die "\n\n## WARNING: $curr_snp_report_name does no conform to ".
+							die "\n\n## WARNING: $curr_snp_report_name does not conform to ".
 								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
 						
@@ -9602,7 +10373,7 @@ sub populate_tempfile_vcf {
 							$variant_freq1 = $1;
 							$variant_freq2 = $2;
 						} else {
-							die "\n\n## WARNING: $curr_snp_report_name does no conform to ".
+							die "\n\n## WARNING: $curr_snp_report_name does not conform to ".
 								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
 						
@@ -9923,14 +10694,14 @@ sub populate_tempfile_vcf {
 						if($info_value =~ /DP=(\d+)/) { # We've got a VCF of POOL
 							$coverage = $1;
 						} else {
-							die "\n\n## WARNING: $curr_snp_report_name does no conform to ".
+							die "\n\n## WARNING: $curr_snp_report_name does not conform to ".
 								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
 						
 						if($info_value =~ /AF=([\d\.]+)/) { # We've got a VCF of POOL
 							$variant_freq1 = $1;
 						} else {
-							die "\n\n## WARNING: $curr_snp_report_name does no conform to ".
+							die "\n\n## WARNING: $curr_snp_report_name does not conform to ".
 								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
 						
