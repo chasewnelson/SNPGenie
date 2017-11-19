@@ -15768,7 +15768,7 @@ sub end_the_program {
 	chdir('..');
 
 	print "\n################################################################################".
-		"\n##              SNPGenie for CLC Genomics completed successfully.             ##".
+		"\n##                      SNPGenie completed successfully.                      ##".
 		"\n##             Please find results in the SNPGenie_Results folder.            ##\n".
 		"################################################################################".
 		"\n\n\n"; 
