@@ -2,13 +2,13 @@
 
 SNPGenie is a Perl script for estimating *d*<sub>N</sub>/*d*<sub>S</sub>, *π*<sub>N</sub>/*π*<sub>S</sub>, and other evolutionary parameters from next-generation sequencing (NGS) single-nucleotide polymorphism (SNP) variant data. Four different analyses are possible, each of which uses a different script:
 
-1. **AVAILABLE**. For an analysis of within-population *π*<sub>N</sub>/*π*<sub>S</sub> from **POOLED NGS SNP DATA**, run the original script **snpgenie.pl**. SNP reports (acceptable in a variety of formats) much each correspond to a single population, with variants called relative to a single reference sequence (one sequence in one FASTA file). SNP reports may summarize either single sequencing runs where the input was DNA pooled from multiple individuals, or may be summary files representing multiple individual sequences. Just run the script in a directory containing the necessary [input files](#snpgenie-input), and we take care of the rest! *(For the earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.)*
+1. **WITHIN-POOL (VARIANT CALLS) ANALYSIS**. Use **snpgenie.pl**, the original SNPGenie. This will perform an analysis of within-population *π*<sub>N</sub>/*π*<sub>S</sub> from **pooled NGS SNP data**. SNP reports (acceptable in a variety of formats) must each correspond to a single population, with variants called relative to a single reference sequence (one sequence in one FASTA file). SNP reports may summarize either single sequencing runs where the input was DNA pooled from multiple individuals, or may be summary files representing multiple individual sequences. Just run the script in a directory containing the necessary [input files](#snpgenie-input), and we take care of the rest! *(For the earlier version, see <a target="_blank" href="http://ww2.biol.sc.edu/~austin/">Hughes Lab Bioinformatics Resource</a>.)*
 
-2. **NOT YET IN PREPARATION**. A between-population analysis is possible, where pooled samples from different populations are compared to estimate mean between-population diversity. This analysis is not currently a priority.
+2. **BETWEEN-POOL ANALYSIS \<*NOT YET IN PREPARATION*\>**. *A between-population analysis is possible, where pooled samples from different populations are compared to estimate mean between-population diversity. This analysis is not currently a priority, but can be approximated by simulating a representative SAMPLE of FASTA sequences from your within-pool data and using the BETWEEN-GROUP script.*
 
-3. **COMING SOON!** For a traditional within-group analysis of *d*<sub>N</sub>/*d*<sub>S</sub> among aligned sequences in a FASTA file, such as possible using the MEGA software, run the script **snpgenie\_within\_group.pl**. This script is being released for use with datasets which exceed the processing and memory capabilities of MEGA. Just run the script in a directory containing the necessary [within-group input files](#snpgenie-input-within), and we take care of the rest!
+3. **WITHIN-GROUP (ALIGNED FASTA) ANALYSIS**. Use **snpgenie\_within\_group.pl**. This will perform a traditional within-group analysis of *d*<sub>N</sub>/*d*<sub>S</sub> among aligned sequences in a FASTA file, such as possible using the <a target="_blank" href="http://www.megasoftware.net/">MEGA software</a>. Advantages include the ability to process large datasets, the reporting of results for all codons, and the ability to use overlapping gene annotations (but see <a target="_blank" href="https://github.com/chasewnelson/overlapgenie">overlapgenie</a>). Just provide the necessary [within-group input files](#snpgenie-input-within), and we take care of the rest!
 
-4. **COMING SOON!** For a traditional between-group analysis comparing different groups of aligned sequences in two or more FASTA files, such as possible using the MEGA software, run the script **snpgenie\_between\_group.pl**. This script is being released for use with datasets which exceed the processing and memory capabilities of MEGA. Just run the script in a directory containing the necessary [between-group input files](#snpgenie-input-between), and we take care of the rest!
+4. **BETWEEN-GROUP ANALYSIS \<*COMING SOON!*\>**. For a traditional between-group analysis comparing different groups of aligned sequences in two or more FASTA files, such as possible using the <a target="_blank" href="http://www.megasoftware.net/">MEGA software</a>, the script **snpgenie\_between\_group.pl** will be released. Advantages include the ability to process large datasets and reporting of results for all codons. Just provide the necessary [between-group input files](#snpgenie-input-between), and we take care of the rest!
 
 **UPDATE FOR VCF INPUT:** given the preponderance of distinct VCF formats in use, it is now necessary to specify the specific format of the VCF SNP report input using the **--vcfformat** argument. See the section on [VCF](#vcf).
 
@@ -46,7 +46,11 @@ SNPGenie is a command-line interface application written in Perl, with no additi
 2. One file with CDS information in [**Gene Transfer Format**](#gtf) (.gtf); and 
 3. One or more tab-delimited (.txt) [**SNP Reports**](#SNP-Reports), each corresponding to a single pooled-sequencing run (*i.e.*, population) in CLC, VCF, or Geneious formats, with variants called relative to the reference sequence. If you want another format included, just ask!
 
-**Simply place all necessary input files in a directory and run the SNPGenie script from the command line** (see [Options](#options) if you wish for more control). To do this, first download the **snpgenie.pl** script and place it in your system’s PATH, or simply in your working directory. Next, place your SNP report(s), FASTA (.fa/.fasta), and GTF (.gtf) files in your working directory. Open the command line prompt (or Terminal) and navigate to the directory containing these files using the "cd" command in your shell. Finally, execute SNPGenie by typing the name of the script and pressing the \<RETURN\> (\<ENTER\>) key. Further details on input are below.
+**Simply place all necessary input files in a directory and run the SNPGenie script from the command line** (see [Options](#options) if you wish for more control). To do this, first download the **snpgenie.pl** script and place it in your system’s PATH, or simply in your working directory. Next, place your SNP report(s), FASTA (.fa/.fasta), and GTF (.gtf) files in your working directory. Open the command line prompt (or Terminal) and navigate to the directory containing these files using the "cd" command in your shell. Finally, execute SNPGenie by typing the name of the script and pressing the \<RETURN\> (\<ENTER\>) key:
+
+    snpgenie.pl
+
+Further details on [input](#ref-seq) and [options](#options) are below.
 
 ### <a name="ref-seq"></a>INPUT (1) One Reference Sequence File
 Only one reference sequence must be provided in a single **FASTA** (.fa/.fasta) file (one file containing one sequence). Thus, all SNP coordinates in the SNP reports are called relative to the single reference sequence. This **ONE-SEQUENCE MODE** allows the maximum number of estimations to be performed, and is the only mode of SNPGenie that remains supported. Because of this one-sequence stipulation, a script has been provided to split a multi-sequence FASTA file into its constituent sequences for multiple or parallel analyses; see [Additional Scripts](#additional-scripts) below.
@@ -149,7 +153,7 @@ To alter how SNPGenie works, the following options may be used:
 * **--ratiomode**: if called, SNPGenie will include *π* values for each codon in the codon_results.txt file(s). This is usually inadvisable, as *π* values (especially *π*<sub>S</sub>) are subject to great stochastic error. Simply include in the command line to activate. Default: not included.
 * **--sitebasedmode**: if called, SNPGenie will include *π* values derived using a site-based (reference codon context only) approach in the codon_results.txt file(s). This is usually inadvisable, as *π* values will not reflect the true population of pairwise comparisons. Simply include in the command line to activate. Default: not included.
 
-For example, if you wanted to turn on the **sepfiles** option, specify a minimum allele frequency of 1%, and specify all three input files, you could enter the command:
+For example, if you wanted to turn on the **sepfiles** option, specify a minimum allele frequency of 1%, and specify all three input files, you could enter the following:
 
 	snpgenie.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
 
@@ -256,11 +260,30 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 
 ## <a name="snpgenie-input-within"></a>SNPGenie Within-Group
 
-**COMING SOON!** The script **snpgenie\_within\_group.pl** will be used to calculate mean *d*<sub>N</sub> and *d*<sub>S</sub> within a group of sequences in a FASTA file. Designed for use with sequence data that outsizes what can be handled by MEGA and other software platforms. Note that within-group mean *d*<sub>N</sub> and *d*<sub>S</sub> are mathematically equivalent to *π*<sub>N</sub> and *π*<sub>S</sub> when groups are sequences samples from a single population.
+The script **snpgenie\_within\_group.pl** estimates mean *d*<sub>N</sub> and *d*<sub>S</sub> within a group of aligned sequences in a single FASTA file. Designed for use with sequence data that outsizes what can be handled by other software platforms, this script invokes parallelism for codons and bootstrapping, and as a result has one dependency: the <a target="_blank" href="http://search.cpan.org/~dlux/Parallel-ForkManager-0.7.5/ForkManager.pm">**Parallel::ForkManager**</a> module. If this isn't already installed, please use CPAN to install it before running the script. <a target="_blank" href="http://www.cpan.org/modules/INSTALL.html">Click here</a> to learn how.
+
+Note that within-group mean *d*<sub>N</sub> and *d*<sub>S</sub> are mathematically equivalent to *π*<sub>N</sub> and *π*<sub>S</sub> when groups contain sequences sampled from a single population. 
+
+Provide the script with the following arguments: 
+
+* **--fasta\_file\_name**: the name or path of the (one) FASTA file containing aligned nucleotide sequences.
+* **--gtf\_file\_name**: the name or path of the (one) [GTF file](#gtf) containing CDS information.
+* **--num\_bootstraps**: OPTIONAL. the number of bootstrap replicates to be performed for calculating the standard error of *d*<sub>N</sub>-*d*<sub>S</sub>. DEFAULT: 0.
+* **--procs\_per\_node**: OPTIONAL. The number of parallel processes to be invoked for processing codons and bootstraps (speeds up SNPGenie if high performance computing resources are available). DEFAULT: 1.
+
+The format for using this script is:
+
+        snpgenie_within_group.pl --fasta_file_name=<aligned_sequences>.fa --gtf_file_name=<coding_annotations>.gtf --num_bootstraps=<bootstraps> --procs_per_node=<procs_per_node>
+
+For example, on a node with access to 64 processors in a high performance computing environment, you might call:
+
+        snpgenie_within_group.pl --fasta_file_name=my_virus_genomes.fa --gtf_file_name=my_virus_genes.gtf --num_bootstraps=10000 --procs_per_node=64
+
+Results files will be generated in the working directory. For a detailed explanation of the results, consult the [output descriptions](#output) above (however, note that not all files and columns generated for the within-pool analysis will be present for the within-group analysis).
 
 ## <a name="snpgenie-input-between"></a>SNPGenie Between-Group
 
-**COMING SOON!** The script **snpgenie\_between\_group.pl** can be used to calculate mean *d*<sub>N</sub> and *d*<sub>S</sub> between two or more groups of sequences in FASTA format. Users who have access to a computer cluster may wish to use this parallelized version of SNPGenie for datasets which exceed the processing and memory capabilities of the MEGA software. Just run the script in a directory containing the necessary input files:
+**\*\*COMING SOON!\*\*** The script **snpgenie\_between\_group.pl** will be used to calculate mean *d*<sub>N</sub> and *d*<sub>S</sub> between two or more groups of sequences in FASTA format. Users who have access to a computer cluster may wish to use this parallelized version of SNPGenie for datasets which exceed the processing and memory capabilities of the MEGA software. Just run the script in a directory containing the necessary input files:
 
 1. **Two or more FASTA files**, each containing a group of aligned sequences which are also aligned to one another across groups (files), ending with a .fa, .fas, or .fasta extension. For example, one might wish to compare sequences of the West Nile Virus 2K gene derived from three different mosquito vectors. In such a case, all sequences would first be aligned. Next, all sequences from mosquito 1 would be placed together in one FASTA file; all sequences from mosquito 2 would be placed in a second FASTA file; and all sequences from mosquito 3 would be placed in a third FASTA file.
 
