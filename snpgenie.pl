@@ -559,9 +559,128 @@ if(! $multi_fasta_mode) {
 	
 }
 
+#########################################################################################
+# GENERATE TEMP VCF SNP REPORTS IFF FORMAT 4
+
+my @temp_vcf4_file_names;
+
+# If it's VCF file format 4, it's possible that there are multiple samples in the same
+# VCF file. Unfortunately, SNPGenie is modular in the sense that I designed it to be run
+# on ONE SNP REPORT. Thus, to make a quick fix and avoid rewriting the whole concept,
+# we'll just make each sample into its own temporary SNP report.
+if($vcfformat == 4) { # generate as many SNP reports as there are sample columns
+	
+	# Find out if there is more than one sample by counting columns after FORMAT
+	#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample1
+	my $header_line;
+	open (ORIGINAL_SNP_REPORT, $snp_report_file_names_arr[0]); # always just one
+	while (<ORIGINAL_SNP_REPORT>) {	
+		chomp;
+			
+		if($_ =~ /^#(\w+)/) {
+			$header_line = $_;
+			if(!($_ =~/\t/)) {
+				die "\n\n## WARNING:\n## The SNP Report $snp_report_file_names_arr[0] is ".
+					"not TAB-delimited (\\t), or there is only one column.\n\n";
+			}
+			last;
+		}
+	}
+	close ORIGINAL_SNP_REPORT;
+	
+	$header_line =~ s/^#//;
+	#print "\nHEADER LINE IS: $header_line\n\n";
+	my @header_arr = split("\t",$header_line,-1);
+	#print "\nHEADER ARRAY IS: @header_arr\n\n";
+	
+	# Determine the INDEX of FORMAT
+	my $FORMAT_index;
+	for (my $vcf_i = 0; $vcf_i < scalar(@header_arr); $vcf_i++) {
+		if($header_arr[$vcf_i] eq 'FORMAT') {
+			$FORMAT_index = $vcf_i;
+			last;
+		}
+	}
+	
+	# Count the number of samples
+	my $num_samples = 0;
+	my @sample_names;
+	for(my $samp_index = $FORMAT_index+1; $samp_index < scalar(@header_arr); $samp_index++) {
+		if($header_arr[$samp_index] =~ /[\w\d\_\.]+/) {
+			$num_samples++;
+			push(@sample_names, $&);
+		}
+	}
+	
+	#print "\n### VCF FORMAT 4 with $num_samples samples.\n\n";
+	
+	# Generate TEMP VCF SNP reports, ranging from index ($FORMAT_index+1) to ($FORMAT_index+$num_samples)
+	for(my $sample_index = ($FORMAT_index+1); $sample_index <= ($FORMAT_index+$num_samples); $sample_index++) {
+		my $new_temp_vcf4_file_name = 'temp_vcf4_' . $header_arr[$sample_index] . '.vcf';
+		
+		push(@temp_vcf4_file_names, $new_temp_vcf4_file_name);
+		
+		print "\nCreating $new_temp_vcf4_file_name\...\n\n";
+		
+		unlink $new_temp_vcf4_file_name; # just in case
+		
+		open(THIS_NEW_VCF,">>$new_temp_vcf4_file_name");
+		
+		
+		# Find out if there is more than one sample by counting columns after FORMAT
+		#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample1
+		my $header_line;
+		
+		open (ORIGINAL_SNP_REPORT, $snp_report_file_names_arr[0]); # always just one
+		my $seen_vcf4_header = 0;
+		while (<ORIGINAL_SNP_REPORT>) {	
+			chomp;
+			
+			if($_ =~ /^##(\w+)/) { # STILL METADATA; print
+				print THIS_NEW_VCF "$_\n";
+			} elsif($_ =~ /^#(\w+)/) { # header
+				my $this_new_header_line = '#';
+				
+				for(my $vcf_i = 0; $vcf_i <= $FORMAT_index; $vcf_i++) {
+					$this_new_header_line .= "$header_arr[$vcf_i]\t";
+				}
+				
+				$this_new_header_line .= "$header_arr[$sample_index]";
+				
+				print THIS_NEW_VCF "$this_new_header_line\n";
+				
+				$seen_vcf4_header = 1;
+				
+			} elsif($seen_vcf4_header == 1) {
+				my @this_line_arr = split(/\t/,$_,-1);
+				
+				my $this_new_variant_line;
+				unless($this_line_arr[$sample_index] =~ /\.\:\./) { # ZERO COVERAGE
+					for(my $vcf_i = 0; $vcf_i <= $FORMAT_index; $vcf_i++) {
+						$this_new_variant_line .= "$this_line_arr[$vcf_i]\t";
+					}
+					
+					$this_new_variant_line .= "$this_line_arr[$sample_index]";
+					
+					print THIS_NEW_VCF "$this_new_variant_line\n";
+				}
+			}
+		}
+		close ORIGINAL_SNP_REPORT;
+		
+		close THIS_NEW_VCF;
+		
+	}
+	
+	@snp_report_file_names_arr = @temp_vcf4_file_names; # THESE are the SNP REPORTS now
+	
+}
+
+#########################################################################################
 # FOR METAPOPULATION STORAGE -- provided all sites are with respect to the same reference
 my %master_frequencies_hh; # $master_frequencies_hh -> {site_num} -> {@A_props_arr}/{@C_props_arr}/{@G_props_arr}/{@T_props_arr}
 
+#########################################################################################
 # PROCESS THE SNP REPORTS
 foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	my $file_nm = $curr_snp_report_name;
@@ -710,7 +829,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		$curr_snp_report_name = $temp_snp_report_name;
 	} elsif($vcf_mode) {
 		if(! $vcfformat) {
-			die "\n## WARNING: User must specify VCF format, e.g., --vcfformat=1. ".
+			die "\n## WARNING: User must specify VCF format, e.g., --vcfformat=4. ".
 				"## SNPGenie TERMINATED.\n\n";
 		}
 		
@@ -973,7 +1092,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				my $ref_prop_key = "$reference_nt\_prop";
 				my $var_prop_key = "$variant_nt\_prop";
 				
-				#print "\nSNV site $position\. ref_prop_key: ref_prop_key: $ref_prop_key | ref_prop: $ref_prop | var_prop_key: $var_prop_key | var_prop: $var_prop";
+				#print "\nSNV site $position\. ref_prop_key: $ref_prop_key | ref_prop: $ref_prop | var_prop_key: $var_prop_key | var_prop: $var_prop";
 				
 				if(length($reference_nt) == length($variant_nt)) {
 					# Now, nonsyn and syn nucleotide diversity for coding variants
@@ -1047,7 +1166,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							close ERROR_FILE;
 							chdir('..');
 							
-							print "\n## WARNING There is a variant frequency <0.01%. If this ".
+							warn "\n## WARNING There is a variant frequency <0.01%. If this ".
 								"was unexpected, make sure that the \n## values in the ".
 								"\"Frequency\" column are percentages, not ".
 								"decimals.\n";
@@ -1156,7 +1275,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								close ERROR_FILE;
 								chdir('..');
 								
-								print "\n## WARNING: Conflicting coverages reported at ".
+								warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position\n".
 										"## An averaging has taken place.\n";
 							}
@@ -1183,7 +1302,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								close ERROR_FILE;
 								chdir('..');
 								
-								print "\n## WARNING: A \'mature peptide\' annotation is being used at ".
+								warn "\n## WARNING: A \'mature peptide\' annotation is being used at ".
 										"$file_nm|$product_name|$position\n".
 										"## Contact the author to update this deprecated function.\n";
 								
@@ -1274,7 +1393,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$mature_peptide_name|$position\n".
 										"## An averaging has taken place.\n";
 								}
@@ -1337,7 +1456,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								close ERROR_FILE;
 								chdir('..');
 								
-								print "\n## WARNING: Conflicting coverages reported at ".
+								warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N\/A|$position\n".
 										"## An averaging has taken place.\n";
 							}
@@ -1371,7 +1490,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# was if(($line_arr[$index_type] eq 'SNV') && ($line_arr[$index_over_annot] ne ''))
 						
 						if($warn_5nt == 0) {
-							print "\n## WARNING: SNPGenie only considers MNV's up to 5nt in length.\n";
+							warn "\n## WARNING: SNPGenie only considers MNV's up to 5nt in length.\n";
 							$warn_5nt = 1;
 						}
 						
@@ -1388,7 +1507,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							$mature_peptide_name = $1;
 							#print "product name is: $product_name\n";
 							@peptide_coord_arr = @{$product_coordinates_harr{$mature_peptide_name}->{product_coord_arr}};
-							print "\n## WARNING: \"Mature peptide\" annotation must take into account\n".
+							warn "\n## WARNING: \"Mature peptide\" annotation must take into account\n".
 							"### MNV records for CLC SNP Reports.\n";
 						} 
 						
@@ -1516,7 +1635,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position\n".
 										"## An averaging has taken place.\n";
 								}
@@ -1604,7 +1723,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position2\n".
 										"## An averaging has taken place.\n";
 								}
@@ -1708,7 +1827,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position\n".
 										"## An averaging has taken place.\n";
 								}
@@ -1796,7 +1915,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position2\n".
 										"## An averaging has taken place.\n";
 								}
@@ -1881,7 +2000,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position3\n".
 										"## An averaging has taken place.\n";
 								}
@@ -1994,7 +2113,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position\n".
 										"## An averaging has taken place.\n";
 								}
@@ -2079,7 +2198,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position2\n".
 										"## An averaging has taken place.\n";
 								}
@@ -2164,7 +2283,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position3\n".
 										"## An averaging has taken place.\n";
 								}
@@ -2249,7 +2368,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position4\n".
 										"## An averaging has taken place.\n";
 								}
@@ -2367,7 +2486,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position\n".
 										"## An averaging has taken place.\n";
 								}
@@ -2452,7 +2571,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position2\n".
 										"## An averaging has taken place.\n";
 								}
@@ -2537,7 +2656,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position3\n".
 										"## An averaging has taken place.\n";
 								}
@@ -2622,7 +2741,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position4\n".
 										"## An averaging has taken place.\n";
 								}
@@ -2707,7 +2826,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position5\n".
 										"## An averaging has taken place.\n";
 								}
@@ -2731,7 +2850,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# NOTE: Mature peptide is never the same as CDS. If Mature peptide is
 						# present, then it is HA1, and CDS is HA
 						if ($mature_peptide_name) {
-							print "/n## WARNING: \"Mature peptide\" annotation must take into account\n".
+							warn "/n## WARNING: \"Mature peptide\" annotation must take into account\n".
 							"### MNV records for CLC SNP Reports.\n";
 							if (! exists $hh_product_position_info{$mature_peptide_name}->{$position}) { # Product/position HAVEN'T been seen
 								# New segments approach
@@ -2777,7 +2896,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$mature_peptide_name|$position\n".
 										"## An averaging has taken place.\n";
 								}
@@ -2789,7 +2908,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						#print "\n\nWe have a non-coding variant at site $position\n";
 						
 						if($warn_5nt == 0) {
-							print "\n## WARNING: SNPGenie only considers MNV's up to 5nt in length.\n";
+							warn "\n## WARNING: SNPGenie only considers MNV's up to 5nt in length.\n";
 							$warn_5nt = 1;
 						}
 						
@@ -2863,7 +2982,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position\n".
 										"## An averaging has taken place.\n";
 								}
@@ -2915,7 +3034,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position2\n".
 										"## An averaging has taken place.\n";
 								}
@@ -2984,7 +3103,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position\n".
 										"## An averaging has taken place.\n";
 								}
@@ -3035,7 +3154,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position2\n".
 										"## An averaging has taken place.\n";
 								}
@@ -3086,7 +3205,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position3\n".
 										"## An averaging has taken place.\n";
 								}
@@ -3165,7 +3284,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position\n".
 										"## An averaging has taken place.\n";
 								}
@@ -3216,7 +3335,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position2\n".
 										"## An averaging has taken place.\n";
 								}
@@ -3267,7 +3386,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position3\n".
 										"## An averaging has taken place.\n";
 								}
@@ -3319,7 +3438,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position4\n".
 										"## An averaging has taken place.\n";
 								}
@@ -3404,7 +3523,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position\n".
 										"## An averaging has taken place.\n";
 								}
@@ -3455,7 +3574,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position2\n".
 										"## An averaging has taken place.\n";
 								}
@@ -3506,7 +3625,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position3\n".
 										"## An averaging has taken place.\n";
 								}
@@ -3557,7 +3676,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position4\n".
 										"## An averaging has taken place.\n";
 								}
@@ -3608,7 +3727,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 									close ERROR_FILE;
 									chdir('..');
 									
-									print "\n## WARNING: Conflicting coverages reported at ".
+									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position5\n".
 										"## An averaging has taken place.\n";
 								}
@@ -3726,72 +3845,84 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		# WARNING if there is a negative number of sites because of conflicting
 		# coverages; round negative nucleotide counts to 0
 		if($A < 0) {
-			chdir('SNPGenie_Results');
-			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-			# FILE | PRODUCT | SITE | WARNING
-			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-				"imply a negative number of A nucleotides: $A. This most often results from variants ".
-				"which are assigned to the wrong site in the SNP Report. Results at this site ".
-				"are unreliable; A count set to 0; proceed with caution.\n";
-			close ERROR_FILE;
-			chdir('..');
-			
-			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-				"## the variant data imply a negative number of A nucleotides: $A. This most often results from\n".
-				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-				"## are unreliable; A count set to 0; proceed with caution.\n";
 			$hh_nc_position_info{$curr_spot}->{A} = 0;
+			
+			if($A < -0.1) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative number of A nucleotides: $A. This most often results from variants ".
+					"which are assigned to the wrong site in the SNP Report. Results at this site ".
+					"are unreliable; A count set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative number of A nucleotides: $A. This most often results from\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## are unreliable; A count set to 0; proceed with caution.\n";
+			}
 		}
 		if($C < 0) {
-			chdir('SNPGenie_Results');
-			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-			# FILE | PRODUCT | SITE | WARNING
-			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-				"imply a negative number of C nucleotides: $C. This most often results from variants ".
-				"which are assigned to the wrong site in the SNP Report. Results at this site ".
-				"are unreliable; C count set to 0; proceed with caution.\n";
-			close ERROR_FILE;
-			chdir('..');
-			
-			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-				"## the variant data imply a negative number of C nucleotides: $C. This most often results from\n".
-				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-				"## are unreliable; C count set to 0; proceed with caution.\n";
 			$hh_nc_position_info{$curr_spot}->{C} = 0;
+			
+			if($C < -0.1) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative number of C nucleotides: $C. This most often results from variants ".
+					"which are assigned to the wrong site in the SNP Report. Results at this site ".
+					"are unreliable; C count set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative number of C nucleotides: $C. This most often results from\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## are unreliable; C count set to 0; proceed with caution.\n";
+			}
 		}
 		if($G < 0) {
-			chdir('SNPGenie_Results');
-			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-			# FILE | PRODUCT | SITE | WARNING
-			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-				"imply a negative number of G nucleotides: $G. This most often results from variants ".
-				"which are assigned to the wrong site in the SNP Report. Results at this site ".
-				"are unreliable; G count set to 0; proceed with caution.\n";
-			close ERROR_FILE;
-			chdir('..');
-			
-			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-				"## the variant data imply a negative number of G nucleotides: $G. This most often results from\n".
-				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-				"## are unreliable; G count set to 0; proceed with caution.\n";
 			$hh_nc_position_info{$curr_spot}->{G} = 0;
+			
+			if($G < -0.1) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative number of G nucleotides: $G. This most often results from variants ".
+					"which are assigned to the wrong site in the SNP Report. Results at this site ".
+					"are unreliable; G count set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative number of G nucleotides: $G. This most often results from\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## are unreliable; G count set to 0; proceed with caution.\n";
+			}
 		}
 		if($T < 0) {
-			chdir('SNPGenie_Results');
-			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-			# FILE | PRODUCT | SITE | WARNING
-			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-				"imply a negative number of T nucleotides: $T. This most often results from variants ".
-				"which are assigned to the wrong site in the SNP Report. Results at this site ".
-				"are unreliable; T count set to 0; proceed with caution.\n";
-			close ERROR_FILE;
-			chdir('..');
-			
-			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-				"## the variant data imply a negative number of T nucleotides: $T. This most often results from\n".
-				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-				"## are unreliable; T count set to 0; proceed with caution.\n";
 			$hh_nc_position_info{$curr_spot}->{T} = 0;
+			
+			if($T < -0.1) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative number of T nucleotides: $T. This most often results from variants ".
+					"which are assigned to the wrong site in the SNP Report. Results at this site ".
+					"are unreliable; T count set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative number of T nucleotides: $T. This most often results from\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## are unreliable; T count set to 0; proceed with caution.\n";
+			}
 		}
 		
 		# Do the same warning and correction for the proportion data
@@ -3801,80 +3932,92 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		my $T_prop = $hh_nc_position_info{$curr_spot}->{T_prop};
 		
 		if($A_prop < 0) {
-			chdir('SNPGenie_Results');
-			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-			# FILE | PRODUCT | SITE | WARNING
-			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-				"imply a negative proportion of A nucleotides of $A_prop. This may result from rounding error, ".
-				"in which case the number will be very small in magnitude, or variants ".
-				"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
-				"are unreliable. In either case, A prop has set to 0; proceed with caution.\n";
-			close ERROR_FILE;
-			chdir('..');
-			
-			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-				"## the variant data imply a negative proportion of A nucleotides: $A_prop.\n".
-				"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-				"## may be unreliable; A prop set to 0; proceed with caution.\n";
 			$hh_nc_position_info{$curr_spot}->{A_prop} = 0;
+			
+			if($A_prop < -0.001) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative proportion of A nucleotides of $A_prop. This may result from rounding error, ".
+					"in which case the number will be very small in magnitude, or variants ".
+					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+					"are unreliable. In either case, A prop has set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative proportion of A nucleotides: $A_prop.\n".
+					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## may be unreliable; A prop set to 0; proceed with caution.\n";
+			}
 		}
 		if($C_prop < 0) {
-			chdir('SNPGenie_Results');
-			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-			# FILE | PRODUCT | SITE | WARNING
-			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-				"imply a negative proportion of C nucleotides of $C_prop. This may result from rounding error, ".
-				"in which case the number will be very small in magnitude, or variants ".
-				"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
-				"are unreliable. In either case, C prop has set to 0; proceed with caution.\n";
-			close ERROR_FILE;
-			chdir('..');
-			
-			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-				"## the variant data imply a negative proportion of C nucleotides: $C_prop.\n".
-				"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-				"## may be unreliable; C prop set to 0; proceed with caution.\n";
 			$hh_nc_position_info{$curr_spot}->{C_prop} = 0;
+			
+			if($C_prop < -0.001) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative proportion of C nucleotides of $C_prop. This may result from rounding error, ".
+					"in which case the number will be very small in magnitude, or variants ".
+					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+					"are unreliable. In either case, C prop has set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative proportion of C nucleotides: $C_prop.\n".
+					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## may be unreliable; C prop set to 0; proceed with caution.\n";
+			}
 		}
 		if($G_prop < 0) {
-			chdir('SNPGenie_Results');
-			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-			# FILE | PRODUCT | SITE | WARNING
-			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-				"imply a negative proportion of G nucleotides of $G_prop. This may result from rounding error, ".
-				"in which case the number will be very small in magnitude, or variants ".
-				"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
-				"are unreliable. In either case, G prop has set to 0; proceed with caution.\n";
-			close ERROR_FILE;
-			chdir('..');
-			
-			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-				"## the variant data imply a negative proportion of G nucleotides: $G_prop.\n".
-				"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-				"## may be unreliable; G prop set to 0; proceed with caution.\n";
 			$hh_nc_position_info{$curr_spot}->{G_prop} = 0;
+			
+			if($G_prop < -0.001) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative proportion of G nucleotides of $G_prop. This may result from rounding error, ".
+					"in which case the number will be very small in magnitude, or variants ".
+					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+					"are unreliable. In either case, G prop has set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative proportion of G nucleotides: $G_prop.\n".
+					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## may be unreliable; G prop set to 0; proceed with caution.\n";
+			}
 		}
 		if($T_prop < 0) {
-			chdir('SNPGenie_Results');
-			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-			# FILE | PRODUCT | SITE | WARNING
-			print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
-				"imply a negative proportion of T nucleotides of $T_prop. This may result from rounding error, ".
-				"in which case the number will be very small in magnitude, or variants ".
-				"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
-				"are unreliable. In either case, T prop has set to 0; proceed with caution.\n";
-			close ERROR_FILE;
-			chdir('..');
-			
-			print "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
-				"## the variant data imply a negative proportion of T nucleotides: $T_prop.\n".
-				"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-				"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-				"## may be unreliable; T prop set to 0; proceed with caution.\n";
 			$hh_nc_position_info{$curr_spot}->{T_prop} = 0;
+			
+			if($T_prop < -0.001) {
+				chdir('SNPGenie_Results');
+				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				# FILE | PRODUCT | SITE | WARNING
+				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
+					"imply a negative proportion of T nucleotides of $T_prop. This may result from rounding error, ".
+					"in which case the number will be very small in magnitude, or variants ".
+					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+					"are unreliable. In either case, T prop has set to 0; proceed with caution.\n";
+				close ERROR_FILE;
+				chdir('..');
+				
+				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
+					"## the variant data imply a negative proportion of T nucleotides: $T_prop.\n".
+					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## may be unreliable; T prop set to 0; proceed with caution.\n";
+			}
 		}
 	} # finish calculating mean coverage for noncoding sites
 	
@@ -4262,7 +4405,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$G_prop = 0;
 				$T_prop = 1;
 			} else {
-				warn "\n\nThere's an N in the reference sequence!\n\n";
+				#warn "\n\nThere's an N in the reference sequence!\n\n";
 			}
 			
 			
@@ -4468,72 +4611,84 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				# WARNING if there is a negative number of sites because of conflicting
 				# coverages; round negative nucleotide counts to 0
 				if($A < 0) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
-						"imply a negative number of A nucleotides: $A. This most often results from variants ".
-						"which are assigned to the wrong site in the SNP Report. Results at this site ".
-						"are unreliable; A count set to 0; proceed with caution.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
-						"## the variant data imply a negative number of A nucleotides: $A. This most often results from\n".
-						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-						"## are unreliable; A count set to 0; proceed with caution.\n";
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{A} = 0;
+					
+					if($A < -0.1) {
+						chdir('SNPGenie_Results');
+						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						# FILE | PRODUCT | SITE | WARNING
+						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
+							"imply a negative number of A nucleotides: $A. This most often results from variants ".
+							"which are assigned to the wrong site in the SNP Report. Results at this site ".
+							"are unreliable; A count set to 0; proceed with caution.\n";
+						close ERROR_FILE;
+						chdir('..');
+						
+						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
+							"## the variant data imply a negative number of A nucleotides: $A. This most often results from\n".
+							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+							"## are unreliable; A count set to 0; proceed with caution.\n";
+					}
 				}
 				if($C < 0) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
-						"imply a negative number of C nucleotides: $C. This most often results from variants ".
-						"which are assigned to the wrong site in the SNP Report. Results at this site ".
-						"are unreliable; C count set to 0; proceed with caution.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
-						"## the variant data imply a negative number of C nucleotides: $C. This most often results from\n".
-						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-						"## are unreliable; C count set to 0; proceed with caution.\n";
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{C} = 0;
+					
+					if($C < -0.1) {
+						chdir('SNPGenie_Results');
+						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						# FILE | PRODUCT | SITE | WARNING
+						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
+							"imply a negative number of C nucleotides: $C. This most often results from variants ".
+							"which are assigned to the wrong site in the SNP Report. Results at this site ".
+							"are unreliable; C count set to 0; proceed with caution.\n";
+						close ERROR_FILE;
+						chdir('..');
+						
+						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
+							"## the variant data imply a negative number of C nucleotides: $C. This most often results from\n".
+							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+							"## are unreliable; C count set to 0; proceed with caution.\n";
+					}
 				}
 				if($G < 0) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
-						"imply a negative number of G nucleotides: $G. This most often results from variants ".
-						"which are assigned to the wrong site in the SNP Report. Results at this site ".
-						"are unreliable; G count set to 0; proceed with caution.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
-						"## the variant data imply a negative number of G nucleotides: $G. This most often results from\n".
-						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-						"## are unreliable; G count set to 0; proceed with caution.\n";
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{G} = 0;
+					
+					if($G < -0.1) {
+						chdir('SNPGenie_Results');
+						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						# FILE | PRODUCT | SITE | WARNING
+						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
+							"imply a negative number of G nucleotides: $G. This most often results from variants ".
+							"which are assigned to the wrong site in the SNP Report. Results at this site ".
+							"are unreliable; G count set to 0; proceed with caution.\n";
+						close ERROR_FILE;
+						chdir('..');
+						
+						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
+							"## the variant data imply a negative number of G nucleotides: $G. This most often results from\n".
+							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+							"## are unreliable; G count set to 0; proceed with caution.\n";
+					}
 				}
 				if($T < 0) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
-						"imply a negative number of T nucleotides: $T. This most often results from variants ".
-						"which are assigned to the wrong site in the SNP Report. Results at this site ".
-						"are unreliable; T count set to 0; proceed with caution.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
-						"## the variant data imply a negative number of T nucleotides: $T. This most often results from\n".
-						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-						"## are unreliable; T count set to 0; proceed with caution.\n";
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{T} = 0;
+					
+					if($T < -0.1) {
+						chdir('SNPGenie_Results');
+						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						# FILE | PRODUCT | SITE | WARNING
+						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
+							"imply a negative number of T nucleotides: $T. This most often results from variants ".
+							"which are assigned to the wrong site in the SNP Report. Results at this site ".
+							"are unreliable; T count set to 0; proceed with caution.\n";
+						close ERROR_FILE;
+						chdir('..');
+						
+						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
+							"## the variant data imply a negative number of T nucleotides: $T. This most often results from\n".
+							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+							"## are unreliable; T count set to 0; proceed with caution.\n";
+					}
 				}
 				
 				# Do the same warning and correction for the proportion data
@@ -4543,80 +4698,92 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				my $T_prop = $hh_product_position_info{$curr_product}->{$curr_spot}->{T_prop};
 				
 				if($A_prop < 0) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
-						"imply a negative proportion of A nucleotides of $A_prop. This may result from rounding error, ".
-						"in which case the number will be very small in magnitude, or variants ".
-						"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
-						"are unreliable. In either case, A prop has set to 0; proceed with caution.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
-						"## the variant data imply a negative proportion of A nucleotides: $A_prop.\n".
-						"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-						"## may be unreliable; A prop set to 0; proceed with caution.\n";
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{A_prop} = 0;
+					
+					if($A_prop < -0.001) {
+						chdir('SNPGenie_Results');
+						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						# FILE | PRODUCT | SITE | WARNING
+						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
+							"imply a negative proportion of A nucleotides of $A_prop. This may result from rounding error, ".
+							"in which case the number will be very small in magnitude, or variants ".
+							"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+							"are unreliable. In either case, A prop has set to 0; proceed with caution.\n";
+						close ERROR_FILE;
+						chdir('..');
+						
+						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
+							"## the variant data imply a negative proportion of A nucleotides: $A_prop.\n".
+							"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+							"## may be unreliable; A prop set to 0; proceed with caution.\n";
+					}
 				}
 				if($C_prop < 0) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
-						"imply a negative proportion of C nucleotides of $C_prop. This may result from rounding error, ".
-						"in which case the number will be very small in magnitude, or variants ".
-						"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
-						"are unreliable. In either case, C prop has set to 0; proceed with caution.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
-						"## the variant data imply a negative proportion of C nucleotides: $C_prop.\n".
-						"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-						"## may be unreliable; C prop set to 0; proceed with caution.\n";
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{C_prop} = 0;
+					
+					if($C_prop < -0.001) {
+						chdir('SNPGenie_Results');
+						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						# FILE | PRODUCT | SITE | WARNING
+						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
+							"imply a negative proportion of C nucleotides of $C_prop. This may result from rounding error, ".
+							"in which case the number will be very small in magnitude, or variants ".
+							"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+							"are unreliable. In either case, C prop has set to 0; proceed with caution.\n";
+						close ERROR_FILE;
+						chdir('..');
+						
+						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
+							"## the variant data imply a negative proportion of C nucleotides: $C_prop.\n".
+							"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+							"## may be unreliable; C prop set to 0; proceed with caution.\n";
+					}
 				}
 				if($G_prop < 0) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
-						"imply a negative proportion of G nucleotides of $G_prop. This may result from rounding error, ".
-						"in which case the number will be very small in magnitude, or variants ".
-						"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
-						"are unreliable. In either case, G prop has set to 0; proceed with caution.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
-						"## the variant data imply a negative proportion of G nucleotides: $G_prop.\n".
-						"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-						"## may be unreliable; G prop set to 0; proceed with caution.\n";
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{G_prop} = 0;
+					
+					if($G_prop < -0.001) {
+						chdir('SNPGenie_Results');
+						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						# FILE | PRODUCT | SITE | WARNING
+						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
+							"imply a negative proportion of G nucleotides of $G_prop. This may result from rounding error, ".
+							"in which case the number will be very small in magnitude, or variants ".
+							"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+							"are unreliable. In either case, G prop has set to 0; proceed with caution.\n";
+						close ERROR_FILE;
+						chdir('..');
+						
+						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
+							"## the variant data imply a negative proportion of G nucleotides: $G_prop.\n".
+							"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+							"## may be unreliable; G prop set to 0; proceed with caution.\n";
+					}
 				}
 				if($T_prop < 0) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-					# FILE | PRODUCT | SITE | WARNING
-					print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
-						"imply a negative proportion of T nucleotides of $T_prop. This may result from rounding error, ".
-						"in which case the number will be very small in magnitude, or variants ".
-						"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
-						"are unreliable. In either case, T prop has set to 0; proceed with caution.\n";
-					close ERROR_FILE;
-					chdir('..');
-					
-					print "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
-						"## the variant data imply a negative proportion of T nucleotides: $T_prop.\n".
-						"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-						"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-						"## may be unreliable; T prop set to 0; proceed with caution.\n";
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{T_prop} = 0;
+					
+					if($T_prop < -0.001) {
+						chdir('SNPGenie_Results');
+						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						# FILE | PRODUCT | SITE | WARNING
+						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
+							"imply a negative proportion of T nucleotides of $T_prop. This may result from rounding error, ".
+							"in which case the number will be very small in magnitude, or variants ".
+							"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+							"are unreliable. In either case, T prop has set to 0; proceed with caution.\n";
+						close ERROR_FILE;
+						chdir('..');
+						
+						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
+							"## the variant data imply a negative proportion of T nucleotides: $T_prop.\n".
+							"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
+							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+							"## may be unreliable; T prop set to 0; proceed with caution.\n";
+					}
 				}
 			}
 		}
@@ -8151,22 +8318,10 @@ if($slidingwindow) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Print a completion message to screen
 &end_the_program;
 
+exit;
 
 #########################################################################################
 #########################################################################################
@@ -9551,6 +9706,18 @@ sub populate_tempfile_vcf {
 #		}
 	}
 	
+#	# Count the number of samples
+#	my $num_samples = 0;
+#	my @sample_names;
+#	for(my $samp_index = $index_sample; $samp_index < scalar(@header_arr); $samp_index++) {
+#		if($header_arr[$samp_index] =~ /[\w\d\_\.]+/) {
+#			$num_samples++;
+#			push(@sample_names, $&);
+#		}
+#	}
+#	
+#	print "\nThis VCF contains $num_samples samples: @sample_names\n\n";
+	
 	# DIE if one of the headers have not been seen
 	if ($seen_index_chrom == 0) {
 		chdir('SNPGenie_Results');
@@ -9882,15 +10049,16 @@ sub populate_tempfile_vcf {
 							$variant_freq1 = $1;
 							$variant_freq2 = $2;
 							$variant_freq3 = $3;
-						} elsif($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+)/) {
-							$variant_freq1 = $1;
-							$variant_freq2 = $2;
-						} elsif($info_value =~ /AF=([\d\.\e\-]+)/) {
-							$variant_freq1 = $1;
 						} else {
 							die "\n\n## WARNING: $curr_snp_report_name does not conform to ".
 								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
+						# elsif($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+)/) {
+						#	$variant_freq1 = $1;
+						#	$variant_freq2 = $2;
+						#} elsif($info_value =~ /AF=([\d\.\e\-]+)/) {
+						#	$variant_freq1 = $1;
+						#} 
 						
 						# COUNTS and PERCENTS
 						my $ref_freq = (1 - ($variant_freq1 + $variant_freq2 + $variant_freq3));
@@ -9973,15 +10141,16 @@ sub populate_tempfile_vcf {
 							$variant_freq1 = $1;
 							$variant_freq2 = $2;
 							$variant_freq3 = $3;
-						} elsif($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+)/) {
-							$variant_freq1 = $1;
-							$variant_freq2 = $2;
-						} elsif($info_value =~ /AF=([\d\.\e\-]+)/) {
-							$variant_freq1 = $1;
 						} else {
 							die "\n\n## WARNING: $curr_snp_report_name does not conform to ".
 								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
+						#elsif($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+)/) {
+						#	$variant_freq1 = $1;
+						#	$variant_freq2 = $2;
+						#} elsif($info_value =~ /AF=([\d\.\e\-]+)/) {
+						#	$variant_freq1 = $1;
+						#} 
 						
 						# COUNTS and FREQS
 						my $variant_count1 = $variant_freq1 * $coverage;
@@ -10210,8 +10379,8 @@ sub populate_tempfile_vcf {
 						my $coverage = ($AD1+$AD2+$AD3+$AD4);
 						
 						# Warn if the total reads don't equal the coverage
-						if ($DP != $coverage) {
-							print "\n## WARNING: In $curr_snp_report_name site $ref_pos".
+						if ($DP < $coverage) {
+							warn "\n## WARNING: In $curr_snp_report_name site $ref_pos".
 									",\n## the reads total should ".
 									"equal the coverage ($DP) but is instead: $coverage.".
 									"\n## The reads total has been used. Please verify your data.\n";
@@ -10224,7 +10393,7 @@ sub populate_tempfile_vcf {
 								"$coverage. The reads total has been used. Please verify your data.\n";
 							close ERROR_FILE;
 							chdir('..');
-						}
+						} # it seems common that DP > coverage, because some reads get filtered
 								
 						my $variant_freq1 = ($variant_count1 / $coverage);
 						my $variant_freq2 = ($variant_count2 / $coverage);
@@ -10303,7 +10472,7 @@ sub populate_tempfile_vcf {
 						
 						my $variant_freq1;
 						my $variant_freq2;
-						if($info_value =~ /AF=([\d\.]+),([\d\.]+)/) {
+						if($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+)/) {
 							$variant_freq1 = $1;
 							$variant_freq2 = $2;
 						}
@@ -10369,7 +10538,7 @@ sub populate_tempfile_vcf {
 								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
 						
-						if($info_value =~ /AF=([\d\.]+),([\d\.]+)/) { # We've got a VCF of POOL
+						if($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+)/) { # We've got a VCF of POOL
 							$variant_freq1 = $1;
 							$variant_freq2 = $2;
 						} else {
@@ -10500,8 +10669,8 @@ sub populate_tempfile_vcf {
 							}
 						}
 					
-					##SAMVCF VCF FORMAT #4
-					} elsif($vcfformat == 4) {	
+					##SAMVCF VCF FORMAT #4, variant length 2
+					} elsif($vcfformat == 4) {
 					#} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
 						# Die if there wasn't a FORMAT column, necessary for this format
 						if ($seen_index_format == 0) {
@@ -10574,8 +10743,8 @@ sub populate_tempfile_vcf {
 						my $coverage = ($AD1+$AD2+$AD3);
 						
 						# Warn if the total reads don't equal the coverage
-						if ($DP != $coverage) {
-							print "\n## WARNING: In $curr_snp_report_name site $ref_pos".
+						if ($DP < $coverage) {
+							warn "\n## WARNING: In $curr_snp_report_name site $ref_pos".
 									",\n## the reads total should ".
 									"equal the coverage ($DP) but is instead: $coverage.".
 									"\n## The reads total has been used. Please verify your data.\n";
@@ -10588,7 +10757,7 @@ sub populate_tempfile_vcf {
 								"$coverage. The reads total has been used. Please verify your data.\n";
 							close ERROR_FILE;
 							chdir('..');
-						}
+						} # it seems common that DP > coverage, because some reads get filtered
 								
 						my $variant_freq1 = ($variant_count1 / $coverage);
 						my $variant_freq2 = ($variant_count2 / $coverage);
@@ -10632,7 +10801,7 @@ sub populate_tempfile_vcf {
 								print TEMP_FILE "$this_line2";
 							}
 						}
-					}
+					} # variant length 2, VCF FORMAT 4
 				
 				} elsif($variant1) { # THERE IS ONE VARIANT -- no flag needed
 					
@@ -10650,7 +10819,7 @@ sub populate_tempfile_vcf {
 						}
 						
 						my $variant_freq1;
-						if($info_value =~ /AF=([\d\.]+)/) {
+						if($info_value =~ /AF=([\d\.\e\-]+)/) {
 							$variant_freq1 = $1;
 						}
 						
@@ -10698,7 +10867,7 @@ sub populate_tempfile_vcf {
 								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
 						
-						if($info_value =~ /AF=([\d\.]+)/) { # We've got a VCF of POOL
+						if($info_value =~ /AF=([\d\.\e\-]+)/) { # We've got a VCF of POOL
 							$variant_freq1 = $1;
 						} else {
 							die "\n\n## WARNING: $curr_snp_report_name does not conform to ".
@@ -10787,7 +10956,7 @@ sub populate_tempfile_vcf {
 							}
 						}
 						
-					##SAMVCF VCF FORMAT #4
+					##SAMVCF VCF FORMAT #4 variant length 1
 					} elsif($vcfformat == 4) {
 					#} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
 						# Die if there wasn't a FORMAT column, necessary for this format
@@ -10852,8 +11021,8 @@ sub populate_tempfile_vcf {
 						my $coverage = ($AD1+$AD2);
 						
 						# Warn if the total reads don't equal the coverage
-						if ($DP != $coverage) {
-							print "\n## WARNING: In $curr_snp_report_name site $ref_pos".
+						if ($DP < $coverage) {
+							warn "\n## WARNING: In $curr_snp_report_name site $ref_pos".
 									",\n## the reads total should ".
 									"equal the coverage ($DP) but is instead: $coverage.".
 									"\n## The reads total has been used. Please verify your data.\n";
@@ -10866,6 +11035,11 @@ sub populate_tempfile_vcf {
 								"$coverage. The reads total has been used. Please verify your data.\n";
 							close ERROR_FILE;
 							chdir('..');
+						} # it seems common that DP > coverage, because some reads get filtered
+						
+						####################
+						if ($coverage == 0) {
+							warn "\n### WARNING: coverage is 0 in $curr_snp_report_name site $ref_pos.\n\n";
 						}
 								
 						my $variant_freq1 = ($variant_count1 / $coverage);
@@ -10894,11 +11068,11 @@ sub populate_tempfile_vcf {
 								print TEMP_FILE "$this_line1";
 							}
 						}
-					} # End of AD format
-				} # End of 1 variant
-			}
-		}
-	}
+					} # end of AD format
+				} # end of length 1 variant
+			} # equal length variants
+		} # don't begin with # (or ##)
+	} # done with SNP report
 	close ORIGINAL_SNP_REPORT;
 	close TEMP_FILE;
 }
@@ -11030,25 +11204,32 @@ sub get_product_coordinates {
 				$_ =~ s/\n//;
 			}
 			
-			my $product_present = 0;
 			my $this_line = $_;
+			my $product_present = 0;
 			my $this_start;
 			my $this_stop;
 			
+			#print "\nPRODUCT: $product\n";
+			
 			# incomplete segments
-			if ($_ =~/\s*gene_id\s*"$product"\s*;/) {
-				if ($_ =~/CDS\t(\d+)\t(\d+)/) {
+			if ($this_line =~/\s*gene_id\s+"$product\"/) { 
+				if ($this_line =~/CDS\t(\d+)\t(\d+)/) {
 					$product_present = 1;
 					$this_start = $1;
 					$this_stop = $2;
+					
+					#print "\n## $product\: $this_start\-$this_stop\n";
 				}
-			} elsif($_ =~/\s*gene_id\s*"gene\:$product"\s*;/) {
-				if ($_ =~/CDS\t(\d+)\t(\d+)/) {
+			} elsif($this_line =~/\s*gene_id\s+"gene\:$product\"/) {
+				if ($this_line =~/CDS\t(\d+)\t(\d+)/) {
 					$product_present = 1;
 					$this_start = $1;
 					$this_stop = $2;
+					#print "\n## $product\: $this_start\-$this_stop\n";
 				}
 			}
+			
+			# ADD SOME ERROR IF THE GENE NAME WASN'T RECOGNIZED BUT OUGHT TO HAVE BEEN?
 			
 			if($product_present == 1) {
 				my $curr_max_key = max(keys %start_site_h); # this is the number of segments so far
@@ -15766,7 +15947,13 @@ sub end_the_program {
 			"$whole_mins_elapsed mins and $secs_remaining_rounded secs\n";
 	close ERROR_FILE;
 	chdir('..');
-
+	
+	if($vcfformat == 4) { # remove the temp SNP reports
+		foreach(@temp_vcf4_file_names) {
+			unlink $_;
+		}
+	}
+	
 	print "\n################################################################################".
 		"\n##                      SNPGenie completed successfully.                      ##".
 		"\n##             Please find results in the SNPGenie_Results folder.            ##\n".
