@@ -114,9 +114,9 @@ A <a target="_blank" href="https://github.com/samtools/hts-specs">VCF</a> SNP re
 * **FILTER**, the filter status, based on such metrics as minimum frequencies and minimum quality scores;
 * **INFO**, information regarding read depth and/or allele frequencies; 
 * **FORMAT**, sometimes an alternative to the **INFO** column for read depth and/or allele frequency data; 
-* **\<SAMPLE\>**, a column with variable names depending on user specification, and another occasional alternative to the **INFO** column for read depth and/or allele frequency data.
+* **\<SAMPLE\>**, a column(s) with variable names depending on user-named samples, and another occasional alternative to the **INFO** column for read depth and/or allele frequency data.
 
-Because VCF files can exist in a variety of different formats, **SNPGenie now requires** users to specify exactly which VCF format is being used with the **--vcfformat** argument. New formats are being added on a case-by-case basis; users should [contact the author](#contact) to have new formats incorporated. Current formats are:
+Because VCF files can exist in a variety of different formats, **SNPGenie now requires** users to specify exactly which VCF format is being used with the **--vcfformat** argument. New formats are being added on a case-by-case basis; users should [contact the author](#contact) to have new formats incorporated. **FORMAT 4 is the most common, and necessary if your file contains multiple \<SAMPLE\> columns**. All supported formats are:
 
 1. **FORMAT (1): --vcfformat=1**. Multiple individual genomes have been sequenced separately, with SNPs summarized in the VCF file. SNPGenie will require the following in the **INFO** column:
 	* **NS**, the number of samples (*i.e.*, individual sequencing experiments) being summarized (*e.g.*, "NS=30"); 
@@ -130,9 +130,9 @@ Because VCF files can exist in a variety of different formats, **SNPGenie now re
 	* **DP4**, containing the number of reference and variant reads on the forward and reverse strands in the format *DP4=\<num. fw ref reads\>,\<num. rev ref reads\>,\<num. fw var reads\>,\<num. rev var reads\>* (*e.g.*, "DP4=11,9,219,38").
 	* **N.B.**: if multiple single nucleotide variants exist at the same site, this VCF format does not specify the number of reads for each variant. SNPGenie thus approximates by dividing the number of non-reference reads evenly amongst the variant alleles.
 
-4. **FORMAT (4):  --vcfformat=4**. Like formats 2 and 3, variants have been called from a pooled deep-sequencing sample containing genomes from multiple individuals. However, SNPGenie will instead require data in the **FORMAT** and **\<SAMPLE\>** columns, with the data key in the former and the data value in the latter, and with order preserved between the two columns:
-	* For reference allele depth, include the **AD** tag in the **FORMAT** column and the read depth for each allele in the **\<SAMPLE\>** column, with values for variant allele(s) in the same order as listed in the **ALT** column (*e.g.*, "AD" in the FORMAT column and "75,77" in the SAMPLE column);
-	* For coverage (total read depth), include **DP** in the **FORMAT** column and the total read depth in the **\<SAMPLE\>** column (*e.g.*, "DP" in the FORMAT column and "152" in the SAMPLE column).
+4. **FORMAT (4):  --vcfformat=4**. Like formats 2 and 3, variants have been called from a pooled deep-sequencing sample containing genomes from multiple individuals. For this format, SNPGenie will require AD and DP data in the **FORMAT** and **\<SAMPLE\>** columns, where FORMAT is the final column header before the **\<SAMPLE\>** column(s) begins. The order of the data keys in the FORMAT column and the data values in the **\<SAMPLE\>** columns must be preserved:
+	* For reference allele depth, include the **AD** tag in the **FORMAT** column, which refers to the read depth value for each allele in the **\<SAMPLE\>** column(s), with values for variant allele(s) in the same order as listed in the **ALT** column (*e.g.*, "AD" in the FORMAT column and "75,77" in the \<SAMPLE\> column);
+	* For coverage (total read depth), include **DP** in the **FORMAT** column, which refers to the total read depth in the **\<SAMPLE\>** column(s) (*e.g.*, "DP" in the FORMAT column and "152" in the \<SAMPLE\> column).
 
 As usual, you will want to make sure to maintain the VCF file's features, such as TAB(\t)-delimited columns. Unlike some other formats, the allele frequency in VCF is a decimal.
 
@@ -201,36 +201,36 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* *site*. The site coordinate of the nucleotide in the reference sequence.
 	* *codon*. The identity of the relevant codon.
 	* *num\_overlap\_ORF\_nts*. The number of nucleotides in this codon (up to 3) which overlap other ORFs (in addition to the current "product" annotation).
-	* *mean\_nonsyn\_diffs*. The mean number of pairwise nucleotide comparisons in this codon which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of *π*<sub>N</sub>.
-	* *mean\_syn\_diffs*. The mean number of pairwise nucleotide comparisons in this codon which are synonymous (i.e., amino acid-conserving) in the pooled sequence sample. The numerator of *π*<sub>S</sub>.
-	* *nonsyn\_sites*. The mean number of sites in this codon which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *d*<sub>N</sub> versus the reference.
-	* *syn\_sites*. The mean number of sites in this codon which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> mean *d*<sub>S</sub> versus the reference.
-	* *nonsyn\_sites\_ref*. The number of sites in this codon which are nonsynonymous in the reference sequence.
-	* *syn\_sites\_ref*. The number of sites in this codon which are synonymous in the reference sequence.
-	* *mean\_nonsyn\_diffs\_vs\_ref*. This codon's mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *d*<sub>N</sub> versus the reference.
-	* *mean\_syn\_diffs\_vs\_ref*. This codon's mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *d*<sub>S</sub> versus the reference.
-	* *mean\_gdiv*. Mean gene diversity (observed heterozygosity) for this codon's nucleotide sites.
-	* *mean\_nonsyn\_gdiv*. Mean gene diversity for this codon's nonsynonymous polymorphic sites.
-	* *mean\_syn\_gdiv*. Mean gene diversity for this codon's synonymous polymorphic sites.
+	* *N\_diffs*. The mean number of pairwise nucleotide comparisons in this codon which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of *π*<sub>N</sub>.
+	* *S\_diffs*. The mean number of pairwise nucleotide comparisons in this codon which are synonymous (i.e., amino acid-conserving) in the pooled sequence sample. The numerator of *π*<sub>S</sub>.
+	* *N\_sites*. The mean number of sites in this codon which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *d*<sub>N</sub> versus the reference.
+	* *S\_sites*. The mean number of sites in this codon which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> mean *d*<sub>S</sub> versus the reference.
+	* *N\_sites\_ref*. The number of sites in this codon which are nonsynonymous in the reference sequence.
+	* *S\_sites\_ref*. The number of sites in this codon which are synonymous in the reference sequence.
+	* *N\_diffs\_vs\_ref*. This codon's mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *d*<sub>N</sub> versus the reference.
+	* *S\_diffs\_vs\_ref*. This codon's mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *d*<sub>S</sub> versus the reference.
+	* *gdiv*. Mean gene diversity (observed heterozygosity) for this codon's nucleotide sites.
+	* *N\_gdiv*. Mean gene diversity for this codon's nonsynonymous polymorphic sites.
+	* *S\_gdiv*. Mean gene diversity for this codon's synonymous polymorphic sites.
 
 5. **\<SNP report name(s)\>\_results.txt**, containing the information present in the codon\_results.txt file, but separated by SNP report.
 
 6. **product\_results.txt**, providing results for all CDS elements present in the GTF file for the '+' strand. Columns are:
 	* *file*. The SNP report analyzed.
 	* *product*. The CDS annotation to which the site belongs; "noncoding" if none.
-	* *mean\_nonsyn\_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of *π*<sub>N</sub>.
-	* *mean\_syn\_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are synonymous (i.e., amino acid-conserving) in the pooled sequence sample. The numerator of *π*<sub>S</sub>.
-	* *mean\_nonsyn\_diffs\_vs\_ref*. The sum over all codons in this product of the mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *π*<sub>N</sub> versus the reference.
-	* *mean\_syn\_diffs\_vs\_ref*. The sum over all codons in this product of the mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *π*<sub>S</sub> versus the reference.
-	* *nonsyn\_sites*. The mean number of sites in this product which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *d*<sub>N</sub> versus the reference.
-	* *syn\_sites*. The mean number of sites in this product which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> and mean *d*<sub>S</sub> versus the reference.
+	* *N\_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of *π*<sub>N</sub>.
+	* *S\_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are synonymous (i.e., amino acid-conserving) in the pooled sequence sample. The numerator of *π*<sub>S</sub>.
+	* *N\_diffs\_vs\_ref*. The sum over all codons in this product of the mean number of nonsynonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *π*<sub>N</sub> versus the reference.
+	* *S\_diffs\_vs\_ref*. The sum over all codons in this product of the mean number of synonymous nucleotide differences from the reference sequence in the pooled sequence sample. The numerator of mean *π*<sub>S</sub> versus the reference.
+	* *N\_sites*. The mean number of sites in this product which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *d*<sub>N</sub> versus the reference.
+	* *S\_sites*. The mean number of sites in this product which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> and mean *d*<sub>S</sub> versus the reference.
 	* *piN*. (*π*<sub>N</sub>.) The mean number of pairwise nonsynonymous differences per nonsynonymous site in this product.
 	* *piS*. (*π*<sub>S</sub>.) The mean number of pairwise synonymous differences per synonymous site in this product.
 	* *mean\_dN\_vs\_ref*. The mean number of nonsynonymous differences from the reference per nonsynonymous site in this product.
 	* *mean\_dS\_vs\_ref*. The mean number of synonymous differences from the reference per synonymous site in this product.
 	* *mean\_gdiv\_polymorphic*. Mean gene diversity (observed heterozygosity) at all polymorphic nucleotide sites in this product.
-	* *mean\_gdiv\_nonsyn*. Mean gene diversity at all nonsynonymous polymorphic nucleotide sites in this product.
-	* *mean\_gdiv\_syn*. Mean gene diversity at all synonymous polymorphic nucleotide sites in this product.
+	* *mean\_N\_gdiv*. Mean gene diversity at all nonsynonymous polymorphic nucleotide sites in this product.
+	* *mean\_S\_gdiv*. Mean gene diversity at all synonymous polymorphic nucleotide sites in this product.
 
 7. **population\_summary.txt**, providing summary results for each population's sample (SNP report) with respect to the '+' strand. Columns are:
 	* *file*. The SNP report analyzed.
@@ -240,15 +240,15 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 	* *pi*. Mean number of pairwise differences per site in the pooled sample across the whole genome.
 	* *pi\_coding*. Mean number of pairwise differences per site in the pooled sample across all coding sites in the genome.
 	* *pi\_noncoding*. Mean number of pairwise differences per site in the pooled sample across all noncoding sites in the genome.
-	* *nonsyn\_sites*. The mean number of sites in the genome which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *d*<sub>N</sub> versus the reference.
-	* *syn\_sites*. The mean number of sites in the genome which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> and mean *d*<sub>S</sub> versus the reference.
+	* *N\_sites*. The mean number of sites in the genome which are nonsynonymous, given all sequences in the pooled sample. The denominator of *π*<sub>N</sub> and mean *d*<sub>N</sub> versus the reference.
+	* *S\_sites*. The mean number of sites in the genome which are synonymous, given all sequences in the pooled sample. The denominator of *π*<sub>S</sub> and mean *d*<sub>S</sub> versus the reference.
 	* *piN*. The mean number of pairwise nonsynonymous differences per nonsynonymous site across the genome of the pooled sample.
 	* *piS*. The mean number of pairwise synonymous differences per synonymous site across the genome of the pooled sample.
 	* *mean\_dN\_vs\_ref*. The mean number of nonsynonymous differences from the reference per nonsynonymous site across the genome of the pooled sample.
 	* *mean\_dS\_vs\_ref*. The mean number of synonymous differences from the reference per synonymous site across the genome of the pooled sample.
 	* *mean\_gdiv\_polymorphic*. Mean gene diversity (observed heterozygosity) at all polymorphic nucleotide sites in the genome of the pooled sample.
-	* *mean\_gdiv\_nonsyn*. Mean gene diversity at all nonsynonymous polymorphic nucleotide sites in the genome of the pooled sample.
-	* *mean\_gdiv\_syn*. Mean gene diversity at all synonymous polymorphic nucleotide sites in the genome of the pooled sample.
+	* *mean\_N\_gdiv*. Mean gene diversity at all nonsynonymous polymorphic nucleotide sites in the genome of the pooled sample.
+	* *mean\_S\_gdiv*. Mean gene diversity at all synonymous polymorphic nucleotide sites in the genome of the pooled sample.
 	* *mean\_gdiv*. Mean gene diversity at all nucleotide sites in the genome of the pooled sample.
 	* *sites\_polymorphic*. The number of sites in the genome of the pooled sample which are polymorphic.
 	* *mean\_gdiv\_coding\_poly*. Mean gene diversity at all polymorphic nucleotide sites in the genome of the pooled sample which code for a protein product, given the CDS annotations in the GTF file.

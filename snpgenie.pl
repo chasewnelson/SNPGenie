@@ -257,21 +257,21 @@ if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to ch
 	### NUCLEOTIDE DIVERSITY FILE
 	open(OUTFILE_NT_DIV,">>codon\_results\.txt");
 	my $ntd_headers_to_print = "file\tproduct\tsite\tcodon\tnum_overlap_ORF_nts\t".
-			"mean_nonsyn_diffs\tmean_syn_diffs\t";
+			"N_diffs\tS_diffs\t";
 	if($sitebasedmode == 1) {
-		$ntd_headers_to_print .= "mean_nonsyn_diffs_site_based\tmean_syn_diffs_site_based\t";
+		$ntd_headers_to_print .= "N_diffs_site_based\tS_diffs_site_based\t";
 	}
-	$ntd_headers_to_print .= "nonsyn_sites\tsyn_sites\t";
+	$ntd_headers_to_print .= "N_sites\tS_sites\t";
 	if($sitebasedmode == 1) {
-		$ntd_headers_to_print .= "nonsyn_sites_site_based\tsyn_sites_site_based\t";
+		$ntd_headers_to_print .= "N_sites_site_based\tS_sites_site_based\t";
 	}
-	$ntd_headers_to_print .= "nonsyn_sites_ref\tsyn_sites_ref\t";
+	$ntd_headers_to_print .= "N_sites_ref\tS_sites_ref\t";
 	#$ntd_headers_to_print .= "piN\tpiS\t";
 	if($ratiomode == 1) {
 		$ntd_headers_to_print .= "piN/piS\t";
 	}
-	$ntd_headers_to_print .= "mean_nonsyn_diffs_vs_ref\tmean_syn_diffs_vs_ref\t".
-		"mean_gdiv\tmean_nonsyn_gdiv\tmean_syn_gdiv\n";
+	$ntd_headers_to_print .= "N_diffs_vs_ref\tS_diffs_vs_ref\t".
+		"gdiv\tN_gdiv\tS_gdiv\n";
 	#$ntd_headers_to_print .= "mean_dN_vs_ref\tmean_dS_vs_ref\n"; # \tAverage_cov
 	
 	print OUTFILE_NT_DIV "$ntd_headers_to_print";
@@ -291,11 +291,11 @@ if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to ch
 	
 	### PRODUCT SUMMARY FILE
 	open(PRODUCT_SUMMARY,">>product\_results\.txt");
-	print PRODUCT_SUMMARY "file\tproduct\tmean_nonsyn_diffs\tmean_syn_diffs\t".
-		"mean_nonsyn_diffs_vs_ref\tmean_syn_diffs_vs_ref\t".
-		"nonsyn_sites\tsyn_sites\t".
+	print PRODUCT_SUMMARY "file\tproduct\tN_diffs\tS_diffs\t".
+		"N_diffs_vs_ref\tS_diffs_vs_ref\t".
+		"N_sites\tS_sites\t".
 		"piN\tpiS\tmean_dN_vs_ref\tmean_dS_vs_ref\t".
-		"mean_gdiv_polymorphic\tmean_gdiv_nonsyn\tmean_gdiv_syn\n";
+		"mean_gdiv_polymorphic\tmean_N_gdiv\tmean_S_gdiv\n";
 	close PRODUCT_SUMMARY;
 	
 	### POPULATION SUMMARY NONCODING RESULTS
@@ -304,9 +304,9 @@ if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to ch
 		"pi\tpi_coding\tpi_noncoding\t".
 		#"mean_nonsyn_diffs\tmean_syn_diffs\t".
 		#"mean_nonsyn_diffs_vs_ref\tmean_syn_diffs_vs_ref\t".
-		"nonsyn_sites\tsyn_sites\t".
+		"N_sites\tS_sites\t".
 		"piN\tpiS\tmean_dN_vs_ref\tmean_dS_vs_ref\t".
-		"mean_gdiv_polymorphic\tmean_gdiv_nonsyn\tmean_gdiv_syn\t".
+		"mean_gdiv_polymorphic\tmean_N_gdiv\tmean_S_gdiv\t".
 		"mean_gdiv\t".
 		"sites_polymorphic\t".
 		"mean_gdiv_coding_poly\t".
@@ -622,10 +622,12 @@ if($vcfformat == 4) { # generate as many SNP reports as there are sample columns
 		
 		print "\nCreating $new_temp_vcf4_file_name\...\n\n";
 		
-		unlink $new_temp_vcf4_file_name; # just in case
+		if(-f "$new_temp_vcf4_file_name") {
+			warn "\n\n### WARNING: $new_temp_vcf4_file_name already present. Replacing...\n\n";
+			unlink $new_temp_vcf4_file_name; # just in case
+		}
 		
 		open(THIS_NEW_VCF,">>$new_temp_vcf4_file_name");
-		
 		
 		# Find out if there is more than one sample by counting columns after FORMAT
 		#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample1
