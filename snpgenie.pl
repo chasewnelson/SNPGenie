@@ -10047,7 +10047,7 @@ sub populate_tempfile_vcf {
 						my $variant_freq1;
 						my $variant_freq2;
 						my $variant_freq3;
-						if($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+),([\d\.\e\-]+)/) {
+						if($info_value =~ /AF=([\d\.e\-]+),([\d\.e\-]+),([\d\.e\-]+)/) {
 							$variant_freq1 = $1;
 							$variant_freq2 = $2;
 							$variant_freq3 = $3;
@@ -10139,7 +10139,7 @@ sub populate_tempfile_vcf {
 								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
 						
-						if($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+),([\d\.\e\-]+)/) { # We've got a VCF of POOL
+						if($info_value =~ /AF=([\d\.e\-]+),([\d\.e\-]+),([\d\.e\-]+)/) { # We've got a VCF of POOL
 							$variant_freq1 = $1;
 							$variant_freq2 = $2;
 							$variant_freq3 = $3;
@@ -10474,7 +10474,7 @@ sub populate_tempfile_vcf {
 						
 						my $variant_freq1;
 						my $variant_freq2;
-						if($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+)/) {
+						if($info_value =~ /AF=([\d\.e\-]+),([\d\.e\-]+)/) {
 							$variant_freq1 = $1;
 							$variant_freq2 = $2;
 						}
@@ -10540,7 +10540,7 @@ sub populate_tempfile_vcf {
 								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
 						}
 						
-						if($info_value =~ /AF=([\d\.\e\-]+),([\d\.\e\-]+)/) { # We've got a VCF of POOL
+						if($info_value =~ /AF=([\d\.e\-]+),([\d\.e\-]+)/) { # We've got a VCF of POOL
 							$variant_freq1 = $1;
 							$variant_freq2 = $2;
 						} else {
@@ -10821,7 +10821,7 @@ sub populate_tempfile_vcf {
 						}
 						
 						my $variant_freq1;
-						if($info_value =~ /AF=([\d\.\e\-]+)/) {
+						if($info_value =~ /AF=([\d\.e\-]+)/) {
 							$variant_freq1 = $1;
 						}
 						
@@ -10866,14 +10866,14 @@ sub populate_tempfile_vcf {
 							$coverage = $1;
 						} else {
 							die "\n\n## WARNING: $curr_snp_report_name does not conform to ".
-								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
+								"VCF format $vcfformat. SNPGenie terminated 1.\n\n";	
 						}
 						
-						if($info_value =~ /AF=([\d\.\e\-]+)/) { # We've got a VCF of POOL
+						if($info_value =~ /AF=([\d\.e\-]+)/) { # We've got a VCF of POOL
 							$variant_freq1 = $1;
 						} else {
 							die "\n\n## WARNING: $curr_snp_report_name does not conform to ".
-								"VCF format $vcfformat. SNPGenie terminated.\n\n";	
+								"VCF format $vcfformat. SNPGenie terminated 2.\n\n";	
 						}
 						
 						# COUNTS and FREQS
