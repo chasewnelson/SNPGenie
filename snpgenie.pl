@@ -8381,11 +8381,11 @@ sub get_header_names {
 			}
 			
 			if($_ =~/\t\w+\t/) { # it's TAB-delimited
-				@line_arr = split(/\t/,$_);
+				@line_arr = split(/\t/,$_,-1);
 				#print "TAB!!!!!";
 				last;
 			} elsif($_ =~/,\w+,/) { # it's COMMA-delimited
-				@line_arr = split(/,/,$_);
+				@line_arr = split(/,/,$_,-1);
 				#print "COMMA!!!!!";
 				last;
 			}
@@ -8405,11 +8405,11 @@ sub get_header_names {
 			}
 			
 			if($_ =~/\t/) { # it's TAB-delimited
-				@line_arr = split(/\t/,$_);
+				@line_arr = split(/\t/,$_,-1);
 				#print "TAB!!!!!";
 				last;
 			} elsif($_ =~/,/) { # it's COMMA-delimited
-				@line_arr = split(/,/,$_);
+				@line_arr = split(/,/,$_,-1);
 				#print "COMMA!!!!!";
 				last;
 			} else {
@@ -9383,7 +9383,7 @@ sub populate_tempfile_geneious {
 				$_ =~ s/\n//;
 			}
 			
-			my @line_arr = split(/\t/,$_);
+			my @line_arr = split(/\t/,$_,-1);
 			
 			# ONLY DO THE THING IF THE GENEIOUS TYPE IS "Polymorphism"; not CDS.
 			my $type = $line_arr[$index_type];
@@ -9669,7 +9669,7 @@ sub populate_tempfile_vcf {
 	
 	$header_line =~ s/^#//;
 	#print "\nHEADER LINE IS: $header_line\n\n";
-	my @header_arr = split("\t",$header_line);
+	my @header_arr = split("\t",$header_line,-1);
 	#print "\nHEADER ARRAY IS: @header_arr\n\n";
 	
 	# Determine the index of each column
@@ -9912,7 +9912,7 @@ sub populate_tempfile_vcf {
 				$_ =~ s/\n//;
 			}
 			
-			my @line_arr = split(/\t/,$_);
+			my @line_arr = split(/\t/,$_,-1);
 			
 			# ONLY DO THE THING IF THE GENEIOUS TYPE IS "Polymorphism"; not CDS.
 			my $id = $line_arr[$index_id];
@@ -10357,7 +10357,7 @@ sub populate_tempfile_vcf {
 						}
 						
 						# EXTRACT the VALUE of AD
-						my @sample_value_arr = split(/\:/,$sample_value);
+						my @sample_value_arr = split(/\:/,$sample_value,-1);
 						my $AD1;
 						my $AD2;
 						my $AD3;
@@ -10724,7 +10724,7 @@ sub populate_tempfile_vcf {
 						#}
 						
 						# EXTRACT the VALUE of AD
-						my @sample_value_arr = split(/\:/,$sample_value);
+						my @sample_value_arr = split(/\:/,$sample_value,-1);
 						my $AD1;
 						my $AD2;
 						my $AD3;
@@ -11005,7 +11005,7 @@ sub populate_tempfile_vcf {
 						}
 						
 						# EXTRACT the VALUE of AD
-						my @sample_value_arr = split(/\:/,$sample_value);
+						my @sample_value_arr = split(/\:/,$sample_value,-1);
 						my $AD1;
 						my $AD2;
 						
@@ -15697,7 +15697,7 @@ sub sliding_window {
 				$_ =~ s/\n//;
 			}
 			
-			my @line_arr = split(/\t/,$_);
+			my @line_arr = split(/\t/,$_,-1);
 			
 			my $file = $line_arr[$index_file];
 			my $product = $line_arr[$index_product];
