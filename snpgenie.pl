@@ -553,7 +553,7 @@ if(! $multi_fasta_mode) {
 	print "\nIndexing sequence... ";
 	
 	for (my $i = 0; $i < length($seq); $i++) {
-		$seq_by_index_arr[$i] = substr($seq,$i,1); # This is $position - 1
+		$seq_by_index_arr[$i] = substr($seq, $i, 1); # This is $position - 1
 	}
 	print "COMPLETED.\n";
 	
@@ -679,8 +679,9 @@ if($vcfformat == 4) { # generate as many SNP reports as there are sample columns
 }
 
 #########################################################################################
+# WNV pseudogenic code
 # FOR METAPOPULATION STORAGE -- provided all sites are with respect to the same reference
-my %master_frequencies_hh; # $master_frequencies_hh -> {site_num} -> {@A_props_arr}/{@C_props_arr}/{@G_props_arr}/{@T_props_arr}
+#my %master_frequencies_hh; # $master_frequencies_hh -> {site_num} -> {@A_props_arr}/{@C_props_arr}/{@G_props_arr}/{@T_props_arr}
 
 #########################################################################################
 # PROCESS THE SNP REPORTS
@@ -4309,44 +4310,44 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			my $G_prop = ($G / $cov);
 			my $T_prop = ($T / $cov);
 			
-	
-			# METAPOPULATION
-			if($file_nm =~ /B/) { # BIRD
-				#print "\nIt's a bird and we've got A=$A_prop C=$C_prop G=$G_prop T=$T_prop\n";
-				push(@{$master_frequencies_hh{$position}->{BIRD}->{A_props_arr}}, $A_prop);
-				push(@{$master_frequencies_hh{$position}->{BIRD}->{C_props_arr}}, $C_prop);
-				push(@{$master_frequencies_hh{$position}->{BIRD}->{G_props_arr}}, $G_prop);
-				push(@{$master_frequencies_hh{$position}->{BIRD}->{T_props_arr}}, $T_prop);
-				
+			# WNV pseudogenic code
+			# METAPOPULATION BIRD vs. MOSQUITO
+#			if($file_nm =~ /B/) { # BIRD
+#				#print "\nIt's a bird and we've got A=$A_prop C=$C_prop G=$G_prop T=$T_prop\n";
+#				push(@{$master_frequencies_hh{$position}->{BIRD}->{A_props_arr}}, $A_prop);
+#				push(@{$master_frequencies_hh{$position}->{BIRD}->{C_props_arr}}, $C_prop);
+#				push(@{$master_frequencies_hh{$position}->{BIRD}->{G_props_arr}}, $G_prop);
+#				push(@{$master_frequencies_hh{$position}->{BIRD}->{T_props_arr}}, $T_prop);
+#				
 ##				if($position == 4543) {
 ##					print "\nFreq of BIRD A at nonpoly $position is $A_prop\n";
 ##					print "\nFreq of BIRD C at nonpoly $position is $C_prop\n";
 ##					print "\nFreq of BIRD G at nonpoly $position is $G_prop\n";
 ##					print "\nFreq of BIRD T at nonpoly $position is $T_prop\n";
 ##				}
-				
-			} else { # MOSQ
-				push(@{$master_frequencies_hh{$position}->{MOSQ}->{A_props_arr}}, $A_prop);
-				push(@{$master_frequencies_hh{$position}->{MOSQ}->{C_props_arr}}, $C_prop);
-				push(@{$master_frequencies_hh{$position}->{MOSQ}->{G_props_arr}}, $G_prop);
-				push(@{$master_frequencies_hh{$position}->{MOSQ}->{T_props_arr}}, $T_prop);
-				
+#				
+#			} else { # MOSQ
+#				push(@{$master_frequencies_hh{$position}->{MOSQ}->{A_props_arr}}, $A_prop);
+#				push(@{$master_frequencies_hh{$position}->{MOSQ}->{C_props_arr}}, $C_prop);
+#				push(@{$master_frequencies_hh{$position}->{MOSQ}->{G_props_arr}}, $G_prop);
+#				push(@{$master_frequencies_hh{$position}->{MOSQ}->{T_props_arr}}, $T_prop);
+#				
 ##				if($position == 4543) {
 ##					print "\nFreq of MOSQ A at nonpoly $position is $A_prop\n";
 ##					print "\nFreq of MOSQ C at nonpoly $position is $C_prop\n";
 ##					print "\nFreq of MOSQ G at nonpoly $position is $G_prop\n";
 ##					print "\nFreq of MOSQ T at nonpoly $position is $T_prop\n";
 ##				}
-			}
-			
-			# FST purposes
-			if($file_nm =~ /^([\w\.]+?)_/) {
-				my $sample_name = $1;
-				$master_frequencies_hh{$position}->{$sample_name}->{A_freq} = $A_prop;
-				$master_frequencies_hh{$position}->{$sample_name}->{C_freq} = $C_prop;
-				$master_frequencies_hh{$position}->{$sample_name}->{G_freq} = $G_prop;
-				$master_frequencies_hh{$position}->{$sample_name}->{T_freq} = $T_prop;
-			}
+#			}
+#			
+#			# FST purposes
+#			if($file_nm =~ /^([\w\.]+?)_/) {
+#				my $sample_name = $1;
+#				$master_frequencies_hh{$position}->{$sample_name}->{A_freq} = $A_prop;
+#				$master_frequencies_hh{$position}->{$sample_name}->{C_freq} = $C_prop;
+#				$master_frequencies_hh{$position}->{$sample_name}->{G_freq} = $G_prop;
+#				$master_frequencies_hh{$position}->{$sample_name}->{T_freq} = $T_prop;
+#			}
 			
 			
 			my $gdiv = (1 - ($A_prop * $A_prop) - ($C_prop * $C_prop) - 
@@ -4410,45 +4411,45 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				#warn "\n\nThere's an N in the reference sequence!\n\n";
 			}
 			
-			
+			# WNV pseudogenic code
 			# METAPOPULATION
-			if($file_nm =~ /B/) { # BIRD
-				push(@{$master_frequencies_hh{$position}->{BIRD}->{A_props_arr}}, $A_prop);
-				push(@{$master_frequencies_hh{$position}->{BIRD}->{C_props_arr}}, $C_prop);
-				push(@{$master_frequencies_hh{$position}->{BIRD}->{G_props_arr}}, $G_prop);
-				push(@{$master_frequencies_hh{$position}->{BIRD}->{T_props_arr}}, $T_prop);
-				
+#			if($file_nm =~ /B/) { # BIRD
+#				push(@{$master_frequencies_hh{$position}->{BIRD}->{A_props_arr}}, $A_prop);
+#				push(@{$master_frequencies_hh{$position}->{BIRD}->{C_props_arr}}, $C_prop);
+#				push(@{$master_frequencies_hh{$position}->{BIRD}->{G_props_arr}}, $G_prop);
+#				push(@{$master_frequencies_hh{$position}->{BIRD}->{T_props_arr}}, $T_prop);
+#				
 ##				if($position == 4543) {
 ##					print "\nFreq of BIRD A at nonpoly $position is $A_prop\n";
 ##					print "\nFreq of BIRD C at nonpoly $position is $C_prop\n";
 ##					print "\nFreq of BIRD G at nonpoly $position is $G_prop\n";
 ##					print "\nFreq of BIRD T at nonpoly $position is $T_prop\n";
 ##				}
-				
-				
-				
-			} else { # MOSQ
-				push(@{$master_frequencies_hh{$position}->{MOSQ}->{A_props_arr}}, $A_prop);
-				push(@{$master_frequencies_hh{$position}->{MOSQ}->{C_props_arr}}, $C_prop);
-				push(@{$master_frequencies_hh{$position}->{MOSQ}->{G_props_arr}}, $G_prop);
-				push(@{$master_frequencies_hh{$position}->{MOSQ}->{T_props_arr}}, $T_prop);
-				
+#				
+#				
+#				
+#			} else { # MOSQ
+#				push(@{$master_frequencies_hh{$position}->{MOSQ}->{A_props_arr}}, $A_prop);
+#				push(@{$master_frequencies_hh{$position}->{MOSQ}->{C_props_arr}}, $C_prop);
+#				push(@{$master_frequencies_hh{$position}->{MOSQ}->{G_props_arr}}, $G_prop);
+#				push(@{$master_frequencies_hh{$position}->{MOSQ}->{T_props_arr}}, $T_prop);
+#				
 ##				if($position == 4543) {
 ##					print "\nFreq of MOSQ A at nonpoly $position is $A_prop\n";
 ##					print "\nFreq of MOSQ C at nonpoly $position is $C_prop\n";
 ##					print "\nFreq of MOSQ G at nonpoly $position is $G_prop\n";
 ##					print "\nFreq of MOSQ T at nonpoly $position is $T_prop\n";
 ##				}
-			}
-			
-			# FST purposes
-			if($file_nm =~ /^([\w\.]+?)_/) {
-				my $sample_name = $1;
-				$master_frequencies_hh{$position}->{$sample_name}->{A_freq} = $A_prop;
-				$master_frequencies_hh{$position}->{$sample_name}->{C_freq} = $C_prop;
-				$master_frequencies_hh{$position}->{$sample_name}->{G_freq} = $G_prop;
-				$master_frequencies_hh{$position}->{$sample_name}->{T_freq} = $T_prop;
-			}
+#			}
+#			
+#			# FST purposes
+#			if($file_nm =~ /^([\w\.]+?)_/) {
+#				my $sample_name = $1;
+#				$master_frequencies_hh{$position}->{$sample_name}->{A_freq} = $A_prop;
+#				$master_frequencies_hh{$position}->{$sample_name}->{C_freq} = $C_prop;
+#				$master_frequencies_hh{$position}->{$sample_name}->{G_freq} = $G_prop;
+#				$master_frequencies_hh{$position}->{$sample_name}->{T_freq} = $T_prop;
+#			}
 			
 			
 			if($hh_nc_position_info{$position}->{coding} > 0) { # nonpoly-coding site
@@ -11039,12 +11040,14 @@ sub populate_tempfile_vcf {
 							chdir('..');
 						} # it seems common that DP > coverage, because some reads get filtered
 						
+						my $variant_freq1 = 0;
+						
 						####################
 						if ($coverage == 0) {
 							warn "\n### WARNING: coverage is 0 in $curr_snp_report_name site $ref_pos.\n\n";
+						} else {
+							$variant_freq1 = ($variant_count1 / $coverage);
 						}
-								
-						my $variant_freq1 = ($variant_count1 / $coverage);
 						
 						my $variant_pct1 = (100 * $variant_freq1);
 						
