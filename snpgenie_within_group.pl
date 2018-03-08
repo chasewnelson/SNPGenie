@@ -79,43 +79,101 @@ my $local_time1 = localtime;
 # INITIALIZE (OPTIONAL) INPUT VARIABLES
 my $fasta_file_name;
 my $gtf_file_name;
-my $num_bootstraps;
 my $procs_per_node;
+#my $sliding_window_size;
+#my $sliding_window_step;
+my $num_bootstraps;
 
 # Get user input, if given. If a Boolean argument is passed, its value is 1; else undef
 GetOptions( "fasta_file_name=s" => \$fasta_file_name,
 			"gtf_file_name=s" => \$gtf_file_name,
-			"num_bootstraps=i" => \$num_bootstraps,
-			"procs_per_node=i" => \$procs_per_node)
+			"procs_per_node=i" => \$procs_per_node,
+#			"sliding_window_size:i" => \$sliding_window_size, # optional integer parameter
+#			"sliding_window_step:i" => \$sliding_window_step, # optional integer parameter
+			"num_bootstraps=i" => \$num_bootstraps)
 			
 			or die "\n### WARNING: Error in command line arguments. Script terminated.\n\n";
 			# If an argument is called as a flag, its value is 0; if not called, it's null
 
-unless($fasta_file_name =~ /.fa/) { die "\n\n# FASTA file must be provided with .fa or .fasta extension. TERMINATED\n\n"; }
-unless($gtf_file_name =~ /.gtf/) { die "\n\n# GTF file must be provided with .gtf extension. TERMINATED\n\n"; }
-
-# Prepare for bootstrapping
-if(! $num_bootstraps) { # null or 0
-	$num_bootstraps = 0; # default behavior
-} elsif(! $num_bootstraps >= 10) {
-	die "\n### WARNING: The --num_bootstraps option must ≥10\n".
-		"### Script terminated.\n\n";
+unless($fasta_file_name =~ /.fa/) {
+	die "\n### WARNING: The --fasta_file_name option must be a file with a .fa or .fasta extension\n".
+		"### SNPGenie terminated.\n\n";
 }
 
-# Optional BOOTSTRAP argument
-if($num_bootstraps >= 10) {
-	print "\n# Bootstrapping will be performed with $num_bootstraps replicates.\n";
-} else {
-	print "\n# No bootstrapping will occur.\n";
+unless($gtf_file_name =~ /.gtf/) {
+	die "\n### WARNING: The --gtf_file_name option must be a file with a .gtf or .gtf extension\n".
+		"### SNPGenie terminated.\n\n";
 }
 
-# Set up parallelism
-if(! $procs_per_node) { # null or 0
-	$procs_per_node = 1; # default behavior
+if(! $procs_per_node) {
+	if($procs_per_node != 0) {
+		$procs_per_node = 1; # DEFAULT is 1
+	}
+#	$param_file_contents .= "MINIMUM ALLELE FREQUENCY: Default used; all SNPs included\n";
 } elsif($procs_per_node < 1) {
-	die "\n### WARNING: The --procs_per_node option must ≥1\n".
-		"### Script terminated.\n\n";
-}
+	die "\n### WARNING: The --procs_per_node option must be an integer ≥1\n".
+		"### SNPGenie terminated.\n\n";
+} #else {
+#	$param_file_contents .= "MINIMUM ALLELE FREQUENCY: $minfreq\n";
+#}
+
+#if(! $sliding_window_size) {
+#	if($sliding_window_size != 0) { # Called as a flag, but given no value
+#		$sliding_window_size = 10; # default behavior: 10-mer peptide
+#	}
+##	$param_file_contents .= "SLIDING WINDOW LENGTH: Default used; 9 codons\n";
+#} elsif($sliding_window_size < 1) {
+#	die "\n### WARNING: The --sliding_window_size option must be an integer ≥1\n".
+#		"### SNPGenie terminated.\n\n";
+#} #else {
+##	$param_file_contents .= "SLIDING WINDOW LENGTH: None\n";
+##}
+#
+#if(! $sliding_window_step) {
+#	if($sliding_window_step != 0) { # Called as a flag, but given no value
+#		$sliding_window_step = 1; # default behavior: one codon
+#	}
+#} elsif($sliding_window_step < 1) {
+#	die "\n### WARNING: The --sliding_window_step option must be an integer ≥1\n".
+#		"### SNPGenie terminated.\n\n";
+#}
+
+if(! $num_bootstraps) {
+	if($num_bootstraps != 0) { # Called as a flag, but given no value
+		$num_bootstraps = 1000; # default behavior: nonamer peptide
+	}
+#	$param_file_contents .= "SLIDING WINDOW LENGTH: Default used; 9 codons\n";
+} elsif($num_bootstraps < 2) {
+	die "\n### WARNING: The --num_bootstraps option must be an integer ≥2\n".
+		"### SNPGenie terminated.\n\n";
+} #else {
+#	$param_file_contents .= "SLIDING WINDOW LENGTH: None\n";
+#}
+
+
+### Prepare for bootstrapping
+##if(! $num_bootstraps) { # null or 0
+##	$num_bootstraps = 0; # default behavior
+##} elsif(! $num_bootstraps >= 10) {
+##	die "\n### WARNING: The --num_bootstraps option must ≥10\n".
+##		"### Script terminated.\n\n";
+##}
+##
+### Optional BOOTSTRAP argument
+##if($num_bootstraps >= 10) {
+##	print "\n# Bootstrapping will be performed with $num_bootstraps replicates.\n";
+##} else {
+##	print "\n# No bootstrapping will occur.\n";
+##}
+##
+### Set up parallelism
+##if(! $procs_per_node) { # null or 0
+##	$procs_per_node = 1; # default behavior
+##} elsif($procs_per_node < 1) {
+##	die "\n### WARNING: The --procs_per_node option must ≥1\n".
+##		"### Script terminated.\n\n";
+##}
+
 print "\n# Number of parallel processes to be invoked is $procs_per_node\.\n";
 
 print "\n################################################################################".
@@ -285,25 +343,50 @@ foreach(@product_names_arr) { # FOR EACH PRODUCT
 STDOUT->autoflush(1);
 
 open(CODON_FILE,">>within\_group\_codon\_results\.txt");
-print CODON_FILE "product\tcodon\tvariability\tcomparisons\t".
+print CODON_FILE "file\tproduct\tcodon\tvariability\tcomparisons\t".
 	"N_sites\tS_sites\tN_diffs\tS_diffs\n";
 close CODON_FILE;
 
 open(VARIANT_FILE,">>within\_group\_variant\_results\.txt");
-print VARIANT_FILE "product_name\tcodon_num\tconsensus_codon\tnum_alleles\t".
+print VARIANT_FILE "file\tproduct_name\tcodon_num\tconsensus_codon\tnum_alleles\t".
 	"codons\tamino_acids\tvariant_type\tcodon_counts\tcount_total\tcodon_freqs\t".
-	"max_codon_count\tmin_codon_count\n";
+	"max_codon_count\tmin_codon_count\tnum_defined_seqs\n";
 close VARIANT_FILE;
 
 open(OUTFILE,">>within\_group\_product\_results\.txt");
-print OUTFILE "product\tN_sites\tS_sites\tN_diffs\tS_diffs\tdN\tdS\tdN-dS\t".
-	"dN\/dS";
+print OUTFILE "file\tproduct\tN_sites\tS_sites\tN_diffs\tS_diffs\tdN\tdS\t";
+
+if($num_bootstraps > 1) {
+	print OUTFILE "SE_dN\tSE_dS\t";
+}
+
+print OUTFILE "dN_minus_dS\tdN_over_dS";
 	
 if($num_bootstraps > 1) {
-	print OUTFILE "\tSE(dN-dS)\tZ_value\tsignificance\n";
+	print OUTFILE "\tSE_dN_minus_dS\tZ_value\tsignificance\n";
 } else {
 	print OUTFILE "\n";
 }
+
+## Preparing sliding window output
+#open(OUTFILE_WITHIN_SW,">>within\_group\_sw_" . $sliding_window_size . "codons\_results.txt");
+#print OUTFILE_WITHIN_SW "analysis\tfamily\tpartition\tgroup_1\tgroup_2\twindow\tfirst_codon\tlast_codon\t".
+#	"num_defined_codons_g1\tnum_defined_codons_g2\tmean_num_defined_codons\tmin_num_defined_codons\t".
+#	"N_sites\tS_sites\t".
+#	"N_diffs\tS_diffs\t".
+#	"dN\tdS\t".
+#	"dN\-dS\t".
+#	"dN\/dS\tdN\>total_dS";
+#	
+#if($num_bootstraps > 1) {
+#	print OUTFILE_WITHIN_SW "\tSE(dN-dS)\tZ_value\tsignificance\n";
+#} else {
+#	print OUTFILE_WITHIN_SW "\n";
+#}
+#
+#close OUTFILE_WITHIN_SW;
+
+
 
 #print "product\tN_sites\tS_sites\tN_diffs\tS_diffs\n";
 
@@ -382,11 +465,6 @@ foreach my $product_name (keys %products_seqs_hh) { # for each product
 	# We're going one product at a time, so we're within just one product now, 
 	# having all codons stored in @codonum_codon_aa{INDEX IN SEQ}->@ARRAY OF CODONS AT INDEX FOR ALL SEQS
 	# e.g., SIX (6) BIRDS, 15 comparisons
-
-
-
-
-
 
 
 	my $num_seqs = scalar @{$codonum_codon_aa[0]};
@@ -518,7 +596,7 @@ foreach my $product_name (keys %products_seqs_hh) { # for each product
 		
 		my $codon_num = $codon_index+1;
 		
-		print CODON_FILE "$product_name\t" . $codon_num . " \t";
+		print CODON_FILE "$fasta_file_name\t$product_name\t" . $codon_num . " \t";
 			
 		if($polymorphic_codons_arr[$codon_index]) { # if codon is polymorphic, value is 1
 			print CODON_FILE "polymorphic\t";
@@ -755,11 +833,14 @@ foreach my $product_name (keys %products_seqs_hh) { # for each product
 	my $SE_piN_minus_piS = 0;
 	my $product_boot_Z = 'NA';
 	
+	my $SE_dN;
+	my $SE_dS;
+	
 	if($num_bootstraps > 1) {
 		# MAKE BOOTSTRAP FILE
-##		open(BOOT_FILE_PRODUCT,">>$product_name\_bootstrap\_results\.txt");
-##		print BOOT_FILE_PRODUCT "product_name\tbootstrap_num\tsim_product_N_sites_sum\t".
-##				"sim_product_S_sites_sum\tsim_product_N_diffs_sum\tsim_product_S_diffs_sum\n";
+		open(BOOT_FILE_PRODUCT,">>$product_name\_bootstrap\_results\.txt");
+		print BOOT_FILE_PRODUCT "file\tproduct_name\tbootstrap_num\tsim_product_N_sites_sum\t".
+				"sim_product_S_sites_sum\tsim_product_N_diffs_sum\tsim_product_S_diffs_sum\n";
 		
 		#################
 		# BOOTSTRAPPING TO CALCULATE STANDARD ERROR HERE?
@@ -826,10 +907,10 @@ foreach my $product_name (keys %products_seqs_hh) { # for each product
 			} # finished compiling all sampled codons (cols in alignment)
 			
 			# Print product totals for BOOTSTRAP
-			my $out_line_boot = "$product_name\t$bootstrap_num\t$sim_product_N_sites_sum\t".
+			my $out_line_boot = "$fasta_file_name\t$product_name\t$bootstrap_num\t$sim_product_N_sites_sum\t".
 				"$sim_product_S_sites_sum\t$sim_product_N_diffs_sum\t$sim_product_S_diffs_sum\n";
 			
-##			print BOOT_FILE_PRODUCT "$out_line_boot";
+			print BOOT_FILE_PRODUCT "$out_line_boot";
 			
 			#print "$out_line_boot";
 			
@@ -842,7 +923,7 @@ foreach my $product_name (keys %products_seqs_hh) { # for each product
 			
 		} # end last bootstrap
 		
-##		close BOOT_FILE_PRODUCT;
+		close BOOT_FILE_PRODUCT;
 		
 		my $actual_piN = '*'; 
 		my $actual_piS = '*';
@@ -863,6 +944,8 @@ foreach my $product_name (keys %products_seqs_hh) { # for each product
 
 		# CALCULATE BOOTSTRAP STANDARD ERROR HERE! NEI & KUMAR (2000) EQUATIONS
 		my @sim_piN_minus_piS;
+		my @sim_dN;
+		my @sim_dS;
 		
 		for(my $sim_num = 0; $sim_num < scalar(@sim_N_sites_arr); $sim_num++) {
 			my $this_round_piN = '*';
@@ -881,9 +964,13 @@ foreach my $product_name (keys %products_seqs_hh) { # for each product
 			}
 			
 			push(@sim_piN_minus_piS,$this_round_piN_minus_piS);
+			push(@sim_dN, $this_round_piN);
+			push(@sim_dS, $this_round_piS);
 		}
 		
 		$SE_piN_minus_piS = &standard_deviation(@sim_piN_minus_piS);
+		$SE_dN = &standard_deviation(@sim_dN);
+		$SE_dS = &standard_deviation(@sim_dS);
 		
 		if($SE_piN_minus_piS > 0) {
 			$product_boot_Z = $actual_piN_minus_piS / $SE_piN_minus_piS;
@@ -920,9 +1007,15 @@ foreach my $product_name (keys %products_seqs_hh) { # for each product
 		$product_piN_over_piS = '*';
 	}
 	
-	my $out_line = "$product_name\t$product_N_sites_sum\t".
+	my $out_line = "$fasta_file_name\t$product_name\t$product_N_sites_sum\t".
 		"$product_S_sites_sum\t$product_N_diffs_sum\t$product_S_diffs_sum\t".
-		"$product_piN\t$product_piS\t$product_piN_minus_piS\t$product_piN_over_piS";
+		"$product_piN\t$product_piS\t";
+		
+	if($num_bootstraps > 1) {
+		$out_line .= "$SE_dN\t$SE_dS\t";
+	}
+		
+	$out_line .= "$product_piN_minus_piS\t$product_piN_over_piS";
 	
 	my $rounded_dN = sprintf("%.5f",$product_piN);
 	my $rounded_dS = sprintf("%.5f",$product_piS);
@@ -959,6 +1052,7 @@ foreach my $product_name (keys %products_seqs_hh) { # for each product
 		}
 		
 		$out_line .= "\t$SE_piN_minus_piS\t$product_boot_Z\t$significance\n"; #####
+		
 		
 	} else {
 		$out_line .= "\n";
@@ -1070,7 +1164,7 @@ foreach my $product_name (keys %products_seqs_hh) { # for each product
 		my $min_codon_count = $num_seqs_defined[$codon_index] - $max_codon_count;
 #		my $min_codon_count = $num_seqs - $max_codon_count;
 		
-		my $out_variant_line = "$product_name\t$codon_num\t$consensus_codon\t$num_alleles\t".
+		my $out_variant_line = "$fasta_file_name\t$product_name\t$codon_num\t$consensus_codon\t$num_alleles\t".
 			"$codons\t$amino_acids\t$variant_type\t".
 			"$codon_counts\t$count_total\t$codon_freqs\t$max_codon_count\t$min_codon_count\t" . $num_seqs_defined[$codon_index];
 		
