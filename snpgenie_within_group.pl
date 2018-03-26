@@ -976,6 +976,10 @@ foreach my $product_name (keys %products_seqs_hh) { # for each product
 			$product_boot_Z = $actual_piN_minus_piS / $SE_piN_minus_piS;
 		}
 		
+		if($SE_piN_minus_piS == 0) {
+			$SE_piN_minus_piS = 'NA';
+		}
+		
 #		print "\nproduct SE(dN-dS) = $SE_piN_minus_piS\n".
 #			"product Z-value = $product_boot_Z\n\n";
 		
