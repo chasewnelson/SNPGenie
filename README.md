@@ -19,18 +19,20 @@ SNPGenie is a collection of Perl scripts for estimating *d*<sub>N</sub>/*d*<sub>
 ## Contents
 
 * [Introduction](#introduction)
-* [SNPGenie Input](#snpgenie-input)
-	* **Input 1:** [Reference Sequence](#ref-seq)
-	* **Input 2:** [Gene Transfer Format](#gtf)
-	* **Input 3:** [SNP Report(s)](#SNP-Reports)
-		* [CLC](#clc)
-		* [Geneious](#geneious)
-		* [VCF](#vcf)
-	* [A Note on Reverse Complement ('—' Strand) Records](#revcom)
-* [Options](#options)
+* [SNPGenie](#snpgenie)
+	* [SNPGenie Input](#snpgenie-input)
+		* **Input 1:** [Reference Sequence](#ref-seq)
+		* **Input 2:** [Gene Transfer Format](#gtf)
+		* **Input 3:** [SNP Report(s)](#SNP-Reports)
+			* [CLC](#clc)
+			* [Geneious](#geneious)
+			* [VCF](#vcf)
+		* [A Note on Reverse Complement ('—' Strand) Records](#revcom)
+	* [Options](#options)
+	* [Output](#output)
+* [SNPGenie Within-Group](#snpgenie-within)
+* [SNPGenie Between-Group](#snpgenie-between)
 * [How SNPGenie Works](#how-snpgenie-works)
-* [Output](#output)
-* [SNPGenie Within-Group](#snpgenie-input-within)
 * [Additional Scripts](#additional-scripts)
 * [Troubleshooting](#troubleshooting)
 * [Citation](#citation)
@@ -43,7 +45,9 @@ SNPGenie is a collection of Perl scripts for estimating *d*<sub>N</sub>/*d*<sub>
 
 New applications of next-generation sequencing (NGS) use pooled samples containing DNA from multiple individuals to perform population genetic analyses. SNPGenie is a Perl program which analyzes the variant results of a single-nucleotide polymorphism (SNP) caller to calculate evolutionary parameters, such as nucleotide diversity (including its nonsynonymous and synonymous partitions, *π*<sub>N</sub> and *π*<sub>S</sub>) and gene diversity. Variant calls are typically present in annotation tables and assume that the pooled DNA sample is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it might be appropriate to sequence the pooled nucleic acid content of the virus in a blood sample from that host. Comparing *π*<sub>N</sub> and *π*<sub>S</sub> for a gene product, or comparing gene diversity at polymorphic sites of different types, may help to identify genes or gene regions subject to positive (Darwinian) selection, negative (purifying) selection, and random genetic drift. SNPGenie also includes such features as minimum allele frequency trimming (see [Options](#options)), and can be combined with upstream applications such as maximum-likelihood SNP calling techniques (*e.g.*, see Lynch *et al.* 2014). For additional background, see Nelson & Hughes (2015) in the [References](#references).
 
-## <a name="snpgenie-input"></a>SNPGenie Input
+## <a name="snpgenie"></a>SNPGenie
+
+### <a name="snpgenie-input"></a>SNPGenie Input
 
 SNPGenie is a command-line application written in Perl, with no additional dependencies beyond the standard Perl package. Input includes:
 
@@ -57,10 +61,10 @@ SNPGenie is a command-line application written in Perl, with no additional depen
 
 Further details on [input](#ref-seq) and [options](#options) are below.
 
-### <a name="ref-seq"></a>INPUT (1) One Reference Sequence File
+#### <a name="ref-seq"></a>INPUT (1) One Reference Sequence File
 Only one reference sequence must be provided in a single **FASTA** (.fa/.fasta) file (*i.e.*, one file containing one sequence). Thus, all SNP positions in the SNP reports are called relative to the single reference sequence. This **ONE-SEQUENCE MODE** allows the maximum number of estimations to be performed, and is the only mode of SNPGenie that remains supported. Because of this one-sequence stipulation, a script has been provided to split a multi-sequence FASTA file into its constituent sequences for multiple or parallel analyses; see [Additional Scripts](#additional-scripts) below.
 
-### <a name="gtf"></a>INPUT (2) One Gene Transfer Format File
+#### <a name="gtf"></a>INPUT (2) One Gene Transfer Format File
 The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include *non-redundant* records for all CDS elements (*i.e.*, open reading frames, or ORFs) present in your SNP report(s). Thus, if multiple records exist for different transcripts of the same gene, ONLY ONE may be included in your analysis at a time. The GTF should also include any ORFs which do not contain any variants (if they exist). Note that SNPGenie expects every coding element to be labeled as type "CDS", and for its product name to follow a "gene\_id" tag. In the case of CLC and Geneious SNP reports, this name must match that present in the SNP report. If a single coding element has multiple segments (*e.g.*, exons) with different coordinates, simply enter one line for each segment, using the same product name. Finally, for sequences with genes on the reverse '–' strand, SNPGenie must be run twice, once for each strand, with the minus strand's own set of input files (*i.e.*, the '–' strand FASTA, GTF, and SNP report); see [A Note on Reverse Complement ('–' Strand) Records](#revcom) below. For more information about GTF, please visit <a target="_blank" href="http://mblab.wustl.edu/GTF22.html">The Brent Lab</a>. To convert a GFF file to GTF format, see [Additional Scripts](#additional-scripts). A short GTF example follows:
 
 	reference.gbk	CLC	CDS	5694	8369	.	+	0	gene_id "ORF1";
@@ -74,11 +78,11 @@ The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include
 	reference.gbk	CLC	CDS	5247	5549	.	+	0	gene_id "ORF7";
 	reference.gbk	CLC	CDS	4911	5246	.	+	0	gene_id "ORF8";
 
-### <a name="SNP-Reports"></a>INPUT (3) SNP Report File(s)
+#### <a name="SNP-Reports"></a>INPUT (3) SNP Report File(s)
 
 Each SNP report should contain variant calls for a single pooled-sequencing run (*i.e.*, population), or alternatively a summary of multiple individual sequences. Its site numbers should refer to the exact reference sequence present in the FASTA input. SNP reports must be provided in one of the following formats:
 
-#### <a name="clc"></a>CLC Genomics Workbench
+##### <a name="clc"></a>CLC Genomics Workbench
 A <a target="_blank" href="http://www.clcbio.com/products/clc-genomics-workbench/">CLC Genomics Workbench</a> SNP report must include the following columns to be used with SNPGenie, with the unaltered CLC column headers: 
 
 * **Reference Position**, which refers to the start site of the polymorphism within the reference FASTA sequence;
@@ -92,7 +96,7 @@ A <a target="_blank" href="http://www.clcbio.com/products/clc-genomics-workbench
 
 In addition to containing the aforementioned columns, the SNP report should ideally be free of thousand separators (,) in the Reference Position, Count, and Coverage columns (default .txt output). The Frequency must remain a percentage (default .txt output). Finally, the user should verify that the reading frame in the CLC output is correct. SNPGenie will produce various errors to indicate when these conditions are not met, *e.g.*, by checking that all products begin with START and end with STOP codons, and by checking for premature stop codons. Make sure to check the SNPGenie LOG file!
 
-#### <a name="geneious"></a>Geneious
+##### <a name="geneious"></a>Geneious
 A <a target="_blank" href="http://www.geneious.com/">Geneious</a> SNP report must include the following columns to be used with SNPGenie, with the unaltered Geneious column headers:
 
 * **Minimum** and **Maximum**, which refer to the start and end sites of the polymorphism within the reference FASTA sequence (for SNPs, both will be the same site number);
@@ -106,7 +110,7 @@ A <a target="_blank" href="http://www.geneious.com/">Geneious</a> SNP report mus
 
 In addition to containing the aforementioned columns, the SNP report should ideally be free of extraneous characters such as thousand separators (,), but SNPGenie will do its best to adapt if they are present. The Variant Frequency must remain a percentage (default .txt output). Finally, the user should verify that the reading frame in the Geneious output is correct. SNPGenie will produce various errors to indicate when these conditions are not met, *e.g.*, by checking that all products begin with START and end with STOP codons, and checking for premature stop codons. Make sure to check the SNPGenie LOG file!
 
-#### <a name="vcf"></a>Variant Call Format (VCF)
+##### <a name="vcf"></a>Variant Call Format (VCF)
 A <a target="_blank" href="https://github.com/samtools/hts-specs">VCF</a> SNP report must include the following columns, with the unaltered VCF column headers:
 
 * **CHROM**, the name of the reference genome;
@@ -139,10 +143,10 @@ Because VCF files vary widely in format, **SNPGenie now requires** users to spec
 
 As usual, you will want to make sure to maintain the VCF file's features, such as TAB(\t)-delimited columns. Unlike some other formats, the allele frequency in VCF is a decimal.
 
-### <a name="revcom"></a>A Note on Reverse Complement ('–' Strand) Records
+#### <a name="revcom"></a>A Note on Reverse Complement ('–' Strand) Records
 Many large genomes have coding products on both strands. In this case, SNPGenie must be run twice: once for the '+' strand, and once for the '—' strand. This requires FASTA, GTF, and SNP report input for the '–' strand. I provide a script for converting input files to their reverse complement strand in the [Additional Scripts](#additional-scripts) below. Note that, regardless of the original SNP report format, the reverse complement SNP report is in a CLC-like format that SNPGenie will recognize. For both runs, the GTF should include all products for both strands, with products on the strand being analyzed labeled '+' and coordinates defined with respect to the beginning of that strand's FASTA sequence. Also note that a GTF file containing *only* '—' strand records will not run; SNPGenie does calculations only for the products on the current + strand, using the '—' strand products only to determine the number of overlapping reading frames for each variant.
 
-## <a name="options"></a>Options
+### <a name="options"></a>Options
 
 To alter how SNPGenie works, the following options may be used:
 
@@ -160,17 +164,9 @@ For example, if you wanted to turn on the **sepfiles** option, specify a minimum
 
 	snpgenie.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
 
-## <a name="how-snpgenie-works"></a>How SNPGenie Works
 
-SNPGenie calculates gene and nucleotide diversities for sites in a protein-coding sequence. Nucleotide diversity, *π*, is the average number of nucleotide variants per nucleotide site for all pairwise comparisons. To distinguish between nonsynonymous and synonymous differences and sites, it is necessary to consider the codon context of each nucleotide in a sequence. This is why the user must submit the starting and ending sites of the coding regions in the .gtf file, along with the reference FASTA sequence file, so that the numbers of nonsynonymous and synonymous sites for each codon may be accurately estimated by a derivation of the Nei-Gojobori (1986) method. 
 
-SNPGenie first splits the coding sequence into codons, each of which contains 3 sites. The software then determines which are nonsynonymous and synonymous by testing all possible polymorphisms present at each site of every codon in the sequence. Because different nucleotide variants at the same site may lead to both nonsynonymous and synonymous polymorphisms, fractional sites may occur (*e.g.*, only 2 of 3 possible nucleotide substitutions at the third position of AGA cause an amino acid change; thus, that site is considered 2/3 nonsynonymous and 1/3 synonymous). Next, the SNP report is consulted for the presence of variants to produce a revised estimate of the number of sites based on the presence of variant alleles. Variants are incorporated through averaging, weighted by their frequency. Although it is relatively rare, high levels of sequence variation may alter the number of nonsynonymous and synonymous sites in a particular codon. 
-
-SNPGenie calculates the number of nucleotide differences for each codon in each ORF as follows. For every variant in the SNP Report, the number of variants is calculated as the product of the variant’s relative frequency and the coverage at that site. For each variant nucleotide (up to 3 non-reference nucleotides), the number of variants is stored, and their sum is subtracted from the coverage to yield the reference’s absolute frequency. Next, for each pairwise nucleotide comparison at the site, it is determined whether the comparison represents a nonsynonymous or synonymous change. If the former, the product of their absolute frequencies contributes to the number of nonsynonymous pairwise differences; if the latter, it contributes to the number of synonymous pairwise differences. When comparing codons with more than one nucleotide difference, all possible mutational pathways are considered, per the method of Nei & Gojobori (1986). The sum of pairwise differences is divided by the total number of pairwise comparisons at the codon (<sub>*n*</sub>C<sub>2</sub>, where *n* = coverage) to yield the mean number of differences per site of each type. This is calculated separately for nonsynonymous and synonymous comparisons. Calculating nucleotide diversity codon-by-codon enables sliding-window analyses that may help to pinpoint important nucleotide regions subject to varying forms of natural selection.
-
-For further background, see Nelson & Hughes (2015) in the [References](#references).
-
-## <a name="output"></a>Output
+### <a name="output"></a>Output
 
 SNPGenie creates a new folder called SNPGenie_Results within the working directory. This contains the following TAB-delimited results files:
 
@@ -261,7 +257,7 @@ SNPGenie creates a new folder called SNPGenie_Results within the working directo
 
 8. **sliding\_window\_length\<Length\>\_results.txt**, containing codon-based results over a sliding window, with a default length of 9 codons.
 
-## <a name="snpgenie-input-within"></a>SNPGenie Within-Group
+## <a name="snpgenie-within"></a>SNPGenie Within-Group
 
 The script **snpgenie\_within\_group.pl** estimates mean *d*<sub>N</sub> and *d*<sub>S</sub> within a group of aligned sequences in a single FASTA file. Designed for use with sequence data that outsizes what can be handled by other software platforms, this script invokes parallelism for codons and bootstrapping, and as a result has one dependency: the <a target="_blank" href="http://search.cpan.org/~dlux/Parallel-ForkManager-0.7.5/ForkManager.pm">**Parallel::ForkManager**</a> module. If this isn't already installed, please use CPAN to install it before running the script. <a target="_blank" href="http://www.cpan.org/modules/INSTALL.html">Click here</a> to learn how.
 
@@ -297,7 +293,7 @@ The format for using the script is:
 
 A typical workflow thus includes one run of **snpgenie\_within\_group.pl** to obtain codon results, followed by one or more runs of **snpgenie\_within\_group\_processor.pl** to obtain sliding window results with bootstraps.
 
-## <a name="snpgenie-input-between"></a>SNPGenie Between-Group
+## <a name="snpgenie-between"></a>SNPGenie Between-Group
 
 The script **snpgenie\_between\_group.pl** estimates mean *d*<sub>N</sub> and *d*<sub>S</sub> between two or more groups of sequences in FASTA format. Designed for use with sequence data that outsizes what can be handled by other software platforms, this script invokes parallelism for codons and bootstrapping, and as a result has one dependency: the <a target="_blank" href="http://search.cpan.org/~dlux/Parallel-ForkManager-0.7.5/ForkManager.pm">**Parallel::ForkManager**</a> module. If this isn't already installed, please use CPAN to install it before running the script. <a target="_blank" href="http://www.cpan.org/modules/INSTALL.html">Click here</a> to learn how.
 
@@ -328,6 +324,16 @@ The format for using the script is:
 	snpgenie_between_group_processor.pl --between_group_codon_file=between_group_codon_results.txt --sliding_window_size=10 --sliding_window_step=1 --codon_min_taxa_total=5 --codon_min_taxa_group=2 --num_bootstraps=10000 --procs_per_node=8 
 
 A typical workflow thus includes one run of **snpgenie\_between\_group.pl** to obtain codon results, followed by one or more runs of **snpgenie\_between\_group\_processor.pl** to obtain sliding window and/or whole-gene results with various codon criteria, numbers of bootstraps, and sliding window sizes.
+
+## <a name="how-snpgenie-works"></a>How SNPGenie Works
+
+SNPGenie calculates gene and nucleotide diversities for sites in a protein-coding sequence. Nucleotide diversity, *π*, is the average number of nucleotide variants per nucleotide site for all pairwise comparisons. To distinguish between nonsynonymous and synonymous differences and sites, it is necessary to consider the codon context of each nucleotide in a sequence. This is why the user must submit the starting and ending sites of the coding regions in the .gtf file, along with the reference FASTA sequence file, so that the numbers of nonsynonymous and synonymous sites for each codon may be accurately estimated by a derivation of the Nei-Gojobori (1986) method. 
+
+SNPGenie first splits the coding sequence into codons, each of which contains 3 sites. The software then determines which are nonsynonymous and synonymous by testing all possible polymorphisms present at each site of every codon in the sequence. Because different nucleotide variants at the same site may lead to both nonsynonymous and synonymous polymorphisms, fractional sites may occur (*e.g.*, only 2 of 3 possible nucleotide substitutions at the third position of AGA cause an amino acid change; thus, that site is considered 2/3 nonsynonymous and 1/3 synonymous). Next, the SNP report is consulted for the presence of variants to produce a revised estimate of the number of sites based on the presence of variant alleles. Variants are incorporated through averaging, weighted by their frequency. Although it is relatively rare, high levels of sequence variation may alter the number of nonsynonymous and synonymous sites in a particular codon. 
+
+SNPGenie calculates the number of nucleotide differences for each codon in each ORF as follows. For every variant in the SNP Report, the number of variants is calculated as the product of the variant’s relative frequency and the coverage at that site. For each variant nucleotide (up to 3 non-reference nucleotides), the number of variants is stored, and their sum is subtracted from the coverage to yield the reference’s absolute frequency. Next, for each pairwise nucleotide comparison at the site, it is determined whether the comparison represents a nonsynonymous or synonymous change. If the former, the product of their absolute frequencies contributes to the number of nonsynonymous pairwise differences; if the latter, it contributes to the number of synonymous pairwise differences. When comparing codons with more than one nucleotide difference, all possible mutational pathways are considered, per the method of Nei & Gojobori (1986). The sum of pairwise differences is divided by the total number of pairwise comparisons at the codon (<sub>*n*</sub>C<sub>2</sub>, where *n* = coverage) to yield the mean number of differences per site of each type. This is calculated separately for nonsynonymous and synonymous comparisons. Calculating nucleotide diversity codon-by-codon enables sliding-window analyses that may help to pinpoint important nucleotide regions subject to varying forms of natural selection.
+
+For further background, see Nelson & Hughes (2015) in the [References](#references).
 
 ## <a name="additional-scripts"></a>Additional Scripts
 
