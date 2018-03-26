@@ -10,7 +10,7 @@ SNPGenie is a collection of Perl scripts for estimating *d*<sub>N</sub>/*d*<sub>
 
         snpgenie_within_group.pl --fasta_file_name=<aligned_seqs>.fa --gtf_file_name=<CDS_annotations>.gtf --num_bootstraps=10000 --procs_per_node=8
 
-3. **BETWEEN-GROUP ANALYSIS \<*COMING SOON!*\>**. For a traditional between-group analysis comparing different groups of aligned sequences in two or more FASTA files, such as possible using the <a target="_blank" href="http://www.megasoftware.net/">MEGA software</a>, the script **snpgenie\_between\_group.pl** will be released. For example, call:
+3. **BETWEEN-GROUP ANALYSIS**. For a traditional between-group analysis comparing different groups of aligned sequences in two or more FASTA files, such as possible using the <a target="_blank" href="http://www.megasoftware.net/">MEGA software</a>, the script **snpgenie\_between\_group.pl** will be released. For example, call:
 
         snpgenie_between_group.pl
 
