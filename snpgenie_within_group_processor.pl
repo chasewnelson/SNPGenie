@@ -1,10 +1,13 @@
 #! /usr/bin/perl
 
-# CALL FORMAT:
-# snpgenie_sw.pl <sw_size> <sw_step_size> <num_bootstraps> <procs_per_node>
+# PREVIOUSLY snpgenie_sw.pl
 
-# EXAMPLE CALL:
-# snpgenie_sw.pl --codon_file=within_group_codon_results.txt --sliding_window_size=1 --sliding_window_step=1 --num_bootstraps=10000
+#########################################################################################
+# EXAMPLE CALLS:
+#########################################################################################
+# snpgenie_within_group_processor.pl <sw_size> <sw_step_size> <num_bootstraps> <procs_per_node>
+# snpgenie_within_group_processor.pl --codon_file=within_group_codon_results.txt --sliding_window_size=1 --sliding_window_step=1 --num_bootstraps=10000
+#########################################################################################
 
 # PROGRAM: Recalculate sliding window values using a given window and step size for the 
 # provided CODON results file
