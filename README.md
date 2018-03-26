@@ -6,11 +6,11 @@ SNPGenie is a collection of Perl scripts for estimating *d*<sub>N</sub>/*d*<sub>
 
         snpgenie.pl --vcfformat=1 --snpreport=<variants>.vcf --fastafile=<ref_seq>.fa --gtffile=<CDS_annotations>.gtf
 
-2. **WITHIN-GROUP ANALYSIS**. Use **snpgenie\_within\_group.pl**. This will perform a traditional within-group analysis of *d*<sub>N</sub>/*d*<sub>S</sub> among aligned sequences in a FASTA file, such as possible using the <a target="_blank" href="http://www.megasoftware.net/">MEGA software</a>. For example, call:
+2. **WITHIN-GROUP ANALYSIS**. Use **snpgenie\_within\_group.pl**. This will perform a traditional within-group analysis of *d*<sub>N</sub>/*d*<sub>S</sub> among aligned sequences in a FASTA file, such as possible using the <a target="_blank" href="http://www.megasoftware.net/">MEGA software</a>, with automation, sliding windows, parallelism, and overlapping gene features. For example, call:
 
         snpgenie_within_group.pl --fasta_file_name=<aligned_seqs>.fa --gtf_file_name=<CDS_annotations>.gtf --num_bootstraps=10000 --procs_per_node=8
 
-3. **BETWEEN-GROUP ANALYSIS**. For a traditional between-group analysis comparing different groups of aligned sequences in two or more FASTA files, such as possible using the <a target="_blank" href="http://www.megasoftware.net/">MEGA software</a>, the script **snpgenie\_between\_group.pl** will be released. For example, call:
+3. **BETWEEN-GROUP ANALYSIS**. For a traditional between-group analysis comparing different groups of aligned sequences in two or more FASTA files, such as possible using the <a target="_blank" href="http://www.megasoftware.net/">MEGA software</a>, with automation, sliding windows, parallelism, and overlapping gene features. For example, call:
 
         snpgenie_between_group.pl
 
