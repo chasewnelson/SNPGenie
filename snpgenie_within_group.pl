@@ -13,8 +13,7 @@
 #########################################################################################
 # EXAMPLE CALL:
 #########################################################################################
-# snpgenie_within_group.pl <aligned_sequences>.fasta <coding_annotations>.gtf <bootstraps>
-# snpgenie_within_group.pl aligned_sequences.fasta coding_annotations.gtf 1000
+# snpgenie_within_group.pl --fasta_file_name=<aligned_seqs>.fa --gtf_file_name=<CDS_annotations>.gtf --num_bootstraps=10000 --procs_per_node=16
 #########################################################################################
 
 #########################################################################################
