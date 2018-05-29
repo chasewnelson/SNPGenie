@@ -1,6 +1,12 @@
 #! /usr/bin/perl
 
-# PROGRAM: SNPGenie, between-group analysis, for two or more aligned multi-FASTA files
+# PROGRAM: SNPGenie, between-group analysis, for two or more aligned multi-FASTA files.
+
+#########################################################################################
+# EXAMPLE CALL:
+#########################################################################################
+# snpgenie_between_group.pl --gtf_file=<CDS_annotations>.gtf --num_bootstraps=10000 --procs_per_node=16
+#########################################################################################
 
 # Copyright (C) 2018 Chase W. Nelson
 
@@ -37,64 +43,70 @@ use strict;
 use Data::Dumper;
 use List::Util qw(max);
 use Parallel::ForkManager;
+use Getopt::Long;
 
 my $time1 = time;
 my $local_time1 = localtime;
 
-# AUTOMATICALLY DETECTS INPUT
-#my $gtf_file_name = $ARGV[0];
-my $gtf_file_name = glob "*.gtf";
-#unless($gtf_file =~ /.gtf/) { die "\n\n# GTF file must contain .gtf extension. TERMINATED\n\n"; }
-unless($gtf_file_name =~ /.gtf/) { die "\n\n# GTF file must contain .gtf extension. TERMINATED\n\n"; }
+#########################################################################################
+# INITIALIZE (OPTIONAL) INPUT VARIABLES
 
-#my @fasta_files = glob "*.fasta";
+# AUTOMATICALLY DETECT FASTA FILES IN WORKING DIRECTORY
 my @fasta_files = &get_fasta_file_names;
-
-#my $num_parallel_procs = 4;
-
-my $num_parallel_procs = 16;
-
-my $num_cpus = `nprocs`;
-if($num_cpus) {
-	$num_parallel_procs = $num_cpus;
-} else {
-	$num_parallel_procs = 16;
-}
-
-#if($ARGV[1]) {
-#	my $fasta_file_name_1 = $ARGV[1];
-#	my $fasta_file_name_2 = $ARGV[2];
-#	@fasta_files = ($fasta_file_name_1,$fasta_file_name_2);
-#} else {
-#	@fasta_files = glob "*.fa";
-#}
-
 foreach(@fasta_files) {
 	unless($_ =~ /.fa/) { die "\n\n# FASTA files must contain .fa, .fas, or .fasta extension. TERMINATED\n\n"; }
 }
 
-print "\nfasta file 0 is: $fasta_files[0]\n";
+# Initialize others
+my $gtf_file;
+my $procs_per_node;
+my $num_bootstraps;
 
-# Optional BOOTSTRAP argument
-my $num_bootstraps = 0;
-#if($ARGV[3] > 1) {
-#	$num_bootstraps = $ARGV[2];
-#} elsif($ARGV[3] == 1) {
-#	die "\n\n# Number of bootstraps must be greater than 1. TERMINATED\n\n";
-#} else {
-#	print "\n\n# No bootstrapping will occur.\n\n";
-#}
+# Get user input, if given. If a Boolean argument is passed, its value is 1; else undef
+GetOptions( "gtf_file=s" => \$gtf_file,
+			"procs_per_node=i" => \$procs_per_node,
+			"num_bootstraps=i" => \$num_bootstraps)
+			
+			or die "\n### WARNING: Error in command line arguments. Script terminated.\n\n";
+			# If an argument is called as a flag, its value is 0; if not called, it's null
 
-if($ARGV[0] > 1) {
-	$num_bootstraps = $ARGV[0];
-} elsif($ARGV[0] == 1) {
-	die "\n\n# Number of bootstraps must be greater than 1. TERMINATED\n\n";
-} else {
-	print "\n\n# No bootstrapping will occur.\n\n";
+
+unless($gtf_file =~ /.gtf/) {
+	die "\n### WARNING: The --gtf_file option must be a file with a .gtf or .gtf extension\n".
+		"### SNPGenie terminated.\n\n";
 }
 
+if(! $procs_per_node) {
+	if($procs_per_node != 0) {
+		$procs_per_node = 1; # DEFAULT is 1
+	}
+} elsif($procs_per_node < 1) {
+	die "\n### WARNING: The --procs_per_node option must be an integer ≥1\n".
+		"### SNPGenie terminated.\n\n";
+} 
+
+if(! $num_bootstraps) {
+	if($num_bootstraps != 0) { # Called as a flag, but given no value
+		$num_bootstraps = 1000; # default behavior: 1000 bootstraps
+	}
+} else {
+	print "\n### No bootstrapping will occur.\n\n";
+}
+
+print "\n# Number of parallel processes to be invoked is $procs_per_node\.\n";
+
+print "\n################################################################################".
+	"\n##                                                                            ##".
+	"\n##                      Between-Group SNPGenie Initiated!                     ##".
+	"\n##                                                                            ##".
+	"\n################################################################################\n";
+
+
+print "\nSNPGenie initiated at local time $local_time1\n";
+
+#########################################################################################
 # Store product information
-my @product_names_arr = &get_product_names_from_gtf($gtf_file_name);
+my @product_names_arr = &get_product_names_from_gtf($gtf_file);
 @product_names_arr = sort {$a <=> $b} @product_names_arr;
 #print "\nProduct names: @product_names_arr\n";
 
@@ -462,7 +474,7 @@ foreach my $product_name (keys %products_groups_seqs_hh) { # for each product
 			mkdir("$product_name\_polymorphic_codons_arr");
 			chdir("$product_name\_polymorphic_codons_arr");
 #			my $procs_poly = 10; # number to do at once, cores to assign simultaneously, machine-limited. CUVIER has 80
-			my $pm_poly = Parallel::ForkManager->new($num_parallel_procs);
+			my $pm_poly = Parallel::ForkManager->new($procs_per_node);
 
 
 			# DETERMINE WHICH CODONS ARE POLYMORPHIC
@@ -560,7 +572,7 @@ foreach my $product_name (keys %products_groups_seqs_hh) { # for each product
 			# PARALLEL
 			mkdir("$product_name\_codon\_analysis");
 			chdir("$product_name\_codon\_analysis");
-			my $pm_codons = Parallel::ForkManager->new($num_parallel_procs);
+			my $pm_codons = Parallel::ForkManager->new($procs_per_node);
 			# To do this, must write all output to files during the loop
 			# after all codons finished, then we must read through and scoop results
 			# while storing in the appropriate places
@@ -1061,7 +1073,7 @@ foreach my $product_name (keys %products_groups_seqs_hh) { # for each product
 ##BOOTSTRAP##				mkdir("$product_name\_bootstrap_temp_files");
 ##BOOTSTRAP##				chdir("$product_name\_bootstrap_temp_files");
 ##BOOTSTRAP##				#my $procs = 60; # number to do at once, cores to assign simultaneously, machine-limited. CUVIER has 80
-##BOOTSTRAP##				my $pm = Parallel::ForkManager->new($num_parallel_procs);
+##BOOTSTRAP##				my $pm = Parallel::ForkManager->new($procs_per_node);
 ##BOOTSTRAP##				
 ##BOOTSTRAP##				for(my $bootstrap_num = 1; $bootstrap_num <= $num_bootstraps; $bootstrap_num++) {
 ##BOOTSTRAP##					$pm->start and next; # this is IT
@@ -1670,7 +1682,7 @@ sub get_product_names_from_gtf {
 			} elsif($_ =~/gene_id \"([\w\s\.\-\:']+)\"/) {
 				$products_hash{$1} = 1;
 			} else {
-				die "\n\n## WARNING: CDS annotation(s) in $gtf_file_name does not have a ".
+				die "\n\n## WARNING: CDS annotation(s) in $gtf_file does not have a ".
 					"gene_id. SNPGenie terminated.\n\n";
 			}
 		}
@@ -1702,7 +1714,7 @@ sub get_product_coordinates {
 	my %stop_site_h;
 	my %segment_lengths_h;
 	
-	open (CURRINFILE, $gtf_file_name);
+	open (CURRINFILE, $gtf_file);
 	while (<CURRINFILE>) { # go through the GTF file
 		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
 			chomp;

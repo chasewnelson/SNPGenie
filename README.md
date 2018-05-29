@@ -1,10 +1,10 @@
 <img src="https://github.com/chasewnelson/snpgenie/blob/master/logo1a.jpg?raw=true" alt="SNPGenie logo" width="450" height="175" align="middle">
 
-SNPGenie is a collection of Perl scripts for estimating *d*<sub>N</sub>/*d*<sub>S</sub>, *π*<sub>N</sub>/*π*<sub>S</sub>, and other evolutionary parameters from next-generation sequencing (NGS) single-nucleotide polymorphism (SNP) variant data. The possible analyses each use a different script:
+SNPGenie is a collection of Perl scripts for estimating *π*<sub>N</sub>/*π*<sub>S</sub>, *d*<sub>N</sub>/*d*<sub>S</sub>, and other evolutionary parameters from next-generation sequencing (NGS) single-nucleotide polymorphism (SNP) variant data. Each type of analysis uses its own script:
 
-1. **WITHIN-POOL ANALYSIS**. Use **snpgenie.pl**, the original SNPGenie. This will perform an analysis of within-population *π*<sub>N</sub>/*π*<sub>S</sub> from **pooled NGS SNP data**. SNP reports (acceptable in a variety of formats) must each correspond to a single population, with variants called relative to a single reference sequence (one sequence in one FASTA file). For example, call:
+1. **WITHIN-POOL ANALYSIS**. Use **snpgenie.pl**, the original SNPGenie. This will perform an analysis of within-sample *π*<sub>N</sub>/*π*<sub>S</sub> from **pooled NGS SNP data**. SNP reports (acceptable in a variety of formats) must each correspond to a single population, with variants called relative to a single reference sequence (one sequence in one FASTA file). For example, call:
 
-        snpgenie.pl --vcfformat=1 --snpreport=<variants>.vcf --fastafile=<ref_seq>.fa --gtffile=<CDS_annotations>.gtf
+        snpgenie.pl --vcfformat=4 --snpreport=<variants>.vcf --fastafile=<ref_seq>.fa --gtffile=<CDS_annotations>.gtf
 
 2. **WITHIN-GROUP ANALYSIS**. Use **snpgenie\_within\_group.pl**. This will perform a traditional within-group analysis of *d*<sub>N</sub>/*d*<sub>S</sub> among aligned sequences in a FASTA file, such as possible using the <a target="_blank" href="http://www.megasoftware.net/">MEGA software</a>, with automation, sliding windows, parallelism, and overlapping gene features. For example, call:
 
@@ -14,7 +14,7 @@ SNPGenie is a collection of Perl scripts for estimating *d*<sub>N</sub>/*d*<sub>
 
         snpgenie_between_group.pl
 
-**UPDATE FOR VCF INPUT:** given the preponderance of distinct VCF formats in use, it is now **NECESSARY TO SPECIFY THE FORMAT OF THE VCF** SNP report input using the **--vcfformat** argument. See the section on [VCF](#vcf).
+**UPDATE FOR VCF INPUT:** given myriad VCF formats in use, it is **NECESSARY TO SPECIFY THE FORMAT OF THE VCF** SNP report input using the **--vcfformat** argument. Format 4 is the most common. For details, see the section on [VCF](#vcf).
 
 ## Contents
 
@@ -43,29 +43,29 @@ SNPGenie is a collection of Perl scripts for estimating *d*<sub>N</sub>/*d*<sub>
 
 ## <a name="introduction"></a>Introduction
 
-New applications of next-generation sequencing (NGS) use pooled samples containing DNA from multiple individuals to perform population genetic analyses. SNPGenie is a Perl program which analyzes the variant results of a single-nucleotide polymorphism (SNP) caller to calculate evolutionary parameters, such as nucleotide diversity (including its nonsynonymous and synonymous partitions, *π*<sub>N</sub> and *π*<sub>S</sub>) and gene diversity. Variant calls are typically present in annotation tables and assume that the pooled DNA sample is representative of the population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it might be appropriate to sequence the pooled nucleic acid content of the virus in a blood sample from that host. Comparing *π*<sub>N</sub> and *π*<sub>S</sub> for a gene product, or comparing gene diversity at polymorphic sites of different types, may help to identify genes or gene regions subject to positive (Darwinian) selection, negative (purifying) selection, and random genetic drift. SNPGenie also includes such features as minimum allele frequency trimming (see [Options](#options)), and can be combined with upstream applications such as maximum-likelihood SNP calling techniques (*e.g.*, see Lynch *et al.* 2014). For additional background, see Nelson & Hughes (2015) in the [References](#references).
+New applications of next-generation sequencing (NGS) use pooled samples containing DNA from multiple individuals to perform population genetic analyses. SNPGenie is a Perl program which analyzes the variant results of a single-nucleotide polymorphism (SNP) caller to calculate evolutionary parameters, such as nucleotide diversity (including its nonsynonymous and synonymous partitions, *π*<sub>N</sub> and *π*<sub>S</sub>) and gene diversity. Variant calls are typically present in annotation tables and assume that the pooled DNA sample is representative of some population of interest. For example, if one is interested in determining the nucleotide diversity of a virus population within a single host, it might be appropriate to sequence the pooled nucleic acid content of the virus in a blood sample from that host. Comparing *π*<sub>N</sub> and *π*<sub>S</sub> for a gene product, or comparing gene diversity at polymorphic sites of different types, may help to identify genes or gene regions subject to positive (Darwinian) selection, negative (purifying) selection, and random genetic drift. SNPGenie also includes such features as minimum allele frequency trimming (see [Options](#options)), and can be combined with upstream applications such as maximum-likelihood SNP calling techniques (*e.g.*, see Lynch *et al.* 2014). For additional background, see Nelson & Hughes (2015) in the [References](#references).
 
 ## <a name="snpgenie"></a>SNPGenie
 
 ### <a name="snpgenie-input"></a>SNPGenie Input
 
-SNPGenie is a command-line application written in Perl, with no additional dependencies beyond the standard Perl package. Input includes:
+SNPGenie is a command-line application written in Perl, with no additional dependencies beyond the standard Perl package (*i.e.*, simply download and run). Input includes:
 
 1. One [**Reference Sequence**](#ref-seq) file, containing one reference sequence, in **FASTA** format (.fa/.fasta); 
 2. One file with CDS annotations in [**Gene Transfer Format**](#gtf) (.gtf); and 
-3. One or more tab-delimited (.txt) [**SNP Reports**](#SNP-Reports), each corresponding to a single pooled-sequencing run (*i.e.*, population) in CLC, VCF, or Geneious formats, with variants called relative to the reference sequence. If you want another format included, just ask!
+3. One or more tab-delimited (.txt) [**SNP Reports**](#SNP-Reports), each corresponding to a single pooled-sequencing run (*i.e.*, sample from a population) in CLC, VCF, or Geneious formats, with variants called relative to the reference sequence.
 
-**Simply place all necessary input files in the same directory and run the SNPGenie script from the command line** (see [Options](#options) if you wish for more control). To do this, first download the **snpgenie.pl** script and place it in your system’s PATH, or simply in your working directory. Next, place your SNP report(s), FASTA (.fa/.fasta), and GTF (.gtf) files in your working directory. Open the command line prompt (or Terminal) and navigate to the directory containing these files using the "cd" command in your shell. Finally, execute SNPGenie by typing the name of the script and pressing the \<RETURN\> (\<ENTER\>) key:
+**All input files must be placed in the same directory. Then simply run the appropriate SNPGenie script from the command line** (see [Options](#options) if you wish for more control). To do this, first download the **snpgenie.pl** script and place it in your system’s $PATH, or simply in your working directory. Next, place your SNP report(s), FASTA (.fa/.fasta), and GTF (.gtf) files in your working directory. Open the command line prompt (or Terminal) and navigate to the directory containing these files using the "cd" command in your shell. Finally, execute SNPGenie by typing the name of the script and pressing the \<RETURN\> (\<ENTER\>) key:
 
     snpgenie.pl
 
 Further details on [input](#ref-seq) and [options](#options) are below.
 
 #### <a name="ref-seq"></a>INPUT (1) One Reference Sequence File
-Only one reference sequence must be provided in a single **FASTA** (.fa/.fasta) file (*i.e.*, one file containing one sequence). Thus, all SNP positions in the SNP reports are called relative to the single reference sequence. This **ONE-SEQUENCE MODE** allows the maximum number of estimations to be performed, and is the only mode of SNPGenie that remains supported. Because of this one-sequence stipulation, a script has been provided to split a multi-sequence FASTA file into its constituent sequences for multiple or parallel analyses; see [Additional Scripts](#additional-scripts) below.
+Only one reference sequence must be provided in a single **FASTA** (.fa/.fasta) file (*i.e.*, one file containing one sequence). Thus, all SNP positions in the SNP reports are called relative to the single reference sequence. Because of this one-sequence stipulation, a script has been provided to split a multi-sequence FASTA file into its constituent sequences for multiple or parallel analyses; see [Additional Scripts](#additional-scripts) below.
 
 #### <a name="gtf"></a>INPUT (2) One Gene Transfer Format File
-The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include *non-redundant* records for all CDS elements (*i.e.*, open reading frames, or ORFs) present in your SNP report(s). Thus, if multiple records exist for different transcripts of the same gene, ONLY ONE may be included in your analysis at a time. The GTF should also include any ORFs which do not contain any variants (if they exist). Note that SNPGenie expects every coding element to be labeled as type "CDS", and for its product name to follow a "gene\_id" tag. In the case of CLC and Geneious SNP reports, this name must match that present in the SNP report. If a single coding element has multiple segments (*e.g.*, exons) with different coordinates, simply enter one line for each segment, using the same product name. Finally, for sequences with genes on the reverse '–' strand, SNPGenie must be run twice, once for each strand, with the minus strand's own set of input files (*i.e.*, the '–' strand FASTA, GTF, and SNP report); see [A Note on Reverse Complement ('–' Strand) Records](#revcom) below. For more information about GTF, please visit <a target="_blank" href="http://mblab.wustl.edu/GTF22.html">The Brent Lab</a>. To convert a GFF file to GTF format, see [Additional Scripts](#additional-scripts). A short GTF example follows:
+The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include *non-redundant* records for all CDS elements (*i.e.*, open reading frames, or ORFs) present in your SNP report(s). Thus, if multiple records exist with the same gene name (*e.g.*, different transcripts), ONLY ONE may be included in your analysis at a time. The GTF should also include any ORFs which do not contain any variants (if they exist). **SNPGenie expects every coding element to be labeled as type "CDS", and for its product name to follow a "gene\_id" tag.** In the case of CLC and Geneious SNP reports, this name must match that present in the SNP report. If a single coding element has multiple segments (*e.g.*, exons) with different coordinates, simply enter one line for each segment, using the same product name; they will be concatenated. Finally, for sequences with genes on the reverse '–' strand, SNPGenie must be run twice, once for each strand, with the minus strand's own set of input files (*i.e.*, the '–' strand FASTA, GTF, and SNP report); see [A Note on Reverse Complement ('–' Strand) Records](#revcom) below. For more information about GTF, please visit <a target="_blank" href="http://mblab.wustl.edu/GTF22.html">The Brent Lab</a>. To convert a GFF file to GTF format, use a tool like <a target="_blank" href="https://ccb.jhu.edu/software/stringtie/gff.shtml#gffread">gffread</a>. A short GTF example follows:
 
 	reference.gbk	CLC	CDS	5694	8369	.	+	0	gene_id "ORF1";
 	reference.gbk	CLC	CDS	8203	8772	.	+	0	gene_id "ORF2";
@@ -80,7 +80,7 @@ The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include
 
 #### <a name="SNP-Reports"></a>INPUT (3) SNP Report File(s)
 
-Each SNP report should contain variant calls for a single pooled-sequencing run (*i.e.*, population), or alternatively a summary of multiple individual sequences. Its site numbers should refer to the exact reference sequence present in the FASTA input. SNP reports must be provided in one of the following formats:
+Each SNP report should contain variant calls for a single pooled-sequencing run (*i.e.*, sample from population), or alternatively a summary of multiple individual sequences. Its site numbers should refer to the exact reference sequence present in the FASTA input. SNP reports must be provided in one of the following formats:
 
 ##### <a name="clc"></a>CLC Genomics Workbench
 A <a target="_blank" href="http://www.clcbio.com/products/clc-genomics-workbench/">CLC Genomics Workbench</a> SNP report must include the following columns to be used with SNPGenie, with the unaltered CLC column headers: 
@@ -94,7 +94,7 @@ A <a target="_blank" href="http://www.clcbio.com/products/clc-genomics-workbench
 * **Frequency**, the frequency of the variant as a percentage, *e.g.*, “14.6” for 14.60%; and
 * **Overlapping annotations**, containing the name of the protein product or open reading frame (ORF), *e.g.*, “CDS: ORF1”.
 
-In addition to containing the aforementioned columns, the SNP report should ideally be free of thousand separators (,) in the Reference Position, Count, and Coverage columns (default .txt output). The Frequency must remain a percentage (default .txt output). Finally, the user should verify that the reading frame in the CLC output is correct. SNPGenie will produce various errors to indicate when these conditions are not met, *e.g.*, by checking that all products begin with START and end with STOP codons, and by checking for premature stop codons. Make sure to check the SNPGenie LOG file!
+In addition to containing the aforementioned columns, the SNP report should ideally be free of thousand separators (,) in the Reference Position, Count, and Coverage columns (default .txt output). The Frequency must remain a percentage (default .txt output). Finally, the user should verify that the reading frame in the CLC input file is correct.
 
 ##### <a name="geneious"></a>Geneious
 A <a target="_blank" href="http://www.geneious.com/">Geneious</a> SNP report must include the following columns to be used with SNPGenie, with the unaltered Geneious column headers:
@@ -108,7 +108,7 @@ A <a target="_blank" href="http://www.geneious.com/">Geneious</a> SNP report mus
 * **Coverage**, containing the number of sequencing reads that overlap the site; and
 * **Variant Frequency**, which contains the frequency of the nucleotide variant as a percentage, *e.g.*, 14.60%.
 
-In addition to containing the aforementioned columns, the SNP report should ideally be free of extraneous characters such as thousand separators (,), but SNPGenie will do its best to adapt if they are present. The Variant Frequency must remain a percentage (default .txt output). Finally, the user should verify that the reading frame in the Geneious output is correct. SNPGenie will produce various errors to indicate when these conditions are not met, *e.g.*, by checking that all products begin with START and end with STOP codons, and checking for premature stop codons. Make sure to check the SNPGenie LOG file!
+In addition to containing the aforementioned columns, the SNP report should ideally be free of extraneous characters such as thousand separators (,). The Variant Frequency must remain a percentage (default .txt output). Finally, the user should verify that the reading frame in the Geneious output is correct.
 
 ##### <a name="vcf"></a>Variant Call Format (VCF)
 A <a target="_blank" href="https://github.com/samtools/hts-specs">VCF</a> SNP report must include the following columns, with the unaltered VCF column headers:
@@ -121,7 +121,7 @@ A <a target="_blank" href="https://github.com/samtools/hts-specs">VCF</a> SNP re
 * **FILTER**, the filter status, based on such metrics as minimum frequencies and minimum quality scores;
 * **INFO**, information regarding read depth and/or allele frequencies; 
 * **FORMAT**, sometimes an alternative to the **INFO** column for read depth and/or allele frequency data; 
-* **\<SAMPLE\>**, a column(s) with variable names depending on user-named samples, and another occasional alternative to the **INFO** column for read depth and/or allele frequency data.
+* **\<SAMPLE\>**, column(s) named by sample, a common alternative to the **INFO** column for read depth and/or allele frequency data.
 
 Because VCF files vary widely in format, **SNPGenie now requires** users to specify exactly which VCF format is being used with the **--vcfformat** argument. New formats are being added on a case-by-case basis; users should [contact the author](#contact) to have new formats incorporated. **FORMAT 4 is the most common, and necessary if your file contains multiple \<SAMPLE\> columns**. All supported formats are:
 
@@ -129,17 +129,17 @@ Because VCF files vary widely in format, **SNPGenie now requires** users to spec
 	* **NS**, the number of samples (*i.e.*, individual sequencing experiments) being summarized (*e.g.*, "NS=30"); 
 	* **AF**, the fractional (decimal) allele frequency(-ies) for the variant alleles in the same order as listed in the ALT column (*e.g.*, "AF=0.200"). If multiple variants exist at the same site, their frequencies must be separated by commans (*e.g.*, "AF=0.200,0.087").
 
-2. **FORMAT (2):  --vcfformat=2**. Variants have been called from a pooled deep-sequencing sample containing genomes from multiple individuals. SNPGenie will require the following in the **INFO** column:
+2. **FORMAT (2):  --vcfformat=2**. Variants have been called from a pooled deep-sequencing sample (genomes from multiple individuals sequenced together). SNPGenie will require the following in the **INFO** column:
 	* **DP**, the coverage or total read depth (*e.g.*, "DP=4249");
 	* **AF**, the fractional (decimal) allele frequency(-ies) of the variant alleles in the same order as listed in the ALT column (*e.g.*, "AF=0.01247"; "AF=0.01247,0.08956" for two variants; etc.).
 
-3. **FORMAT (3): --vcfformat=3**. Like format 2, variants have been called from a pooled (deep) sequencing sample containing genomes from multiple individuals. However, SNPGenie will instead require the following in the **INFO** column:
+3. **FORMAT (3): --vcfformat=3**. Like format 2, variants have been called from a pooled deep-sequencing sample (genomes from multiple individuals sequenced together). Unlike format 2, SNPGenie will require the following in the **INFO** column:
 	* **DP4**, containing the number of reference and variant reads on the forward and reverse strands in the format *DP4=\<num. fw ref reads\>,\<num. rev ref reads\>,\<num. fw var reads\>,\<num. rev var reads\>* (*e.g.*, "DP4=11,9,219,38").
 	* **N.B.**: if multiple single nucleotide variants exist at the same site, this VCF format does not specify the number of reads for each variant. SNPGenie thus approximates by dividing the number of non-reference reads evenly amongst the variant alleles.
 
-4. **FORMAT (4):  --vcfformat=4**. Like formats 2 and 3, variants have been called from a pooled deep-sequencing sample containing genomes from multiple individuals. For this format, SNPGenie will require AD and DP data in the **FORMAT** and **\<SAMPLE\>** columns, where FORMAT is the final column header before the **\<SAMPLE\>** column(s) begins. The order of the data keys in the FORMAT column and the data values in the **\<SAMPLE\>** columns must be preserved:
-	* For reference allele depth, include the **AD** tag in the **FORMAT** column, which refers to the read depth value for each allele in the **\<SAMPLE\>** column(s), with values for variant allele(s) in the same order as listed in the **ALT** column (*e.g.*, "AD" in the FORMAT column and "75,77" in the \<SAMPLE\> column);
-	* For coverage (total read depth), include **DP** in the **FORMAT** column, which refers to the total read depth in the **\<SAMPLE\>** column(s) (*e.g.*, "DP" in the FORMAT column and "152" in the \<SAMPLE\> column).
+4. **FORMAT (4):  --vcfformat=4**. **THE MOST COMMON FORMAT.** Like formats 2 and 3, variants have been called from a pooled deep-sequencing sample (genomes from multiple individuals sequenced together). For this format, SNPGenie will require AD and DP data in the **FORMAT** and **\<SAMPLE\>** columns, where FORMAT is the final column header before the **\<SAMPLE\>** column(s) begins. The order of the data keys in the FORMAT column and the data values in the **\<SAMPLE\>** columns must match.
+	* For reference allele depth, include the **AD** tag in the **FORMAT** column, which refers to the read depth value for each allele in the **\<SAMPLE\>** column(s). Values for variant allele(s) must be in the same order as listed in the **ALT** column (*e.g.*, "AD" in the FORMAT column and "75,77" in the \<SAMPLE\> column);
+	* For coverage (total read depth), include **DP** in the **FORMAT** column, which refers to the total read depth in the **\<SAMPLE\>** column(s) (*e.g.*, "DP" in the FORMAT column and "152" in the \<SAMPLE\> column). If the value of **DP** does not equal the sum of reads for all variant nucleotides (sum of **AD** values), the latter will be used.
 
 As usual, you will want to make sure to maintain the VCF file's features, such as TAB(\t)-delimited columns. Unlike some other formats, the allele frequency in VCF is a decimal.
 
@@ -157,8 +157,6 @@ To alter how SNPGenie works, the following options may be used:
 * **--gtffile**: the (one) file with CDS annotations. Default: auto-detect the .gtf file.
 * **--sepfiles**: if called, SNPGenie will produce separate results (codon) files for each SNP report (all results are already included together in the codon_results.txt file). Simply include in the command line to activate. Default: not included.
 * **--slidingwindow**: the length of the (optional) sliding (codon) window used in the analysis. Default: 9 codons.
-* **--ratiomode**: if called, SNPGenie will include *π* values for each codon in the codon_results.txt file(s). This is usually inadvisable, as *π* values (especially *π*<sub>S</sub>) are subject to great stochastic error. Simply include in the command line to activate. Default: not included.
-* **--sitebasedmode**: if called, SNPGenie will include *π* values derived using a site-based (reference codon context only) approach in the codon_results.txt file(s). This is usually inadvisable, as *π* values will not reflect the true population of pairwise comparisons. Simply include in the command line to activate. Default: not included.
 
 For example, if you wanted to turn on the **sepfiles** option, specify a minimum allele frequency of 1%, and specify all three input files, you could enter the following:
 
@@ -168,7 +166,7 @@ For example, if you wanted to turn on the **sepfiles** option, specify a minimum
 
 ### <a name="output"></a>Output
 
-SNPGenie creates a new folder called SNPGenie_Results within the working directory. This contains the following TAB-delimited results files:
+SNPGenie creates a new folder called **SNPGenie_Results** within the working directory. This contains the following TAB-delimited results files:
 
 1. **SNPGenie\_parameters.txt**, containing the input parameters and file names.
 
@@ -274,7 +272,7 @@ The format for using this script is:
 
         snpgenie_within_group.pl --fasta_file_name=<aligned_sequences>.fa --gtf_file_name=<coding_annotations>.gtf --num_bootstraps=<bootstraps> --procs_per_node=<procs_per_node>
 
-For example, on a node with access to 64 processors in a high performance computing environment, you might call:
+For example, on a node with access to 64 processors in a high performance computing environment, you might submit a job including the following (**DON'T** run this from the head node!):
 
         snpgenie_within_group.pl --fasta_file_name=my_virus_genomes.fa --gtf_file_name=my_virus_genes.gtf --num_bootstraps=10000 --procs_per_node=64
 
@@ -297,15 +295,11 @@ A typical workflow thus includes one run of **snpgenie\_within\_group.pl** to ob
 
 The script **snpgenie\_between\_group.pl** estimates mean *d*<sub>N</sub> and *d*<sub>S</sub> between two or more groups of sequences in FASTA format. Designed for use with sequence data that outsizes what can be handled by other software platforms, this script invokes parallelism for codons and bootstrapping, and as a result has one dependency: the <a target="_blank" href="http://search.cpan.org/~dlux/Parallel-ForkManager-0.7.5/ForkManager.pm">**Parallel::ForkManager**</a> module. If this isn't already installed, please use CPAN to install it before running the script. <a target="_blank" href="http://www.cpan.org/modules/INSTALL.html">Click here</a> to learn how.
 
-Just run the script in a directory containing the necessary input files:
+Just run the script in a directory containing **two or more FASTA** files, each containing a group of aligned sequences which are also aligned to one another across groups (files), ending with a .fa, .fas, or .fasta extension. In other words, each FASTA file contains one group. For example, one might wish to compare sequences of the West Nile Virus 2K gene derived from three different mosquito vector species. In such a case, all sequences would first be aligned. Next, all sequences from mosquito species 1 would be placed together in one FASTA file; all sequences from mosquito species 2 would be placed in a second FASTA file; and all sequences from mosquito species 3 would be placed in a third FASTA file.
 
-1. **Two or more FASTA files**, each containing a group of aligned sequences which are also aligned to one another across groups (files), ending with a .fa, .fas, or .fasta extension. In other words, each FASTA file contains one group. For example, one might wish to compare sequences of the West Nile Virus 2K gene derived from three different mosquito vector species. In such a case, all sequences would first be aligned. Next, all sequences from mosquito species 1 would be placed together in one FASTA file; all sequences from mosquito species 2 would be placed in a second FASTA file; and all sequences from mosquito species 3 would be placed in a third FASTA file.
+SNPGenie automatically detects all FASTA files in the working directory. The GTF file (see [Gene Transfer Format](#gtf) for details) must be specified at the command line, along with an optional the number of bootstraps and processes:
 
-2. **One GTF file** with CDS data, ending with a .gtf extension. See [Gene Transfer Format](#gtf) above for details on GTF format.
-
-SNPGenie automatically detects both filetype and runs the analysis, and thus requires no arguments:
-
-	snpgenie_between_group.pl 
+	snpgenie_between_group.pl --gtf_file=<CDS_annotations>.gtf --num_bootstraps=<integer> --procs_per_node=<integer>
 
 Results files will be generated in the working directory. For a detailed explanation of the results, consult the [output descriptions](#output) above (however, note that not all files and columns generated for the within-pool analysis will be present for the within-group analysis).
 
@@ -321,7 +315,7 @@ To execute bootstrapping and/or sliding window analyses, run the processing scri
 
 The format for using the script is:
 
-	snpgenie_between_group_processor.pl --between_group_codon_file=between_group_codon_results.txt --sliding_window_size=10 --sliding_window_step=1 --codon_min_taxa_total=5 --codon_min_taxa_group=2 --num_bootstraps=10000 --procs_per_node=8 
+	snpgenie_between_group_processor.pl --between_group_codon_file=<between_group_codon_results>.txt --sliding_window_size=10 --sliding_window_step=1 --codon_min_taxa_total=5 --codon_min_taxa_group=2 --num_bootstraps=10000 --procs_per_node=8 
 
 A typical workflow thus includes one run of **snpgenie\_between\_group.pl** to obtain codon results, followed by one or more runs of **snpgenie\_between\_group\_processor.pl** to obtain sliding window and/or whole-gene results with various codon criteria, numbers of bootstraps, and sliding window sizes.
 
@@ -379,6 +373,7 @@ and this page:
 
 ## <a name="studies-using-snpgenie"></a>Studies Using SNPGenie
 
+* Schmitt K, *et al.* (2017) <a target="_blank" href="https://www.sciencedirect.com/science/article/pii/S0042682217302167">Modeling the evolution of SIV sooty mangabey progenitor virus towards HIV-2 using humanized mice</a>. *Virology* **510**: 175-84.
 * Huang SW, *et al.* (2017) <a target="_blank" href="http://jvi.asm.org/content/91/23/e01062-17.long">A selective bottleneck shapes the evolutionary mutant spectra of enterovirus A71 during viral dissemination in humans</a>. *Journal of Virology* **91**(23): e01062-17.
 * Wilson JR, *et al.* (2017) <a target="_blank" href="https://www.sciencedirect.com/science/article/pii/S0042682217302799?via%3Dihub">An influenza A virus (H7N9) anti-neuraminidase monoclonal antibody protects mice from morbidity without interfering with the development of protective immunity to subsequent homologous challenge</a>. *Virology* **511**: 214-21.
 * Mirabello L, *et al.* (2017) <a target="_blank" href="http://www.cell.com/cell/abstract/S0092-8674(17)30889-9">HPV16 E7 genetic conservation is critical to carcinogenesis</a>. *Cell* **170**(6): 1164-74.

@@ -657,15 +657,15 @@ if($vcfformat == 4) { # generate as many SNP reports as there are sample columns
 				my @this_line_arr = split(/\t/,$_,-1);
 				
 				my $this_new_variant_line;
-				unless($this_line_arr[$sample_index] =~ /\.\:\./) { # ZERO COVERAGE
-					for(my $vcf_i = 0; $vcf_i <= $FORMAT_index; $vcf_i++) {
-						$this_new_variant_line .= "$this_line_arr[$vcf_i]\t";
-					}
-					
-					$this_new_variant_line .= "$this_line_arr[$sample_index]";
-					
-					print THIS_NEW_VCF "$this_new_variant_line\n";
+
+				# This will include records with 0 coverage; eliminate later
+				for(my $vcf_i = 0; $vcf_i <= $FORMAT_index; $vcf_i++) {
+					$this_new_variant_line .= "$this_line_arr[$vcf_i]\t";
 				}
+				
+				$this_new_variant_line .= "$this_line_arr[$sample_index]";
+				
+				print THIS_NEW_VCF "$this_new_variant_line\n";
 			}
 		}
 		close ORIGINAL_SNP_REPORT;
@@ -823,12 +823,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	##SAMVCF: changed to simple Boolean
 	# POPULATE the temporary file based on FORMAT MODE
 	if($clc_mode) {
-		&populate_tempfile_clc($curr_snp_report_name,$temp_snp_report_name);
+		&populate_tempfile_clc($curr_snp_report_name, $temp_snp_report_name);
 		$curr_snp_report_name = $temp_snp_report_name;
 	} elsif($geneious_mode) {
 		# (1) snpgenie_prep_geneious;
 		# (2) snpgnie_geneious_to_clc;
-		&populate_tempfile_geneious($curr_snp_report_name,$temp_snp_report_name);
+		&populate_tempfile_geneious($curr_snp_report_name, $temp_snp_report_name);
 		$curr_snp_report_name = $temp_snp_report_name;
 	} elsif($vcf_mode) {
 		if(! $vcfformat) {
@@ -836,7 +836,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				"## SNPGenie TERMINATED.\n\n";
 		}
 		
-		&populate_tempfile_vcf($curr_snp_report_name,$temp_snp_report_name,$cds_file);
+		&populate_tempfile_vcf($curr_snp_report_name, $temp_snp_report_name, $cds_file);
 		$curr_snp_report_name = $temp_snp_report_name;
 	}
 	
@@ -10048,6 +10048,7 @@ sub populate_tempfile_vcf {
 						my $variant_freq1;
 						my $variant_freq2;
 						my $variant_freq3;
+						
 						if($info_value =~ /AF=([\d\.e\-]+),([\d\.e\-]+),([\d\.e\-]+)/) {
 							$variant_freq1 = $1;
 							$variant_freq2 = $2;
@@ -10252,9 +10253,15 @@ sub populate_tempfile_vcf {
 						my $variant_count2 = ($alt_count / 3);
 						my $variant_count3 = ($alt_count / 3);
 						
-						my $variant_freq1 = ($variant_count1 / $coverage);
-						my $variant_freq2 = ($variant_count2 / $coverage);
-						my $variant_freq3 = ($variant_count3 / $coverage);
+						my $variant_freq1;
+						my $variant_freq2;
+						my $variant_freq3;
+						
+						if($coverage > 0) {
+							$variant_freq1 = ($variant_count1 / $coverage);
+							$variant_freq2 = ($variant_count2 / $coverage);
+							$variant_freq3 = ($variant_count3 / $coverage);
+						}
 						
 						my $variant_pct1 = (100 * $variant_freq1);
 						my $variant_pct2 = (100 * $variant_freq2);
@@ -10397,10 +10404,16 @@ sub populate_tempfile_vcf {
 							close ERROR_FILE;
 							chdir('..');
 						} # it seems common that DP > coverage, because some reads get filtered
-								
-						my $variant_freq1 = ($variant_count1 / $coverage);
-						my $variant_freq2 = ($variant_count2 / $coverage);
-						my $variant_freq3 = ($variant_count3 / $coverage);
+						
+						my $variant_freq1;
+						my $variant_freq2;
+						my $variant_freq3;
+						
+						if($coverage > 0) {
+							 $variant_freq1 = ($variant_count1 / $coverage);
+							 $variant_freq2 = ($variant_count2 / $coverage);
+							 $variant_freq3 = ($variant_count3 / $coverage);
+						}
 						
 						my $variant_pct1 = (100 * $variant_freq1);
 						my $variant_pct2 = (100 * $variant_freq2);
@@ -10629,8 +10642,13 @@ sub populate_tempfile_vcf {
 						my $variant_count1 = ($alt_count / 2);
 						my $variant_count2 = ($alt_count / 2);
 						
-						my $variant_freq1 = ($variant_count1 / $coverage);
-						my $variant_freq2 = ($variant_count2 / $coverage);
+						my $variant_freq1;
+						my $variant_freq2;
+						
+						if($coverage > 0) {
+							$variant_freq1 = ($variant_count1 / $coverage);
+							$variant_freq2 = ($variant_count2 / $coverage);
+						}
 						
 						my $variant_pct1 = (100 * $variant_freq1);
 						my $variant_pct2 = (100 * $variant_freq2);
@@ -10762,8 +10780,13 @@ sub populate_tempfile_vcf {
 							chdir('..');
 						} # it seems common that DP > coverage, because some reads get filtered
 								
-						my $variant_freq1 = ($variant_count1 / $coverage);
-						my $variant_freq2 = ($variant_count2 / $coverage);
+						my $variant_freq1;
+						my $variant_freq2;
+						
+						if($coverage > 0) {
+							$variant_freq1 = ($variant_count1 / $coverage);
+							$variant_freq2 = ($variant_count2 / $coverage);
+						}
 						
 						my $variant_pct1 = (100 * $variant_freq1);
 						my $variant_pct2 = (100 * $variant_freq2);
@@ -10932,7 +10955,11 @@ sub populate_tempfile_vcf {
 						
 						my $variant_count1 = $alt_count;
 						
-						my $variant_freq1 = ($variant_count1 / $coverage);
+						my $variant_freq1;
+						
+						if($coverage > 0) {
+							$variant_freq1 = ($variant_count1 / $coverage);
+						}
 						
 						my $variant_pct1 = (100 * $variant_freq1);
 						
@@ -11044,7 +11071,7 @@ sub populate_tempfile_vcf {
 						
 						####################
 						if ($coverage == 0) {
-							warn "\n### WARNING: coverage is 0 in $curr_snp_report_name site $ref_pos.\n\n";
+							warn "### WARNING: coverage is 0 in $curr_snp_report_name site $ref_pos.\n";
 						} else {
 							$variant_freq1 = ($variant_count1 / $coverage);
 						}

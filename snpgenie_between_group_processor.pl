@@ -174,7 +174,7 @@ if(! $procs_per_node) {
 
 #########################################################################################
 # Input and output file names; same for every family directory
-my $between_group_codon_file = 'between_group_codon_results.txt';
+#my $between_group_codon_file = 'between_group_codon_results.txt';
 my $between_group_sw_output_file = 'between_group_sw_' . $sliding_window_size . 'codons_results.txt';
 my $between_group_product_results_file = 'between_group_product_results_filtered.txt'; # later, looks like between\_group\_results\_filtered\.txt
 
@@ -972,7 +972,7 @@ if(-f "$between_group_codon_file") { # IF THE INPUT FILE EXISTS
 							} # finished compiling all sampled codons (cols in alignment)
 							
 							# Print product totals for BOOTSTRAP
-							my $out_line_boot = "ANALYSIS\tgroup_name_i\t$group_name_j\t$this_product\t$bootstrap_num\t$sim_product_N_sites_sum\t".
+							my $out_line_boot = "ANALYSIS\t$group_name_i\t$group_name_j\t$this_product\t$bootstrap_num\t$sim_product_N_sites_sum\t".
 								"$sim_product_S_sites_sum\t$sim_product_N_diffs_sum\t$sim_product_S_diffs_sum\n";
 							
 							print BOOT_FILE_PRODUCT "$out_line_boot";
@@ -1223,8 +1223,9 @@ if(-f "$between_group_codon_file") { # IF THE INPUT FILE EXISTS
 		
 	} # done looping analyses in the file
 	
-} # finish case in which between_group_codon_results.txt exists
-	
+} else {# finish case in which between_group_codon_results.txt exists
+	die "\n###	The input file doesn't exist.\n\n";
+}
 
 print "\n\n";
 

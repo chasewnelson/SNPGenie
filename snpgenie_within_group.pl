@@ -4,12 +4,6 @@
 # piN/piS, and gene diversity for a single aligned FASTA file, with accompanying CDS 
 # annotations in a GTF file.
 
-# Takes in 
-#	[0] one FASTA file containing MULTIPLE ALIGNED SEQUENCES; and
-#	[1] one CDS file
-# as arguments. Uses all linkage information, etc., to do nucleotide diversity analysis.
-#	[2] is optional; a NUMBER OF BOOTSTRAPS
-
 #########################################################################################
 # EXAMPLE CALL:
 #########################################################################################
