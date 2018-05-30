@@ -3801,7 +3801,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	# We are REPLACING the coverage currently stored with this.
 	# FIRST, extract the positions that have already been stored, i.e., were present
 	# in the SNP report
-	my @stored_positions_sorted = sort {$a <=> $b} (keys %hh_nc_position_info); # only the polymorphic
+	my @stored_positions_sorted = sort {$a <=> $b} (keys %hh_nc_position_info); # only the polymorphic, or diff from reference
 	#print "\n\nSo far, we have stored: @stored_positions_sorted\n";
 	foreach my $curr_spot (@stored_positions_sorted) {
 		my $cov_sum = 0;
@@ -4157,11 +4157,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		#print "New A: $A\nNew C: $C\nNew G: $G\nNew T: $T\n".
 		#	"New A prop: $A_prop\nNew C prop: $C_prop\nNew G prop: $G_prop\nNew T prop: $T_prop\n";
 		
+		#CURRENTISSUE
 		# DELETE the hash element if there are no longer any variants here.
-		if(($A + $C + $G == 0) || ($A + $C + $T == 0) || ($A + $G + $T == 0) ||
-			($C + $G + $T == 0)) {
-			delete($hh_nc_position_info{$curr_spot});
-		}
+#		if(($A + $C + $G == 0) || ($A + $C + $T == 0) || ($A + $G + $T == 0) ||
+#			($C + $G + $T == 0)) {
+#			delete($hh_nc_position_info{$curr_spot});
+#		}
 		
 		#print "New nt sum: $nt_sum\nNew cov: $updated_cov\nNew prop sum: $nt_prop_sum\n\n";
 		
@@ -4277,7 +4278,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		if($hh_nc_position_info{$position}->{polymorphic} == 1) { # poly
 			# We have already DELETED records that contained no real variants, e.g.,
 			# all variant had frequencies 0% or were below the MAF
-			#print "\nSite $position is polymorphic\n"; # DOUBLE-CHECK: PASS
+			#print "\nSite $position is polymorphic or differs from reference\n"; # DOUBLE-CHECK: PASS
 			
 			my $A = $hh_nc_position_info{$position}->{A};
 			my $C = $hh_nc_position_info{$position}->{C};
@@ -4459,7 +4460,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$num_nc_sites ++;
 				#print "NC\n";
 			}	
-		}
+		} # end non-poly site matching reference
 	}
 
 	# Calculate total pi values
@@ -4566,6 +4567,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		# CALCULATE AVERAGE COVERAGE at each of the sites in this product.
 		# We are REPLACING the coverage currently stored with this.
 		my @stored_positions_sorted = sort {$a <=> $b} (keys %{$hh_product_position_info{$curr_product}});
+		#print "stored_positions_sorted: @stored_positions_sorted\n";
+		
 		foreach my $curr_spot (@stored_positions_sorted) {
 			#print "\ncurr_product is: $curr_product; curr_spot is: $curr_spot\n";
 			if (!($curr_spot =~ 'start') && !($curr_spot =~ 'stop') && 
@@ -4699,6 +4702,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				my $C_prop = $hh_product_position_info{$curr_product}->{$curr_spot}->{C_prop};
 				my $G_prop = $hh_product_position_info{$curr_product}->{$curr_spot}->{G_prop};
 				my $T_prop = $hh_product_position_info{$curr_product}->{$curr_spot}->{T_prop};
+				
+				#print "A=$A A_prop=$A_prop C=$C C_prop=$C_prop G=$G G_prop=$G_prop T=$T T_prop=$T_prop\n";
 				
 				if($A_prop < 0) {
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{A_prop} = 0;
@@ -4955,11 +4960,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				#print "New A: $A\nNew C: $C\nNew G: $G\nNew T: $T\n".
 				#	"New A prop: $A_prop\nNew C prop: $C_prop\nNew G prop: $G_prop\nNew T prop: $T_prop\n";
 				
+				#CURRENTISSUE
+				# REMOVED THIS BECAUSE SOME VARIANTS ARE 100% DIFF FROM REFERENCE
 				# DELETE the hash element if there are no longer any variants here.
-				if(($A + $C + $G == 0) || ($A + $C + $T == 0) || ($A + $G + $T == 0) ||
-					($C + $G + $T == 0)) {
-					delete($hh_product_position_info{$curr_product}->{$curr_spot});
-				}
+				#if(($A + $C + $G == 0) || ($A + $C + $T == 0) || ($A + $G + $T == 0) ||
+				#	($C + $G + $T == 0)) {
+				#	delete($hh_product_position_info{$curr_product}->{$curr_spot});
+				#}
 				
 				#print "New nt sum: $nt_sum\nNew cov: $updated_cov\nNew prop sum: $nt_prop_sum\n\n";
 				
@@ -5359,10 +5366,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			## END GENE DIVERSITY stuff
 			####
 			
+			#print "DOUBLE CHECK1: product=$curr_product site_pos_1=$site_pos_1\n";
+			
 			########################
 			### CODON POSITION 1 ###
 			########################
-			if (exists $hh_product_position_info{$curr_product}->{$site_pos_1}) { # If there was a variant(s) stored at position 1			
+			if (exists $hh_product_position_info{$curr_product}->{$site_pos_1}) { # If there was a variant(s) stored at position 1		
 				# call &get_amino_acid(CODON)
 				# call &get_number_of_site(CODON,POSITION) to return @arr=(#N,#S)
 				
@@ -5399,6 +5408,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$prop_1_C = $hh_product_position_info{$curr_product}->{$site_pos_1}->{C_prop};
 				$prop_1_G = $hh_product_position_info{$curr_product}->{$site_pos_1}->{G_prop};
 				$prop_1_T = $hh_product_position_info{$curr_product}->{$site_pos_1}->{T_prop};
+				
+				#print "DOUBLE CHECK: product=$curr_product pos=$site_pos_1 num_1_A=$num_1_A site_cov=$site_cov prop_1_A=$prop_1_A\n";
 				
 #				my $A_prop = ($num_1_A / $site_cov);
 #				my $C_prop = ($num_1_C / $site_cov);
@@ -7082,7 +7093,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				} elsif ($site1_siteb_category eq 'NA') {
 					$siteb_category = 'NA';
 				} else {
-					$siteb_category = 'ERROR';
+					$siteb_category = 'NONREF_NONPOLY';
 				}
 				
 				my $codonb_category;
@@ -7095,7 +7106,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				} elsif ($site1_codonb_category eq 'NA') {
 					$codonb_category = 'NA';
 				} else {
-					$codonb_category = 'ERROR';
+					$codonb_category = 'NONREF_NONPOLY';
 				}
 		
 				my $pi;
@@ -7143,7 +7154,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				} elsif ($site2_siteb_category eq 'NA') {
 					$siteb_category = 'NA';
 				} else {
-					$siteb_category = 'ERROR';
+					$siteb_category = 'NONREF_NONPOLY';
 				}
 				
 				my $codonb_category;
@@ -7156,7 +7167,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				} elsif ($site2_codonb_category eq 'NA') {
 					$codonb_category = 'NA';
 				} else {
-					$codonb_category = 'ERROR';
+					$codonb_category = 'NONREF_NONPOLY';
 				}
 			
 				my $pi;
@@ -7204,7 +7215,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				} elsif ($site3_siteb_category eq 'NA') {
 					$siteb_category = 'NA';
 				} else {
-					$siteb_category = 'ERROR';
+					$siteb_category = 'NONREF_NONPOLY';
 				}
 				
 				my $codonb_category;
@@ -7217,7 +7228,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				} elsif ($site3_codonb_category eq 'NA') {
 					$codonb_category = 'NA';
 				} else {
-					$codonb_category = 'ERROR';
+					$codonb_category = 'NONREF_NONPOLY';
 				}
 					
 				my $pi;
