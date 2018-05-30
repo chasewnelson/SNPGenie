@@ -28,7 +28,6 @@
 
 # AUTHOR: Chase W. Nelson
 # Copyright (C) 2017 Chase W. Nelson
-# DATE CREATED: August 19, 2016
 
 # CONTACT1: cnelson@amnh.org
 # CONTACT2: cwnelson88@gmail.com
