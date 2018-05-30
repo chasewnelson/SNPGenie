@@ -64,12 +64,7 @@ my $snpreport;
 my $vcfformat; ##SAMVCF
 my $fastafile;
 my $gtffile;
-my $sepfiles;
 my $slidingwindow;
-my $ratiomode;
-my $sitebasedmode; # not supported or recommended; site (not codon) contexts
-my $complementmode;
-#my $prop_diff_threshold = 0.01;
 
 # Flag variables
 my $clc_mode = 0;
@@ -84,7 +79,7 @@ my $fasta_arr_size;
 my $cds_file;
 my $multi_fasta_mode;
 
-my $param_file_contents = "SNPGenie version 1.2 parameter log.\n\n";
+my $param_file_contents = "SNPGenie parameter log.\n\n";
 
 # Get user input, if given. If a Boolean argument is passed, its value is 1; else undef
 GetOptions(	"minfreq:f" => \$minfreq, # optional floating point parameter
@@ -93,12 +88,7 @@ GetOptions(	"minfreq:f" => \$minfreq, # optional floating point parameter
 			"fastafile:s" => \$fastafile, # optional string parameter
 			"multi_fasta_mode" => \$multi_fasta_mode, # optional Boolean parameter
 			"gtffile:s" => \$gtffile, # optional string parameter
-			"sepfiles" => \$sepfiles, # optional Boolean; set to false if not given
-			"slidingwindow:i" => \$slidingwindow, # optional integer parameter
-			"ratiomode" => \$ratiomode, # optional Boolean; set to false if not given
-			"sitebasedmode" => \$sitebasedmode) # optional Boolean; set to false if not given
-#			"complementmode" => \$complementmode) # optional Boolean; set to false if not given
-#			"prop_diff_threshold:f" => \$prop_diff_threshold)
+			"slidingwindow:i" => \$slidingwindow)
 			
 			or die "\n## WARNING: Error in command line arguments. SNPGenie terminated.\n\n"; 
 
@@ -124,37 +114,10 @@ if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to ch
 		$param_file_contents .= "MINIMUM ALLELE FREQUENCY: $minfreq\n";
 	}
 	
-	if(! $sepfiles) {
-		$sepfiles = 0; # default behavior: no separate codon files for each SNP Report
-		$param_file_contents .= "SEPARATE FILES OUTPUT: No\n";
-	} else {
-		$sepfiles = 1;
-		$param_file_contents .= "SEPARATE FILES OUTPUT: Yes\n";
-	}
-	
-	if($slidingwindow == 0) { # Called as a flag, but given no value
-		$slidingwindow = 9; # default behavior: nonamer peptide
-		$param_file_contents .= "SLIDING WINDOW LENGTH: Default used; 9 codons\n";
-	} elsif($slidingwindow > 0) {
+	if($slidingwindow > 0) {
 		$param_file_contents .= "SLIDING WINDOW LENGTH: $slidingwindow\n";
 	} else {
 		$param_file_contents .= "SLIDING WINDOW LENGTH: None\n";
-	}
-	
-	if(! $ratiomode) {
-		$ratiomode = 0; # default behavior: no separate codon files for each SNP Report
-		$param_file_contents .= "RATIO MODE: Default used; No\n";
-	} else {
-		$ratiomode = 1;
-		$param_file_contents .= "RATIO MODE: Yes\n";
-	}
-	
-	if(! $sitebasedmode) {
-		$sitebasedmode = 0; # default behavior: no separate codon files for each SNP Report
-		$param_file_contents .= "SITE-BASED MODE: Default used; No\n";
-	} else {
-		$sitebasedmode = 1;
-		$param_file_contents .= "SITE-BASED MODE: Yes\n";
 	}
 	
 	if(! $multi_fasta_mode) {
@@ -257,19 +220,12 @@ if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to ch
 	### NUCLEOTIDE DIVERSITY FILE
 	open(OUTFILE_NT_DIV,">>codon\_results\.txt");
 	my $ntd_headers_to_print = "file\tproduct\tsite\tcodon\tnum_overlap_ORF_nts\t".
-			"N_diffs\tS_diffs\t";
-	if($sitebasedmode == 1) {
-		$ntd_headers_to_print .= "N_diffs_site_based\tS_diffs_site_based\t";
-	}
+		#"mean_coverage\t".
+		"N_diffs\tS_diffs\t";
 	$ntd_headers_to_print .= "N_sites\tS_sites\t";
-	if($sitebasedmode == 1) {
-		$ntd_headers_to_print .= "N_sites_site_based\tS_sites_site_based\t";
-	}
+
 	$ntd_headers_to_print .= "N_sites_ref\tS_sites_ref\t";
 	#$ntd_headers_to_print .= "piN\tpiS\t";
-	if($ratiomode == 1) {
-		$ntd_headers_to_print .= "piN/piS\t";
-	}
 	$ntd_headers_to_print .= "N_diffs_vs_ref\tS_diffs_vs_ref\t".
 		"gdiv\tN_gdiv\tS_gdiv\n";
 	#$ntd_headers_to_print .= "mean_dN_vs_ref\tmean_dS_vs_ref\n"; # \tAverage_cov
@@ -347,7 +303,7 @@ print "\n\n#####################################################################
 
 # Print LICENSE
 print "\n  ###############################  LICENSE:  #################################\n";
-print "  ##              SNPGenie Copyright (C) 2015 Chase W. Nelson               ##\n".
+print "  ##            SNPGenie Copyright (C) 2015-18 Chase W. Nelson              ##\n".
 	"  ##            This program comes with ABSOLUTELY NO WARRANTY;             ##\n".
 	"  ##     This is free software, and you are welcome to redistribute it      ##\n".
 	"  ##               under certain conditions; see LICENSE.txt.               ##";
@@ -374,7 +330,7 @@ if($minfreq > 0) {
 # "-" strand records in the GTF file.
 
 # Complement mode?
-$complementmode = &determine_complement_mode($cds_file);
+my $complementmode = &determine_complement_mode($cds_file);
 
 # Announce and initialize REVERSE COMPLEMENT MODE
 my %hh_compl_position_info; # REGARDLESS OF SNP REPORT. saved with respect to the + strand
@@ -620,7 +576,7 @@ if($vcfformat == 4) { # generate as many SNP reports as there are sample columns
 		
 		push(@temp_vcf4_file_names, $new_temp_vcf4_file_name);
 		
-		print "\nCreating $new_temp_vcf4_file_name\...\n\n";
+		print "Creating $new_temp_vcf4_file_name\...\n";
 		
 		if(-f "$new_temp_vcf4_file_name") {
 			warn "\n\n### WARNING: $new_temp_vcf4_file_name already present. Replacing...\n\n";
@@ -4359,7 +4315,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			
 			my $num_pw_diffs = ($A*$C + $A*$G + $A*$T + $C*$G + $C*$T + $G*$T);
 			my $total_pw_comps = (($cov * $cov) - $cov)/2;
-			my $mean_pw_diffs = ($num_pw_diffs / $total_pw_comps); # this IS pi, div by 1
+			
+			my $mean_pw_diffs = 0;
+			
+			if($total_pw_comps > 0) {
+				$mean_pw_diffs = ($num_pw_diffs / $total_pw_comps); # this IS pi, div by 1
+			}
+			
 			$hh_nc_position_info{$position}->{pi} = $mean_pw_diffs;
 			$sum_mean_pw_diffs += $mean_pw_diffs;
 			
@@ -5543,8 +5505,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					$N_diffs += $GT;
 				}
 				
-				$N_diffs_per_comparison += ($N_diffs / $num_pairwise_comparisons);
-				$S_diffs_per_comparison += ($S_diffs / $num_pairwise_comparisons);
+				if($num_pairwise_comparisons > 0) {
+					$N_diffs_per_comparison += ($N_diffs / $num_pairwise_comparisons);
+					$S_diffs_per_comparison += ($S_diffs / $num_pairwise_comparisons);
+				}
 				
 				####
 				## AVERAGE dN and dS versus REFERENCE stuff
@@ -5907,8 +5871,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					$N_diffs += $GT;
 				}
 				
-				$N_diffs_per_comparison += ($N_diffs / $num_pairwise_comparisons);
-				$S_diffs_per_comparison += ($S_diffs / $num_pairwise_comparisons);
+				if($num_pairwise_comparisons > 0) {
+					$N_diffs_per_comparison += ($N_diffs / $num_pairwise_comparisons);
+					$S_diffs_per_comparison += ($S_diffs / $num_pairwise_comparisons);
+				}
 				
 				## AVERAGE dN and dS versus REFERENCE stuff
 				my $ref_nt = $hh_product_position_info{$curr_product}->{$site_pos_2}->{reference};
@@ -6271,8 +6237,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					$N_diffs += $GT;
 				}
 				
-				$N_diffs_per_comparison += ($N_diffs / $num_pairwise_comparisons);
-				$S_diffs_per_comparison += ($S_diffs / $num_pairwise_comparisons);
+				if($num_pairwise_comparisons > 0) {
+					$N_diffs_per_comparison += ($N_diffs / $num_pairwise_comparisons);
+					$S_diffs_per_comparison += ($S_diffs / $num_pairwise_comparisons);
+				}
 				
 				## AVERAGE dN and dS versus REFERENCE stuff
 				my $ref_nt = $hh_product_position_info{$curr_product}->{$site_pos_3}->{reference};
@@ -6789,6 +6757,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			my $codon_test_avg_cov = 0;
 			my $this_codon_mean_N_diffs_vs_ref = 0;
 			my $this_codon_mean_S_diffs_vs_ref = 0;
+			
 			if($codon_cov_denom_sum > 0) { # Then we've seen at least one variant
 				my $this_codon_avg_cov = ($codon_cov_sum / $codon_cov_denom_sum);
 				my $this_codon_avg_N_sites = ($this_codon_avg_cov * $codon_based_N_sites);
@@ -6863,79 +6832,19 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			
 			my $codon_overlap_nts = ($site1_overlap+$site2_overlap+$site3_overlap);
 			
-			#if($sitebasedmode == 1) {
-			#	$ntd_headers_to_print .= "πN/πS\t";
-			#}
-			
-			if($sepfiles == 1) { # PRINT TO INDIVIDUAL NUCLEOTIDE DIVERSITY FILE
-				open(OUTFILE_NT_DIV_IND,">>$new_file_prefix\_results\.txt");
-				# PRINT HEADERS TO INDIVIDUAL NUCLEOTIDE DIVERSITY FILE, IF IT'S THE FIRST CDS
-				if ($product_counter == 0) { 
-					my $ntd_headers_to_print_ind = "file\tproduct\tsite\tcodon\tnum_overlap_ORF_nts\t".
-						"mean_nonsyn_diffs\tmean_syn_diffs\t";
-					if($sitebasedmode == 1) {
-						$ntd_headers_to_print_ind .= "mean_nonsyn_diffs_site_based\tmean_syn_diffs_site_based\t";
-					}
-					$ntd_headers_to_print_ind .= "nonsyn_sites\tsyn_sites\t";
-					if($sitebasedmode == 1) {
-						$ntd_headers_to_print_ind .= "nonsyn_sites_site_based\tsyn_sites_site_based\t";
-					}
-					$ntd_headers_to_print_ind .= "nonsyn_sites_ref\tsyn_sites_ref\t";
-					#$ntd_headers_to_print_ind .= "piN\tpiS\t";
-					if($ratiomode == 1) {
-						$ntd_headers_to_print_ind .= "piN/piS\t";
-					}
-					#$ntd_headers_to_print_ind .= "mean_dN_vs_ref\tmean_dS_vs_ref\n"; # \tAverage_cov
-					$ntd_headers_to_print_ind .= "mean_nonsyn_diffs_vs_ref\tmean_syn_diffs_vs_ref\t".
-						"mean_gdiv\tmean_nonsyn_gdiv\tmean_syn_gdiv\n";
-				
-					$product_counter += 1; # Increment so header is only printed once
-					
-					print OUTFILE_NT_DIV_IND "$ntd_headers_to_print_ind";
-				}
-				
-				# PRINT DATA LINE TO INDIVIDUAL NUCLEOTIDE DIVERSITY FILE
-				my $ntd_line_to_print_ind = "$file_nm\t$curr_product\t$curr_site\t".
-					"$curr_codon\t$codon_overlap_nts\t$new_avg_N_diffs\t$new_avg_S_diffs\t";
-				if($sitebasedmode == 1) {
-					$ntd_line_to_print_ind .= "$N_diffs_per_comparison\t$S_diffs_per_comparison\t";
-				}	
-				$ntd_line_to_print_ind .= "$codon_based_N_sites\t$codon_based_S_sites\t";
-				if($sitebasedmode == 1) {
-					$ntd_line_to_print_ind .= "$N_sites\t$S_sites\t";
-				}
-				$ntd_line_to_print_ind .= "$ref_based_N_sites\t$ref_based_S_sites\t";
-				#$ntd_line_to_print_ind .= "$pi_N\t$pi_S\t";
-				if($ratiomode == 1) {
-					$ntd_line_to_print_ind .= "$pi_N_over_S\t"; # SITE-BASED
-				}
-				#$ntd_line_to_print_ind .= "$avg_dN_vs_ref\t$avg_dS_vs_ref\n"; # \t$codon_test_avg_cov
-				#$ntd_line_to_print_ind .= "$this_codon_num_N_diffs\t".
-				#	"$this_codon_num_S_diffs\n";
-				$ntd_line_to_print_ind .= "$this_codon_mean_N_diffs_vs_ref\t".
-					"$this_codon_mean_S_diffs_vs_ref\t";
-				
-				print OUTFILE_NT_DIV_IND "$ntd_line_to_print_ind";
-				close OUTFILE_NT_DIV_IND;
-			}
 			
 			# PRINT DATA LINE TO COMPILED NUCLEOTIDE DIVERSITY FILE
 			open(OUTFILE_NT_DIV,">>codon\_results\.txt");
 			
 			my $ntd_line_to_print = "$file_nm\t$curr_product\t$curr_site\t".
-				"$curr_codon\t$codon_overlap_nts\t$new_avg_N_diffs\t$new_avg_S_diffs\t";
-			if($sitebasedmode == 1) {
-				$ntd_line_to_print .= "$N_diffs_per_comparison\t$S_diffs_per_comparison\t";
-			}
+				"$curr_codon\t$codon_overlap_nts\t". 
+				#"$codon_test_avg_cov\t".
+				"$new_avg_N_diffs\t$new_avg_S_diffs\t";
+				
 			$ntd_line_to_print .= "$codon_based_N_sites\t$codon_based_S_sites\t";
-			if($sitebasedmode == 1) {
-				$ntd_line_to_print .= "$N_sites\t$S_sites\t";
-			}
+
 			$ntd_line_to_print .= "$ref_based_N_sites\t$ref_based_S_sites\t";
 			#$ntd_line_to_print .= "$pi_N\t$pi_S\t";
-			if($ratiomode == 1) {
-				$ntd_line_to_print .= "$pi_N_over_S\t"; # SITE-BASED
-			}
 			#$ntd_line_to_print .= "$avg_dN_vs_ref\t$avg_dS_vs_ref\n"; # \t$codon_test_avg_cov
 			#$ntd_line_to_print .= "$this_codon_num_N_diffs\t$this_codon_num_S_diffs\n";
 			$ntd_line_to_print .= "$this_codon_mean_N_diffs_vs_ref\t".
@@ -7375,14 +7284,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			}
 			
 			# PRINT AVERAGE GENE DIVERSITY VALUES for this codon to the nucleotide 
-			# diversity file(s)
-			if($sepfiles == 1) { # PRINT TO INDIVIDUAL NUCLEOTIDE DIVERSITY FILE
-				open(OUTFILE_NT_DIV_IND,">>$new_file_prefix\_results\.txt");
-				print OUTFILE_NT_DIV_IND "$this_codon_avg_gene_diversity\t".
-					"$this_codon_avg_gene_diversity_N\t$this_codon_avg_gene_diversity_S\n";
-				close OUTFILE_NT_DIV_IND;
-			}
-			
+			# diversity file
 			open(OUTFILE_NT_DIV,">>codon\_results\.txt");
 			print OUTFILE_NT_DIV "$this_codon_avg_gene_diversity\t".
 					"$this_codon_avg_gene_diversity_N\t$this_codon_avg_gene_diversity_S\n";
@@ -7830,7 +7732,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 } # Finished with SNP Report
 
 # Perform a SLIDING WINDOW if asked
-if($slidingwindow) {
+if($slidingwindow > 0) {
 	print "\n\nPerforming sliding window for all files, length $slidingwindow codons...\n\n";
 	&sliding_window($slidingwindow);
 }

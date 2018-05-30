@@ -155,12 +155,11 @@ To alter how SNPGenie works, the following options may be used:
 * **--vcfformat**: the exact format of VCF input. See [VCF](#vcf).
 * **--fastafile**: the (one) reference sequence. Default: auto-detect a .fa or .fasta file.
 * **--gtffile**: the (one) file with CDS annotations. Default: auto-detect the .gtf file.
-* **--sepfiles**: if called, SNPGenie will produce separate results (codon) files for each SNP report (all results are already included together in the codon_results.txt file). Simply include in the command line to activate. Default: not included.
 * **--slidingwindow**: the length of the (optional) sliding (codon) window used in the analysis. Default: 9 codons.
 
-For example, if you wanted to turn on the **sepfiles** option, specify a minimum allele frequency of 1%, and specify all three input files, you could enter the following:
+For example, if you wanted to specify a minimum allele frequency of 1% and specify all three input files, you could run the following:
 
-	snpgenie.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
+	snpgenie.pl --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
 
 
 
@@ -210,9 +209,7 @@ SNPGenie creates a new folder called **SNPGenie_Results** within the working dir
 	* *N\_gdiv*. Mean gene diversity for this codon's nonsynonymous polymorphic sites.
 	* *S\_gdiv*. Mean gene diversity for this codon's synonymous polymorphic sites.
 
-5. **\<SNP report name(s)\>\_results.txt**, containing the information present in the codon\_results.txt file, but separated by SNP report.
-
-6. **product\_results.txt**, providing results for all CDS elements present in the GTF file for the '+' strand. Columns are:
+5. **product\_results.txt**, providing results for all CDS elements present in the GTF file for the '+' strand. Columns are:
 	* *file*. The SNP report analyzed.
 	* *product*. The CDS annotation to which the site belongs; "noncoding" if none.
 	* *N\_diffs*. The sum over all codons in this product of the mean number of pairwise nucleotide comparisons which are nonsynonymous (i.e., amino acid-altering) in the pooled sequence sample. The numerator of *π*<sub>N</sub>.
@@ -229,7 +226,7 @@ SNPGenie creates a new folder called **SNPGenie_Results** within the working dir
 	* *mean\_N\_gdiv*. Mean gene diversity at all nonsynonymous polymorphic nucleotide sites in this product.
 	* *mean\_S\_gdiv*. Mean gene diversity at all synonymous polymorphic nucleotide sites in this product.
 
-7. **population\_summary.txt**, providing summary results for each population's sample (SNP report) with respect to the '+' strand. Columns are:
+6. **population\_summary.txt**, providing summary results for each population's sample (SNP report) with respect to the '+' strand. Columns are:
 	* *file*. The SNP report analyzed.
 	* *sites*. Total number of sites in the reference genome.
 	* *sites\_coding*. Total number of sites in the reference genome which code for a protein product on the analyzed '+' strand, given the CDS annotations in the GTF file.
@@ -253,7 +250,7 @@ SNPGenie creates a new folder called **SNPGenie_Results** within the working dir
 	* *mean\_gdiv\_noncoding\_poly*. Mean gene diversity at all polymorphic nucleotide sites in the genome of the pooled sample which do not code for a protein product, given the CDS annotations in the GTF file.
 	* *sites\_noncoding\_poly*. The number of sites in the genome of the pooled sample which are polymorphic and do not code for a protein product, given the CDS annotations in the GTF file.
 
-8. **sliding\_window\_length\<Length\>\_results.txt**, containing codon-based results over a sliding window, with a default length of 9 codons.
+7. **sliding\_window\_length\<Length\>\_results.txt**, containing codon-based results over a sliding window, with a default length of 9 codons.
 
 ## <a name="snpgenie-within"></a>SNPGenie Within-Group
 
@@ -335,11 +332,13 @@ Additional scripts, provided to help in the preparation of SNPGenie input, have 
 
 ## <a name="troubleshooting"></a>Troubleshooting
 
-* Using **Windows**? Unfortunately, SNPGenie was written for Unix systems, including Mac, which have Perl installed by default. Windows doesn't, but getting Perl installed is as simple as following these <a target="_blank" href="http://learn.perl.org/installing/windows.html">three-minute download instructions</a>, and with any luck the program will work! Just open the Windows Command Prompt, and remember to type "perl" first when you run SNPGenie, *i.e.*, type "perl snpgenie.pl". Unfortunately, if this does not work, we are unable to provide any further Windows support.
+* **"coverage is 0" WARNING.** SNPGenie will run even when some sites lack sequencing coverage. Sometimes this presents no problems, *e.g.*, if all sequences lack coverage in the same regions or at terminal sites. **However**, if coverage differs between samples, this will affect diversity estimates and will need to be accounted for: one sample might have relatively low diversity simply because numerous sites lack coverage. Such a difference is not biological, but rather a result of incomplete data. As always, it is up to the user to understand their own data, and to only supply samples that are biologically meaningful.
+
+* Using **Windows**? Unfortunately, SNPGenie was written for Unix systems, including Mac, which have Perl installed by default. Windows sometimes doesn't, but getting Perl installed is as simple as following these <a target="_blank" href="http://learn.perl.org/installing/windows.html">three-minute download instructions</a>, and with any luck the program will work! Just open the Windows Command Prompt, and remember to type "perl" first when you run SNPGenie, *i.e.*, type "perl snpgenie.pl". Unfortunately, if this does not work, we are unable to provide any further Windows support.
 
 * Try preceding the whole command line with "perl" to make sure SNPGenie is being treated as a script. For example:
 
-        perl snpgenie.pl --sepfiles --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
+        perl snpgenie.pl --minfreq=0.01 --snpreport=mySNPreport.txt --fastafile=myFASTA.fa --gtffile=myGTF.gtf
     
 * Make sure that the first line of the script contains the correct path to your machine's copy of Perl. Right now SNPGenie assumes it's located at **/usr/bin/perl**. You can find out if this matches your machine by typing **which perl** at the command line. If it's a different path than the one above, copy and paste your machine's path after the **#!** at the beginning of the SNPGenie script.
 
