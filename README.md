@@ -387,7 +387,9 @@ and this page:
 * Wilker PR, *et al.* (2013) <a target="_blank" href="http://www.nature.com/ncomms/2013/131023/ncomms3636/abs/ncomms3636.html?message-global=remove">Selection on haemagglutinin imposes a bottleneck during mammalian transmission of reassortant H5N1 influenza viruses</a>. *Nature Communications* **4**:2636.
 
 ## <a name="contact"></a>Contact
-Please note that, given the unexpected and unfortunate passing of our friend, mentor, and colleague Dr. Austin L. Hughes, all correspondance should be addressed to Chase W. Nelson at the American Museum of Natural History: 
+If you have questions about using SNPGenie, please click on the "<a target="_blank" href="https://github.com/chasewnelson/snpgenie/issues">Issues</a>" tab at the top of this page and begin a new thread, so that others might benefit from the discussion.
+
+Correspondance should be addressed to Chase W. Nelson at the American Museum of Natural History: 
 
 * cnelson <**AT**> amnh <**DOT**> org
 
