@@ -528,7 +528,7 @@ if($vcfformat == 4) { # generate as many SNP reports as there are sample columns
 	
 	# Find out if there is more than one sample by counting columns after FORMAT
 	#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample1
-	my $header_line;
+	my $header_line = '';
 	open (ORIGINAL_SNP_REPORT, $snp_report_file_names_arr[0]); # always just one
 	while (<ORIGINAL_SNP_REPORT>) {	
 		chomp;
@@ -543,6 +543,11 @@ if($vcfformat == 4) { # generate as many SNP reports as there are sample columns
 		}
 	}
 	close ORIGINAL_SNP_REPORT;
+	
+	if($header_line eq '') {
+		die "\n\n## WARNING:\n## The SNP Report $snp_report_file_names_arr[0] has no header." . 
+			"\n## TERMINATED.\n\n";
+	}
 	
 	$header_line =~ s/^#//;
 	#print "\nHEADER LINE IS: $header_line\n\n";
@@ -4123,8 +4128,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		#print "New nt sum: $nt_sum\nNew cov: $updated_cov\nNew prop sum: $nt_prop_sum\n\n";
 		
 		# Round for comparisons
-		my $rounded_nt_sum = sprintf("%.3f",$nt_sum);
-		my $rounded_updated_cov = sprintf("%.3f",$updated_cov);
+		my $rounded_nt_sum = sprintf("%.3f", $nt_sum);
+		my $rounded_updated_cov = sprintf("%.3f", $updated_cov);
 		
 		# ERRORS
 		#if($rounded_nt_sum != $rounded_updated_cov) {
