@@ -359,28 +359,28 @@ if($complementmode) {
 		my $rev_compl_start; # Where the gene itself actually STOPS
 		my $rev_compl_stop; # Where the gene itself actually STARTS
 
-		if($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\t\s*gene_id\s*\"gene\:([\w\s\.\-\:']+)\"/) { # Line is - strand
+		if($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d]+\t\-\t\d+\t\s*gene_id\s*\"gene\:([\w\s\.\-\:']+)\"/) { # Line is - strand
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\t\s*gene_id\s*\"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d]+\t\-\t\d+\t\s*gene_id\s*\"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\t\s*gene_id\s*\"([\w\s\.\-\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d]+\t\-\t\d+\t\s*gene_id\s*\"([\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
 		# NOW, IN CASE transcript_id comes first
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"\s*;\s*gene_id\s*\"gene\:([\w\s\.\-\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d]+\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"\s*;\s*gene_id\s*\"gene\:([\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"\s*;\s*gene_id\s*\"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d]+\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"\s*;\s*gene_id\s*\"([\w\s\.\-\:']+ [\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
-		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t\.\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"\s*;\s*gene_id\s*\"([\w\s\.\-\:']+)\"/) {
+		} elsif($_ =~ /CDS\t(\d+)\t(\d+)\t[\.\d]+\t\-\t\d+\ttranscript_id \"[\w\s\.\-\:']+\"\s*;\s*gene_id\s*\"([\w\s\.\-\:']+)\"/) {
 			$rev_compl_start = $1; # Where the gene itself actually STOPS
 			$rev_compl_stop = $2; # Where the gene itself actually STARTS
 			$this_product = $3;
@@ -8441,7 +8441,7 @@ sub get_product_names_from_gtf {
 	my %products_hash;
 	open (CURRINFILE, $cds_file);
 	while (<CURRINFILE>) {
-		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand
+		if($_ =~ /CDS\t\d+\t\d+\t[\.\d]+\t\+/) { # Must be on the + strand
 			#print "this_line: $_";
 			if($_ =~/\s*gene_id\s*\"gene\:([\w\s\.\-\:']+)\"/) { # transcript_id not a problem
 				$products_hash{$1} = 1;
@@ -8539,7 +8539,7 @@ sub determine_complement_mode {
 			$_ =~ s/\n//;
 		}
 		
-		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t-/) {
+		if($_ =~ /CDS\t\d+\t\d+\t[\.\d]+\t-/) {
 			$complement_mode = 1;
 			last;
 		}
@@ -9762,7 +9762,7 @@ sub populate_tempfile_vcf {
 			$_ =~ s/\n//;
 		}
 		
-		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Make sure it's on the + strand
+		if($_ =~ /CDS\t\d+\t\d+\t[\.\d]+\t\+/) { # Make sure it's on the + strand
 			my $product;
 			if($_ =~ /\s*gene_id\s*\"gene\:([\w\s\.\-\:']+)\"/) {
 				$product = $1;
@@ -11143,7 +11143,7 @@ sub get_product_coordinates {
 	
 	open (CURRINFILE, $cds_file);
 	while (<CURRINFILE>) { # go through the GTF file
-		if($_ =~ /CDS\t\d+\t\d+\t[\.\d+]\t\+/) { # Must be on the + strand #COMEBACK to \d+]
+		if($_ =~ /CDS\t\d+\t\d+\t[\.\d]+\t\+/) { # Must be on the + strand #COMEBACK to \d+]
 			chomp;
 			# CHOMP for 3 operating systems
 			if($_ =~ /\r\n$/) {
