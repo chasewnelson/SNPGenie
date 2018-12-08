@@ -770,7 +770,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	} elsif(! $geneious_mode && ! $clc_mode && $vcf_mode) {
 		print "VCF format detected\n";
 	} else {
-		die "\n## WARNING: Conflicting SNP Report formats detected. Please contact author. ".
+		die "\n## WARNING: Conflicting SNP Report formats detected. Does the file extension match expectation? If not, please contact author. ".
 			"## SNPGenie TERMINATED.\n\n";
 	}
 	
@@ -4227,7 +4227,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	print "COMPLETED.\n";
 	
 	#comeback
-	print "\nProcessing all individual sites (nucleotides take time)... ";
+	print "\nProcessing all individual sites (nucleotides take time and memory; use a high-memory machine for eukaryotic chromosomes!)... ";
 	#print "\nSeq. length is: ".length($seq)."\n";
 	for (my $i = 0; $i < length($seq); $i++) { # FOR EACH SITE IN FASTA
 		my $position = $i+1;
@@ -9644,96 +9644,96 @@ sub populate_tempfile_vcf {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"CHROM\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"CHROM\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"CHROM\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"CHROM\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_pos == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"POS\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"POS\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"POS\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"POS\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_id == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"ID\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"ID\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"ID\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"ID\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_ref == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"REF\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"REF\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"REF\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"REF\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_alt == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"ALT\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"ALT\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"ALT\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"ALT\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_qual == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"QUAL\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"QUAL\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"QUAL\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"QUAL\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_filter == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"FILTER\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"FILTER\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FILTER\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"FILTER\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_info == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the column header \"INFO\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"INFO\". SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"INFO\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"INFO\". SNPGenie terminated.\n\n";	
 	} #elsif ($seen_index_format == 0) {
 #		chdir('SNPGenie_Results');
 #		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 #		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-#			"Does not contain the column header \"FORMAT\". SNPGenie terminated.\n";
+#			"Does not contain the standard VCF column header \"FORMAT\". SNPGenie terminated.\n";
 #		close ERROR_FILE;
 #		chdir('..');
 #		
-#		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FORMAT\". SNPGenie terminated.\n\n";	
+#		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"FORMAT\". SNPGenie terminated.\n\n";	
 #	} #elsif ($seen_index_sample1 == 0) {
 #		chdir('SNPGenie_Results');
 #		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 #		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-#			"Does not contain the column header \"sample1\". SNPGenie terminated.\n";
+#			"Does not contain the standard VCF column header \"sample1\". SNPGenie terminated.\n";
 #		close ERROR_FILE;
 #		chdir('..');
 #		
 #		#unlink $curr_snp_report_name;
 #		
-#		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"sample1\". SNPGenie terminated.\n\n";	
+#		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"sample1\". SNPGenie terminated.\n\n";	
 #	}
 	
 	# NEED TO BUILD A HASH WITH keys as ALL PRODUCT POSITIONS IN THE GENOME, and values being an array
@@ -9953,13 +9953,15 @@ sub populate_tempfile_vcf {
 					##SAMVCF VCF FORMAT #1
 					if($vcfformat == 1) {
 					#if($info_value =~ /NS=(\d+)/) { # We've got a VCF SUMMARIZING INDIVIDUALS
-						if($warn_file_type_not_supported == 0) {
-							print "\n### WARNING: VCF FORMAT TYPE 1 IS NOT FULLY SUPPORTED ###\n";
-							$warn_file_type_not_supported ++;
-						}
+#						if($warn_file_type_not_supported == 0) {
+#							print "\n### WARNING: VCF FORMAT TYPE 1 IS NOT FULLY SUPPORTED ###\n";
+#							$warn_file_type_not_supported ++;
+#						}
 						
 						my $num_samples;
-						if($info_value =~ /NS=(\d+)/) {
+						if($info_value =~ /AN=(\d+)/) {
+							$num_samples = $1;
+						} elsif($info_value =~ /NS=(\d+)/) {
 							$num_samples = $1;
 						}
 						
@@ -10394,13 +10396,15 @@ sub populate_tempfile_vcf {
 					##SAMVCF VCF FORMAT #1
 					if($vcfformat == 1) {
 					#if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
-						if($warn_file_type_not_supported == 0) {
-							print "\n### WARNING: SNP REPORT FILE TYPE NOT FULLY SUPPORTED ###\n";
-							$warn_file_type_not_supported ++;
-						}
+#						if($warn_file_type_not_supported == 0) {
+#							print "\n### WARNING: SNP REPORT FILE TYPE NOT FULLY SUPPORTED ###\n";
+#							$warn_file_type_not_supported ++;
+#						}
 						
 						my $num_samples;
-						if($info_value =~ /NS=(\d+)/) {
+						if($info_value =~ /AN=(\d+)/) {
+							$num_samples = $1;
+						} elsif($info_value =~ /NS=(\d+)/) {
 							$num_samples = $1;
 						}
 						
@@ -10752,13 +10756,15 @@ sub populate_tempfile_vcf {
 					##SAMVCF VCF FORMAT #1
 					if($vcfformat == 1) {
 					#if($info_value =~ /NS=(\d+)/) { # We've got a VCF summarizing INDIVIDUALS
-						if($warn_file_type_not_supported == 0) {
-							print "\n### WARNING: SNP REPORT FILE TYPE NOT FULLY SUPPORTED ###\n";
-							$warn_file_type_not_supported ++;
-						}
+#						if($warn_file_type_not_supported == 0) {
+#							print "\n### WARNING: SNP REPORT FILE TYPE NOT FULLY SUPPORTED ###\n";
+#							$warn_file_type_not_supported ++;
+#						}
 						
 						my $num_samples;
-						if($info_value =~ /NS=(\d+)/) {
+						if($info_value =~ /AN=(\d+)/) {
+							$num_samples = $1;
+						} elsif($info_value =~ /NS=(\d+)/) {
 							$num_samples = $1;
 						}
 						
