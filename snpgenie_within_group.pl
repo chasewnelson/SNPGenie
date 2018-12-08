@@ -63,6 +63,8 @@ use Parallel::ForkManager;
 #use Statistics::Basic qw(:all); # includes median(), mean(), variance(), stddev(), covariance(), correlation()
 use Getopt::Long;
 
+STDOUT->autoflush(1);
+
 # Get the time
 my $time1 = time;
 my $local_time1 = localtime;
@@ -331,8 +333,6 @@ foreach(@product_names_arr) { # FOR EACH PRODUCT
 #print "\n\n @test_keys \n\n";
 #my $test_seq = $products_groups_seqs_hh{'ORF5'}->{'group_1'}->{'seq_1'};
 #print "\n\n $test_seq \n\n";
-
-STDOUT->autoflush(1);
 
 open(CODON_FILE,">>within\_group\_codon\_results\.txt");
 print CODON_FILE "file\tproduct\tcodon\tvariability\tcomparisons\t".
