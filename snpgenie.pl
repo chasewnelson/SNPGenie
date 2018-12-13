@@ -476,7 +476,7 @@ foreach my $product_name (@product_names_arr) {
 # Using the fasta file, record the sequence in a variable
 
 my $seq;
-my @seq_by_index_arr;
+#my @seq_by_index_arr;
 
 if(! $multi_fasta_mode) {
 
@@ -505,13 +505,13 @@ if(! $multi_fasta_mode) {
 	$seq = uc($seq);
 	$seq =~ tr/U/T/;
 	
-	# Record in an array by index (old %seq_by_pos_hash)
-	print "\nIndexing sequence... ";
-	
-	for (my $i = 0; $i < length($seq); $i++) {
-		$seq_by_index_arr[$i] = substr($seq, $i, 1); # This is $position - 1
-	}
-	print "COMPLETED.\n";
+#	# Record in an array by index (old %seq_by_pos_hash)
+#	print "\nIndexing sequence... ";
+#	
+#	for (my $i = 0; $i < length($seq); $i++) {
+#		$seq_by_index_arr[$i] = substr($seq, $i, 1); # This is $position - 1
+#	}
+#	print "COMPLETED.\n";
 	
 }
 
@@ -709,14 +709,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		$seq = uc($seq);
 		$seq =~ tr/U/T/;
 		
-		# Record in an array by index (old %seq_by_pos_hash)
-		print "\nIndexing sequence... ";
-		
-		# THIS WILL OVERWRITE
-		for (my $i = 0; $i < length($seq); $i++) {
-			$seq_by_index_arr[$i] = substr($seq,$i,1); # This is $position - 1
-		}
-		print "COMPLETED.\n";
+#		# Record in an array by index (old %seq_by_pos_hash)
+#		print "\nIndexing sequence... ";
+#		
+#		# THIS WILL OVERWRITE
+#		for (my $i = 0; $i < length($seq); $i++) {
+#			$seq_by_index_arr[$i] = substr($seq,$i,1); # This is $position - 1
+#		}
+#		print "COMPLETED.\n";
 		
 	} # end recording of individual FASTA in multi-FASTA mode
 	
@@ -4230,8 +4230,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	print "\nProcessing all individual sites (nucleotides take time and memory; use a high-memory machine for eukaryotic chromosomes!)... ";
 	#print "\nSeq. length is: ".length($seq)."\n";
 	for (my $i = 0; $i < length($seq); $i++) { # FOR EACH SITE IN FASTA
-		my $position = $i+1;
-		my $ref_nt = substr($seq,$i,1);
+		my $position = $i + 1;
+		my $ref_nt = substr($seq, $i, 1);
 		
 		#print "Site $position\t";
 		
@@ -4249,8 +4249,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			my $cov = $A + $C + $G + $T;
 			my $cov_old = $hh_nc_position_info{$position}->{cov};
 			
-			my $cov_for_comp = sprintf("%.3f",$cov);
-			my $cov_old_for_comp = sprintf("%.3f",$cov_old);
+			my $cov_for_comp = sprintf("%.3f", $cov);
+			my $cov_old_for_comp = sprintf("%.3f", $cov_old);
 			
 			# WARN if the coverage doesn't match the sum of nucleotide counts
 			if($cov_for_comp != $cov_old_for_comp) {
@@ -4991,7 +4991,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			if($hh_product_position_info{$curr_product}->{$position}) { # If the variant exists
 				#print "YES, there IS a variant stored at $position\n";
 				my $snp_report_reference_nt = $hh_product_position_info{$curr_product}->{$position}->{reference};
-				my $fasta_nt = $seq_by_index_arr[$position-1];
+#				my $fasta_nt = $seq_by_index_arr[$position-1];
+				my $fasta_nt = substr($seq, ($position - 1), 1);
 				
 				if($snp_report_reference_nt ne $fasta_nt) {
 					chdir('SNPGenie_Results');
@@ -5673,16 +5674,17 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$S_diffs_per_comparison += 0;
 				
 				# Find out what nucleotide it is and give it a num of 1
-				if ($seq_by_index_arr[$site_pos_1-1] eq 'A') {
+				my $nt_to_check = substr($seq, ($site_pos_1 - 1), 1); # instead of $seq_by_index_arr[$site_pos_1-1]
+				if($nt_to_check eq 'A') {
 					$num_1_A = 1;
 					$site_1_num_hash{'A'} = $num_1_A;
-				} elsif ($seq_by_index_arr[$site_pos_1-1] eq 'C') {
+				} elsif($nt_to_check eq 'C') {
 					$num_1_C = 1;
 					$site_1_num_hash{'C'} = $num_1_C;
-				} elsif ($seq_by_index_arr[$site_pos_1-1] eq 'G') {
+				} elsif($nt_to_check eq 'G') {
 					$num_1_G = 1;
 					$site_1_num_hash{'G'} = $num_1_G;
-				} elsif ($seq_by_index_arr[$site_pos_1-1] eq 'T') {
+				} elsif($nt_to_check eq 'T') {
 					$num_1_T = 1;
 					$site_1_num_hash{'T'} = $num_1_T;
 				}
@@ -6033,16 +6035,17 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$S_diffs_per_comparison += 0;	
 				
 				# Find out what nucleotide it is and give it a num of 1
-				if ($seq_by_index_arr[$site_pos_2-1] eq 'A') {
+				my $nt_to_check = substr($seq, ($site_pos_2 - 1), 1); # instead of $seq_by_index_arr[$site_pos_2-1]
+				if($nt_to_check eq 'A') {
 					$num_2_A = 1;
 					$site_2_num_hash{'A'} = $num_2_A;
-				} elsif ($seq_by_index_arr[$site_pos_2-1] eq 'C') {
+				} elsif($nt_to_check eq 'C') {
 					$num_2_C = 1;
 					$site_2_num_hash{'C'} = $num_2_C;
-				} elsif ($seq_by_index_arr[$site_pos_2-1] eq 'G') {
+				} elsif($nt_to_check eq 'G') {
 					$num_2_G = 1;
 					$site_2_num_hash{'G'} = $num_2_G;
-				} elsif ($seq_by_index_arr[$site_pos_2-1] eq 'T') {
+				} elsif($nt_to_check eq 'T') {
 					$num_2_T = 1;
 					$site_2_num_hash{'T'} = $num_2_T;
 				}
@@ -6398,16 +6401,17 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$S_diffs_per_comparison += 0;
 				
 				# Find out what nucleotide it is and give it a num of 1
-				if ($seq_by_index_arr[$site_pos_3-1] eq 'A') {
+				my $nt_to_check = substr($seq, ($site_pos_3 - 1), 1); # instead of $seq_by_index_arr[$site_pos_3-1]
+				if($nt_to_check eq 'A') {
 					$num_3_A = 1;
 					$site_3_num_hash{'A'} = $num_3_A;
-				} elsif ($seq_by_index_arr[$site_pos_3-1] eq 'C') {
+				} elsif($nt_to_check eq 'C') {
 					$num_3_C = 1;
 					$site_3_num_hash{'C'} = $num_3_C;
-				} elsif ($seq_by_index_arr[$site_pos_3-1] eq 'G') {
+				} elsif($nt_to_check eq 'G') {
 					$num_3_G = 1;
 					$site_3_num_hash{'G'} = $num_3_G;
-				} elsif ($seq_by_index_arr[$site_pos_3-1] eq 'T') {
+				} elsif($nt_to_check eq 'T') {
 					$num_3_T = 1;
 					$site_3_num_hash{'T'} = $num_3_T;
 				}
@@ -7699,7 +7703,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				#print "\nsite=$_ A=$this_A C=$this_C G=$this_G T=$this_T ref=$this_ref cov=$this_cov";
 				
 			} else { # not polymorphic, so just add the reference nucleotide to all
-				my $this_nt = $seq_by_index_arr[$_ - 1];
+				my $this_nt = substr($seq, ($_ - 1), 1); # instead of $seq_by_index_arr[$_ - 1];
 				
 				for(my $i = 1; $i <= $max_cov; $i++) {
 					my $j = $i - 1;
