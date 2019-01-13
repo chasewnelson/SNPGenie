@@ -320,8 +320,10 @@ sub generate_reverse_complement_gtf {
 			my $this_stop = $seq_length - $old_start + 1;
 			
 			# Replace old sites and strand with new
-			$_ =~ s/CDS\t$old_start\t$old_stop\t\.\t\+/CDS\t$this_start\t$this_stop\t\.\t\-/;
-			$_ =~ s/CDS\t$old_start\t$old_stop\t\.\t\-/CDS\t$this_start\t$this_stop\t\.\t\+/;
+			#$_ =~ s/CDS\t$old_start\t$old_stop\t\.\t\+/CDS\t$this_start\t$this_stop\t\.\t\-/;
+			#$_ =~ s/CDS\t$old_start\t$old_stop\t\.\t\-/CDS\t$this_start\t$this_stop\t\.\t\+/;
+			$_ =~ s/CDS\t$old_start\t$old_stop\t([\d\.]+)\t\+/CDS\t$this_start\t$this_stop\t\1\t\-/;
+			$_ =~ s/CDS\t$old_start\t$old_stop\t([\d\.]+)\t\-/CDS\t$this_start\t$this_stop\t\1\t\+/;
 			
 			push(@gtf_lines,$_);
 			$lines_total++;
@@ -330,8 +332,8 @@ sub generate_reverse_complement_gtf {
 	close GTF_FILE;
 	
 	# Give NUM LINES CONVERTED tag/warning
-	print "\n## A total of $lines_total products were processed. Please verify that ".
-		"this is the correct number of products.\n";
+	print "\n## A total of $lines_total lines were processed. Please verify that ".
+		"this is the correct number of lines.\n";
 	
 	open(OUT_FILE_GTF, ">>$new_gtf_file_name");
 	foreach my $gtf_line (@gtf_lines) {
