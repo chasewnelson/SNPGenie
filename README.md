@@ -33,7 +33,7 @@ SNPGenie is a collection of Perl scripts for estimating *π*<sub>N</sub>/*π*<su
 * [SNPGenie Within-Group](#snpgenie-within)
 * [SNPGenie Between-Group](#snpgenie-between)
 * [How SNPGenie Works](#how-snpgenie-works)
-* [Additional Scripts](#additional-scripts)
+* [Additional Scripts](#additional-scripts) (vcf2revcom.pl, gtf2revcom.pl, fasta2revcom.pl)
 * [Troubleshooting](#troubleshooting)
 * [Citation](#citation)
 * [Studies Using SNPGenie](#studies-using-snpgenie)
@@ -328,7 +328,20 @@ For further background, see Nelson & Hughes (2015) in the [References](#referenc
 
 ## <a name="additional-scripts"></a>Additional Scripts
 
-Additional scripts, provided to help in the preparation of SNPGenie input, have moved to the <a target="_blank" href="https://github.com/chasewnelson/CHASeq">CHASeq</a> repository. There you can find gb2gtf.pl, gff2gtf.pl, split_fasta.pl, vcf2revcom.pl, and lots of other useful stuff. Enjoy!
+Previous versions of the additional scripts, provided to help in the preparation of SNPGenie input, have moved to the <a target="_blank" href="https://github.com/chasewnelson/CHASeq">CHASeq</a> repository. Here, you can find the following scripts for use in converting files to the reverse complement strand, to be run as follows:
+
+* Convert a VCF file to the reverse complement by inputting the file and the total sequence length of the corresponding FASTA:
+
+`vcf2revcom.pl <file_name>.vcf <seq_length>`
+
+* Convert a GTF file to the reverse complement by inputting the file and the total sequence length of the corresponding FASTA:
+
+`gtf2revcom.pl <file_name>.gtf <seq_length>`
+
+* Convert a FASTA file (containing one sequence) to the reverse complement by inputting the file:
+
+`fasta2revcom.pl <seq>.fa`
+
 
 ## <a name="troubleshooting"></a>Troubleshooting
 
