@@ -402,7 +402,7 @@ and this page:
 ## <a name="contact"></a>Contact
 If you have questions about using SNPGenie, please click on the "<a target="_blank" href="https://github.com/chasewnelson/snpgenie/issues">Issues</a>" tab at the top of this page and begin a new thread, so that others might benefit from the discussion.
 
-Correspondance should be addressed to Chase W. Nelson at the American Museum of Natural History: 
+Other correspondence should be addressed to Chase W. Nelson: 
 
 * cnelson <**AT**> amnh <**DOT**> org
 
