@@ -1,4 +1,4 @@
-<img src="https://github.com/chasewnelson/snpgenie/blob/master/logo1a.jpg?raw=true" alt="SNPGenie logo" width="450" height="175" align="middle">
+<img src="https://github.com/chasewnelson/snpgenie/blob/master/logo1a.jpg?raw=true" alt="SNPGenie logo by Elizabeth Ogle" width="450" height="175" align="middle">
 
 SNPGenie is a collection of Perl scripts for estimating *π*<sub>N</sub>/*π*<sub>S</sub>, *d*<sub>N</sub>/*d*<sub>S</sub>, and other evolutionary parameters from next-generation sequencing (NGS) single-nucleotide polymorphism (SNP) variant data. Each type of analysis uses its own script:
 
@@ -385,7 +385,6 @@ and this page:
 
 ## <a name="studies-using-snpgenie"></a>Studies Using SNPGenie
 
-
 * Xu S, *et al.* (2019) <a target="_blank" href="https://www.nature.com/articles/s41467-019-09235-5">Low genetic variation is associated with low mutation rate in the giant duckweed</a>. *Nature Communications* **10**: 1243.
 * Fraïsse C, *et al.* (2019) <a target="_blank" href="https://academic.oup.com/mbe/article/36/3/500/5261346">Pleiotropy Modulates the Efficacy of Selection in Drosophila melanogaster</a>. *Molecular Biology and Evolution* **36**: 500-15.
 * de Souza Ribeiro R, *et al.* (2018) <a target="_blank" href="https://www.sciencedirect.com/science/article/pii/S0001706X18300858?via%3Dihub">In silico analysis of putative dormancy genes in Plasmodium vivax</a>. *Acta Tropica* **186**: 24-34.
@@ -404,6 +403,9 @@ and this page:
 * Bailey AL, *et al.* (2014) <a target="_blank" href="http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0090714">High genetic diversity and adaptive potential of two simian hemorrhagic fever viruses in a wild primate population</a>. *PLoS ONE* **9**(3):e90714.
 * Wilker PR, *et al.* (2013) <a target="_blank" href="http://www.nature.com/ncomms/2013/131023/ncomms3636/abs/ncomms3636.html?message-global=remove">Selection on haemagglutinin imposes a bottleneck during mammalian transmission of reassortant H5N1 influenza viruses</a>. *Nature Communications* **4**:2636.
 
+## <a name="acknowledgments"></a>Acknowledgments
+**`SNPGenie`** was written with support from a University of South Carolina Presidential Fellowship (2011-2015), a National Science Foundation (NSF) Graduate Research Fellowship (GRF; 2013-2016), and an NSF East Asian and Pacific Summer Institutes (EAPSI; 2013) Fellowship. **`SNPGenie`** has been further maintained by a Gerstner Scholars Fellowship from the Gerstner Family Foundation at the American Museum of Natural History (2016-2019). The logo image was designed by Elizabeth Ogle (2015).
+
 ## <a name="contact"></a>Contact
 If you have questions about using SNPGenie, please click on the "<a target="_blank" href="https://github.com/chasewnelson/snpgenie/issues">Issues</a>" tab at the top of this page and begin a new thread, so that others might benefit from the discussion.
 
@@ -417,5 +419,3 @@ Other correspondence should be addressed to Chase W. Nelson:
 * Lynch M, Bost D, Wilson S, Maruki T, Harrison S (2014) <a target="_blank" href="http://gbe.oxfordjournals.org/content/early/2014/04/30/gbe.evu085">Population-genetic inference from pooled-sequencing data</a>. *Genome Biol. Evol.* **6**(5):1210-1218.
 * Nei M, Gojobori T (1986) <a target="_blank" href="http://mbe.oxfordjournals.org/content/3/5/418.short?rss=1&ssource=mfc">Simple methods for estimating the numbers of synonymous and nonsynonymous nucleotide substitutions</a>. *Mol Biol Evol* **3**:418-26.
 * Nelson CW, Hughes AL (2015) <a target="_blank" href="http://www.sciencedirect.com/science/article/pii/S1567134814004468">Within-host nucleotide diversity of virus populations: Insights from next-generation sequencing</a>. *Infection, Genetics and Evolution* **30**:1-7.
-
-Image Copyright 2015 Elizabeth Ogle

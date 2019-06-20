@@ -15605,7 +15605,7 @@ sub sliding_window {
 #	my $index_mean_dS_ref;
 	
 	# Determine the index of each column
-	for (my $i=0; $i<scalar(@header_names_arr); $i++) {
+	for (my $i = 0; $i < scalar(@header_names_arr); $i++) {
 		if ($header_names_arr[$i] eq 'file') {
 			$index_file = $i;
 		} elsif ($header_names_arr[$i] eq 'product') {
@@ -15614,21 +15614,21 @@ sub sliding_window {
 			$index_site = $i;
 		} elsif ($header_names_arr[$i] eq 'codon') {
 			$index_codon = $i;
-		} elsif ($header_names_arr[$i] eq 'mean_nonsyn_diffs') {
+		} elsif ($header_names_arr[$i] eq 'N_diffs') {
 			$index_N_diffs_codon = $i;
-		} elsif ($header_names_arr[$i] eq 'mean_syn_diffs') {
+		} elsif ($header_names_arr[$i] eq 'S_diffs') {
 			$index_S_diffs_codon = $i;
-		} elsif ($header_names_arr[$i] eq 'nonsyn_sites') {
+		} elsif ($header_names_arr[$i] eq 'N_sites') {
 			$index_N_sites_codon = $i;
-		} elsif ($header_names_arr[$i] eq 'syn_sites') {
+		} elsif ($header_names_arr[$i] eq 'S_sites') {
 			$index_S_sites_codon = $i;
-		} elsif ($header_names_arr[$i] eq 'nonsyn_sites_ref') {
+		} elsif ($header_names_arr[$i] eq 'N_sites_ref') {
 			$index_N_sites_ref = $i;
-		} elsif ($header_names_arr[$i] eq 'syn_sites_ref') {
+		} elsif ($header_names_arr[$i] eq 'S_sites_ref') {
 			$index_S_sites_ref = $i;
-		} elsif ($header_names_arr[$i] eq "mean_nonsyn_diffs_vs_ref") {
+		} elsif ($header_names_arr[$i] eq "N_diffs_vs_ref") {
 			$index_N_diffs_ref = $i;
-		} elsif ($header_names_arr[$i] eq "mean_syn_diffs_vs_ref") {
+		} elsif ($header_names_arr[$i] eq "S_diffs_vs_ref") {
 			$index_S_diffs_ref = $i;
 		}
 	}
