@@ -9718,27 +9718,7 @@ sub populate_tempfile_vcf {
 		chdir('..');
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"INFO\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
-	} #elsif ($seen_index_format == 0) {
-#		chdir('SNPGenie_Results');
-#		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
-#		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-#			"Does not contain the standard VCF column header \"FORMAT\". SNPGenie terminated.\n";
-#		close ERROR_FILE;
-#		chdir('..');
-#		
-#		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"FORMAT\". SNPGenie terminated.\n\n";	
-#	} #elsif ($seen_index_sample1 == 0) {
-#		chdir('SNPGenie_Results');
-#		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
-#		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-#			"Does not contain the standard VCF column header \"sample1\". SNPGenie terminated.\n";
-#		close ERROR_FILE;
-#		chdir('..');
-#		
-#		#unlink $curr_snp_report_name;
-#		
-#		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"sample1\". SNPGenie terminated.\n\n";	
-#	}
+	}
 	
 	# NEED TO BUILD A HASH WITH keys as ALL PRODUCT POSITIONS IN THE GENOME, and values being an array
 	# of all PRODUCTS overlapping that position. Do we want all the products just on this strand,
