@@ -9648,76 +9648,76 @@ sub populate_tempfile_vcf {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the standard VCF column header \"CHROM\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"CHROM\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"CHROM\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"CHROM\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_pos == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the standard VCF column header \"POS\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"POS\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"POS\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"POS\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_id == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the standard VCF column header \"ID\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"ID\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"ID\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"ID\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_ref == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the standard VCF column header \"REF\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"REF\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"REF\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"REF\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_alt == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the standard VCF column header \"ALT\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"ALT\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"ALT\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"ALT\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_qual == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the standard VCF column header \"QUAL\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"QUAL\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"QUAL\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"QUAL\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_filter == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the standard VCF column header \"FILTER\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"FILTER\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"FILTER\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"FILTER\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_info == 0) {
 		chdir('SNPGenie_Results');
 		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
-			"Does not contain the standard VCF column header \"INFO\". SNPGenie terminated.\n";
+			"Does not contain the standard VCF column header \"INFO\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
 		chdir('..');
 		
-		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"INFO\". SNPGenie terminated.\n\n";	
+		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"INFO\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} #elsif ($seen_index_format == 0) {
 #		chdir('SNPGenie_Results');
 #		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
