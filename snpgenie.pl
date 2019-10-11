@@ -9796,6 +9796,7 @@ sub populate_tempfile_vcf {
 	
 	# Now we want to cycle through the file again in order to build a CLC version file
 	# for output
+	#print "\nBuilding CLC version: $temp_snp_report_name\n"; # e.g., temp_snp_report_pZLT.txt
 	#open(OUTFILE,">>snpgenie_tempfile.txt");
 	open(TEMP_FILE,">>$temp_snp_report_name");
 	my $clc_format_header = "File\tReference Position\tType\tReference\t".
@@ -10223,7 +10224,7 @@ sub populate_tempfile_vcf {
 						}
 						
 					##SAMVCF VCF FORMAT #4
-					} elsif($vcfformat == 4) {	
+					} elsif($vcfformat == 4) {
 					#} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
 						# Die if there wasn't a FORMAT column, necessary for this format
 						if ($seen_index_format == 0) {
@@ -10275,11 +10276,13 @@ sub populate_tempfile_vcf {
 						my $AD3;
 						my $AD4;
 						
-						if($sample_value_arr[$colon_count_before_AD] =~ /(\d+)\,(\d+)\,(\d+)\,(\d+)/) { # REF and 2 ALTS
+						if($sample_value_arr[$colon_count_before_AD] =~ /(\d+)\,(\d+)\,(\d+)\,(\d+)/) { # REF and 3 ALTS
 							$AD1 = $1;
 							$AD2 = $2;
 							$AD3 = $3;
 							$AD4 = $4;
+						} else {
+							die "\n### WARNING: for vcfformat==4, AD must list numbers of reads for three SNPs as follows: <REF>,<ALT1>,<ALT2>,<ALT3>. SNPGenie TERMINATED.\n\n";
 						}
 						
 						# EXTRACT the VALUE of DP (coverage)
@@ -10658,6 +10661,8 @@ sub populate_tempfile_vcf {
 							$AD1 = $1;
 							$AD2 = $2;
 							$AD3 = $3;
+						} else {
+							die "\n### WARNING: for vcfformat==4, AD must list numbers of reads for two SNPs as follows: <REF>,<ALT1>,<ALT2>. SNPGenie TERMINATED.\n\n";
 						}
 						
 						# EXTRACT the VALUE of DP (coverage)
@@ -10948,6 +10953,9 @@ sub populate_tempfile_vcf {
 						if($sample_value_arr[$colon_count_before_AD] =~ /(\d+)\,(\d+)/) { # REF and 1 ALT
 							$AD1 = $1;
 							$AD2 = $2;
+						} else {
+							#unlink($curr_snp_report_name);
+							die "\n### WARNING: for vcfformat==4, AD must list numbers of reads for one SNP as follows: <REF>,<ALT>. SNPGenie TERMINATED.\n\n";
 						}
 						
 						# EXTRACT the VALUE of DP (coverage)

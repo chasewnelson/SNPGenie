@@ -123,7 +123,7 @@ A <a target="_blank" href="https://github.com/samtools/hts-specs">VCF</a> SNP re
 * **FORMAT**, sometimes an alternative to the **INFO** column for read depth and/or allele frequency data; 
 * **\<SAMPLE\>**, column(s) named by sample, a common alternative to the **INFO** column for read depth and/or allele frequency data.
 
-Because VCF files vary widely in format, **SNPGenie now requires** users to specify exactly which VCF format is being used with the **--vcfformat** argument. New formats are being added on a case-by-case basis; users should [contact the author](#contact) to have new formats incorporated. **FORMAT 4 is the most common, and necessary if your file contains multiple \<SAMPLE\> columns**. All supported formats are:
+Because VCF files vary widely in format, **SNPGenie now requires** users to specify exactly which VCF format is being used with the **--vcfformat** argument. New formats are being added on a case-by-case basis; users should [contact the author](#contact) to have new formats incorporated. **FORMAT 4 is the most common, and necessary if your file contains multiple \<SAMPLE\> columns**. Note that these formats are specific to SNPGenie; they do **not** refer to VCF version numbers. All supported formats are:
 
 1. **FORMAT (1): --vcfformat=1**. Multiple individual genomes have been sequenced separately, with SNPs summarized in the VCF file. SNPGenie will require the following in the **INFO** column:
 	* **AN**, the number of alleles sequenced (*e.g.*, "AN=60"). If absent, will use **NS**, the number of samples (*i.e.*, individual sequencing experiments) being summarized (*e.g.*, "NS=30");
