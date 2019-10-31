@@ -3,7 +3,7 @@
 # PROGRAM: SNPGenie is a Perl program that calculates dN/dS, piN/piS, and gene diversity
 # from NGS SNP Reports generated from pooled DNA samples.
 
-# Copyright (C) 2015, 2016, 2017 Chase W. Nelson
+# Copyright (C) 2015, 2016, 2017, 2018, 2019 Chase W. Nelson
 
 #########################################################################################
 ## LICENSE
@@ -78,6 +78,14 @@ my @fasta_file_names_arr;
 my $fasta_arr_size;
 my $cds_file;
 my $multi_fasta_mode;
+my $help;
+my $h;
+my $version;
+my $v;
+
+# Allow use to define working and/or output directory
+my $outdir;
+my $workdir;
 
 my $param_file_contents = "SNPGenie parameter log.\n\n";
 
@@ -88,198 +96,265 @@ GetOptions(	"minfreq:f" => \$minfreq, # optional floating point parameter
 			"fastafile:s" => \$fastafile, # optional string parameter
 			"multi_fasta_mode" => \$multi_fasta_mode, # optional Boolean parameter
 			"gtffile:s" => \$gtffile, # optional string parameter
-			"slidingwindow:i" => \$slidingwindow)
+			"outdir:s" => \$outdir, # optional string parameter
+			"slidingwindow:i" => \$slidingwindow,
+			"workdir=s" => \$workdir,
+			"help" => \$help,
+			"h" => \$h,
+			"version" => \$version,
+			"v" => \$v)
 			
-			or die "\n## WARNING: Error in command line arguments. SNPGenie terminated.\n\n"; 
+			or die "\n### WARNING: Error in command line arguments. SNPGenie terminated.\n\n"; 
+
+if($help || $h) {
+	&print_usage_message();
+}
+
+if($version || $v) {
+	print "SNPGenie version 2019.10.31\n";
+	exit;
+}
 
 # N.B.: When an argument, e.g., slidingwindow, is called only as a flag, its value is 0
 # When it is not called at all, it is null
 
-# Create a directory for the results
-if (-d "SNPGenie_Results") { # Can also use "./SNPGenie_Results"; use "-e" to check file
-	die "\n\n## WARNING:\n## The directory SNPGenie_Results already exists in the ".
-			"working directory.\n## Please rename or move this directory so a new one ".
-			"can be created.\n\n";
+# Set or get the working directory
+if($workdir) { # $workdir passed as argument
+	if(-d $workdir) { # $workdir is a real directory
+		#print "\n### DIRECTORY TO BEGIN ANALYSIS:\n";
+		chomp($workdir);
+		#print "WORKING_DIRECTORY=$workdir\n";
+	} else { # $workdir is NOT a real directory
+		print "\n### WARNING: DIRECTORY $workdir DOESN'T EXIST. USING WORKING DIRECTORY TO BEGIN ANALYSIS:\n";
+		$workdir = `pwd`;
+		chomp($workdir);
+		#print "WORKING_DIRECTORY=$workdir\n";
+	}
 } else {
-	mkdir('SNPGenie_Results');
-	
-	## Set OPTIONS given the user's INPUT and RECORD PARAMETERS	
-	if(! $minfreq) {
-		$minfreq = 0;
-		$param_file_contents .= "MINIMUM ALLELE FREQUENCY: Default used; all SNPs included\n";
-	} elsif(($minfreq >= 1) || ($minfreq < 0)) {
-		die "\n## WARNING: The --minfreq option must be a decimal between 0 and 1\n".
-			"## SNPGenie terminated.\n\n";
-	} else {
-		$param_file_contents .= "MINIMUM ALLELE FREQUENCY: $minfreq\n";
+	#print "\n### BEGIN ANALYSIS IN WORKING DIRECTORY:\n";
+	$workdir = `pwd`;
+	chomp($workdir);
+	#print "WORKING_DIRECTORY=$workdir\n";
+}
+
+my $WORK;
+
+if($workdir ne '') {
+	$WORK = $workdir; # better nomenclature
+} else {
+	die "\n### WARNING: Working directory does not exist or could not be obtained; please " .
+		"retry using the --workdir option. SNPGenie terminated.\n\n";
+}
+
+
+# ENTER WORKING DIRECTORY
+chdir("$WORK"); # in case we're not already there
+
+
+# Decipher the results directory
+my $OUT_DIR;
+if($outdir =~ /\w/) { # there's at least one letter
+	if($outdir =~ /\//) { # it's already a path, so use it as-is
+		$OUT_DIR = $outdir;
+	} else { # bare name, not path, so add it to the working directory path
+		$OUT_DIR = "$WORK\/$outdir";
+	} 
+} else { # nothing specified; use default
+	$OUT_DIR = "$WORK\/SNPGenie_Results";
+}
+
+# Create the results directory
+if(-d $OUT_DIR) { # $OUT_DIR already exists
+	die "\n### WARNING: Results directory already exists; " . 
+		"please retry with another --outdir. SNPGenie terminated.\n";
+} else {
+	mkdir("$OUT_DIR");
+}
+
+# Make sure creating the directory worked
+unless(-d $OUT_DIR) {
+	my $specific_warning = "### TERMINATED: Problem creating results directory; please retry with another --outdir " . 
+		"using a full path or single name.\n";
+	&print_usage_message($specific_warning);
+}
+#print "RESULTS_DIRECTORY=$OUT_DIR\n";
+
+
+# Set OPTIONS given the user's INPUT, and RECORD PARAMETERS	
+if(! $minfreq) {
+	$minfreq = 0;
+	$param_file_contents .= "MINIMUM ALLELE FREQUENCY: Default used; all SNPs included\n";
+} elsif(($minfreq >= 1) || ($minfreq < 0)) {
+	die "\n## WARNING: The --minfreq option must be a decimal between 0 and 1\n".
+		"## SNPGenie terminated.\n\n";
+} else {
+	$param_file_contents .= "MINIMUM ALLELE FREQUENCY: $minfreq\n";
+}
+
+if($slidingwindow > 0) {
+	$param_file_contents .= "SLIDING WINDOW LENGTH: $slidingwindow\n";
+} else {
+	$param_file_contents .= "SLIDING WINDOW LENGTH: None\n";
+}
+
+if(! $multi_fasta_mode) {
+	$multi_fasta_mode = 0; # default behavior: no separate codon files for each SNP Report
+	$param_file_contents .= "MULTI-FASTA MODE: Default used; No\n";
+} else {
+	$multi_fasta_mode = 1;
+	$param_file_contents .= "MULTI-FASTA MODE: Yes\n";
+}
+
+# Get SNP Report name(s)
+if(! $snpreport) {
+	@snp_report_file_names_arr = &get_txt_file_names;
+	my @snp_report_file_names_ADD_arr = &get_csv_file_names;
+	my @snp_report_file_names_ADD_VCF_arr = &get_vcf_file_names;
+	push(@snp_report_file_names_arr,@snp_report_file_names_ADD_arr);
+	push(@snp_report_file_names_arr,@snp_report_file_names_ADD_VCF_arr);
+	$param_file_contents .= "SNP REPORTS: Default auto-detected file(s): @snp_report_file_names_arr\n";
+} else {
+	@snp_report_file_names_arr = ($snpreport);
+	$param_file_contents .= "SNP REPORTS: User submitted file: $snpreport\n";
+}
+#print "\n@snp_report_file_names_arr\n\n";
+
+if (scalar (@snp_report_file_names_arr) == 0) {
+	die "\n\n## WARNING: There are no SNP Reports. SNPGenie terminated.\n\n";
+} else {
+	foreach(@snp_report_file_names_arr) {
+		if($_ =~ /\.vcf/ && ! $vcfformat) {
+			rmdir("$OUT_DIR");
+			die "\n\n### WARNING: User must specify the specific SNP report format when using\n".
+				"### VCF files. Use the --vcfformat option. SNPGENIE TERMINATED.\n\n";
+		}
 	}
-	
-	if($slidingwindow > 0) {
-		$param_file_contents .= "SLIDING WINDOW LENGTH: $slidingwindow\n";
-	} else {
-		$param_file_contents .= "SLIDING WINDOW LENGTH: None\n";
-	}
+}
+
+# Identify FASTA file
+if(! $fastafile) {
+	@fasta_file_names_arr = &get_fasta_file_names;
+	#print "\nWorking directory fasta files are: @fasta_file_names_arr\n\n";
+	$param_file_contents .= "REFERENCE FASTA FILE: Default auto-detected file(s): @fasta_file_names_arr\n";
+} else {
+	$fasta_file_names_arr[0] = $fastafile;
+	$param_file_contents .= "REFERENCE FASTA FILE: User submitted file: $fastafile\n";
+}
+
+$fasta_arr_size = scalar(@fasta_file_names_arr);
+#print "\nThe size of the fasta array is $fasta_arr_size\n";
+
+if($fasta_arr_size > 1) {
 	
 	if(! $multi_fasta_mode) {
-		$multi_fasta_mode = 0; # default behavior: no separate codon files for each SNP Report
-		$param_file_contents .= "MULTI-FASTA MODE: Default used; No\n";
-	} else {
-		$multi_fasta_mode = 1;
-		$param_file_contents .= "MULTI-FASTA MODE: Yes\n";
+		die "\n\n## WARNING: There are multiple FASTA (.fa or .fasta) files in the working directory.\n".
+		"## There must be only one reference genome in single-FASTA mode. SNPGenie terminated.\n\n";
 	}
 	
-	# Get SNP Report name(s)
-	if(! $snpreport) {
-		@snp_report_file_names_arr = &get_txt_file_names;
-		my @snp_report_file_names_ADD_arr = &get_csv_file_names;
-		my @snp_report_file_names_ADD_VCF_arr = &get_vcf_file_names;
-		push(@snp_report_file_names_arr,@snp_report_file_names_ADD_arr);
-		push(@snp_report_file_names_arr,@snp_report_file_names_ADD_VCF_arr);
-		$param_file_contents .= "SNP REPORTS: Default auto-detected file(s): @snp_report_file_names_arr\n";
-	} else {
-		@snp_report_file_names_arr = ($snpreport);
-		$param_file_contents .= "SNP REPORTS: User submitted file: $snpreport\n";
-	}
-	#print "\n@snp_report_file_names_arr\n\n";
+} elsif($fasta_arr_size == 1) {
+	$the_fasta_file = $fasta_file_names_arr[0];
 	
-	if (scalar (@snp_report_file_names_arr) == 0) {
-		die "\n\n## WARNING: There are no SNP Reports. SNPGenie terminated.\n\n";
-	} else {
-		foreach(@snp_report_file_names_arr) {
-			if($_ =~ /\.vcf/ && ! $vcfformat) {
-				rmdir('SNPGenie_Results');
-				die "\n\n### WARNING: User must specify the specific SNP report format when using\n".
-					"### VCF files. Use the --vcfformat option. SNPGENIE TERMINATED.\n\n";
+	# Go through FASTA to make sure there's only one sequence
+	my $seen_seq = 0;
+	open (INFILE, $the_fasta_file);
+	while (<INFILE>) {
+		if (/>/) {
+			if($seen_seq == 0) {
+				$seen_seq = 1;
+			} else {
+				die "\n\n### WARNING: There are multiple sequences in the FASTA file.\n".
+					"### There must be only one reference genome. SNPGenie terminated.\n\n";
 			}
 		}
 	}
 	
-	if(! $fastafile) {
-		@fasta_file_names_arr = &get_fasta_file_names;
-		#print "\nWorking directory fasta files are: @fasta_file_names_arr\n\n";
-		$param_file_contents .= "REFERENCE FASTA FILE: Default auto-detected file(s): @fasta_file_names_arr\n";
-	} else {
-		$fasta_file_names_arr[0] = $fastafile;
-		$param_file_contents .= "REFERENCE FASTA FILE: User submitted file: $fastafile\n";
-	}
+	close INFILE;
 	
-	$fasta_arr_size = scalar(@fasta_file_names_arr);
-	#print "\nThe size of the fasta array is $fasta_arr_size\n";
-	
-	
-	
-	if($fasta_arr_size > 1) {
-		
-		if(! $multi_fasta_mode) {
-			die "\n\n## WARNING: There are multiple FASTA (.fa or .fasta) files in the working directory.\n".
-			"## There must be only one reference genome in single-FASTA mode. SNPGenie terminated.\n\n";
-		}
-		
-	} elsif($fasta_arr_size == 1) {
-		$the_fasta_file = $fasta_file_names_arr[0];
-		
-		# Go through FASTA to make sure there's only one sequence
-		my $seen_seq = 0;
-		open (INFILE, $the_fasta_file);
-		while (<INFILE>) {
-			if (/>/) {
-				if($seen_seq == 0) {
-					$seen_seq = 1;
-				} else {
-					die "\n\n### WARNING: There are multiple sequences in the FASTA file.\n".
-						"### There must be only one reference genome. SNPGenie terminated.\n\n";
-				}
-			}
-		}
-		close INFILE;
-		
-		
-	} else {
-		die "\n\n## WARNING: There are no FASTA (.fa or .fasta) files in the working directory. ".
-		"SNPGenie terminated.\n\n";
-	}
-	
-	if(! $gtffile) { # default behavior
-		$cds_file = &get_cds_file_name;
-		$param_file_contents .= "GTF FILE: Default auto-detected file: $cds_file\n";
-	} else {
-		$cds_file = $gtffile;
-		$param_file_contents .= "GTF FILE: User submitted file: $cds_file\n";
-	}
-	
-	#print "\n@fasta_file_names_arr\n\n";
-	
-	STDOUT->autoflush(1);
-	
-	chdir('SNPGenie_Results');
-	
-	open(PARAM_FILE,">>SNPGenie\_parameters\.txt");
-	print PARAM_FILE "$param_file_contents";
-	close PARAM_FILE;
-	
-	### NUCLEOTIDE DIVERSITY FILE
-	open(OUTFILE_NT_DIV,">>codon\_results\.txt");
-	my $ntd_headers_to_print = "file\tproduct\tsite\tcodon\tnum_overlap_ORF_nts\t".
-		#"mean_coverage\t".
-		"N_diffs\tS_diffs\t";
-	$ntd_headers_to_print .= "N_sites\tS_sites\t";
-
-	$ntd_headers_to_print .= "N_sites_ref\tS_sites_ref\t";
-	#$ntd_headers_to_print .= "piN\tpiS\t";
-	$ntd_headers_to_print .= "N_diffs_vs_ref\tS_diffs_vs_ref\t".
-		"gdiv\tN_gdiv\tS_gdiv\n";
-	#$ntd_headers_to_print .= "mean_dN_vs_ref\tmean_dS_vs_ref\n"; # \tAverage_cov
-	
-	print OUTFILE_NT_DIV "$ntd_headers_to_print";
-	close OUTFILE_NT_DIV;
-	
-	### GENE DIVERSITY FILE
-	open(OUTFILE_GENE_DIV,">>site\_results\.txt");
-	print OUTFILE_GENE_DIV "file\tproduct\tsite\tref_nt\tmaj_nt\t".
-		"position_in_codon\t".
-		"overlapping_ORFs\tcodon_start_site\tcodon\tpi\t".
-		#"Polymorphic (Y=1; N=0)\t".
-		"gdiv\t".
-		"class_vs_ref\tclass\t".
-		"coverage\t".
-		"A\tC\tG\tT\n";
-	close OUTFILE_GENE_DIV;
-	
-	### PRODUCT SUMMARY FILE
-	open(PRODUCT_SUMMARY,">>product\_results\.txt");
-	print PRODUCT_SUMMARY "file\tproduct\tN_diffs\tS_diffs\t".
-		"N_diffs_vs_ref\tS_diffs_vs_ref\t".
-		"N_sites\tS_sites\t".
-		"piN\tpiS\tmean_dN_vs_ref\tmean_dS_vs_ref\t".
-		"mean_gdiv_polymorphic\tmean_N_gdiv\tmean_S_gdiv\n";
-	close PRODUCT_SUMMARY;
-	
-	### POPULATION SUMMARY NONCODING RESULTS
-	open(POP_SUMMARY,">>population\_summary\.txt");
-	print POP_SUMMARY "file\tsites\tsites_coding\tsites_noncoding\t".
-		"pi\tpi_coding\tpi_noncoding\t".
-		#"mean_nonsyn_diffs\tmean_syn_diffs\t".
-		#"mean_nonsyn_diffs_vs_ref\tmean_syn_diffs_vs_ref\t".
-		"N_sites\tS_sites\t".
-		"piN\tpiS\tmean_dN_vs_ref\tmean_dS_vs_ref\t".
-		"mean_gdiv_polymorphic\tmean_N_gdiv\tmean_S_gdiv\t".
-		"mean_gdiv\t".
-		"sites_polymorphic\t".
-		"mean_gdiv_coding_poly\t".
-		"sites_coding_poly\t".
-		"mean_gdiv_noncoding_poly\t".
-		"sites_noncoding_poly\n";
-	close POP_SUMMARY;
-	
-	
-	### A LOG file
-	open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
-	print ERROR_FILE "file\tproduct\tsite\t".
-			"LOG\n";
-	close ERROR_FILE;
-	
-	chdir('..');
+} else {
+	die "\n\n## WARNING: There are no FASTA (.fa or .fasta) files in the working directory. ".
+	"SNPGenie terminated.\n\n";
 }
+
+# Identify GTF file
+if(! $gtffile) { # default behavior
+	$cds_file = &get_cds_file_name;
+	$param_file_contents .= "GTF FILE: Default auto-detected file: $cds_file\n";
+} else {
+	$cds_file = $gtffile;
+	$param_file_contents .= "GTF FILE: User submitted file: $cds_file\n";
+}
+
+#print "\n@fasta_file_names_arr\n\n";
+
+STDOUT->autoflush(1);
+
+
+# Initialize files
+open(PARAM_FILE,">>$OUT_DIR\/SNPGenie\_parameters\.txt");
+print PARAM_FILE "$param_file_contents";
+close PARAM_FILE;
+
+### NUCLEOTIDE DIVERSITY FILE
+open(OUTFILE_NT_DIV,">>$OUT_DIR\/codon\_results\.txt");
+my $ntd_headers_to_print = "file\tproduct\tsite\tcodon\tnum_overlap_ORF_nts\t".
+	#"mean_coverage\t".
+	"N_diffs\tS_diffs\t";
+$ntd_headers_to_print .= "N_sites\tS_sites\t";
+
+$ntd_headers_to_print .= "N_sites_ref\tS_sites_ref\t";
+#$ntd_headers_to_print .= "piN\tpiS\t";
+$ntd_headers_to_print .= "N_diffs_vs_ref\tS_diffs_vs_ref\t".
+	"gdiv\tN_gdiv\tS_gdiv\n";
+#$ntd_headers_to_print .= "mean_dN_vs_ref\tmean_dS_vs_ref\n"; # \tAverage_cov
+
+print OUTFILE_NT_DIV "$ntd_headers_to_print";
+close OUTFILE_NT_DIV;
+
+### GENE DIVERSITY FILE
+open(OUTFILE_GENE_DIV,">>$OUT_DIR\/site\_results\.txt");
+print OUTFILE_GENE_DIV "file\tproduct\tsite\tref_nt\tmaj_nt\t".
+	"position_in_codon\t".
+	"overlapping_ORFs\tcodon_start_site\tcodon\tpi\t".
+	#"Polymorphic (Y=1; N=0)\t".
+	"gdiv\t".
+	"class_vs_ref\tclass\t".
+	"coverage\t".
+	"A\tC\tG\tT\n";
+close OUTFILE_GENE_DIV;
+
+### PRODUCT SUMMARY FILE
+open(PRODUCT_SUMMARY,">>$OUT_DIR\/product\_results\.txt");
+print PRODUCT_SUMMARY "file\tproduct\tN_diffs\tS_diffs\t".
+	"N_diffs_vs_ref\tS_diffs_vs_ref\t".
+	"N_sites\tS_sites\t".
+	"piN\tpiS\tmean_dN_vs_ref\tmean_dS_vs_ref\t".
+	"mean_gdiv_polymorphic\tmean_N_gdiv\tmean_S_gdiv\n";
+close PRODUCT_SUMMARY;
+
+### POPULATION SUMMARY NONCODING RESULTS
+open(POP_SUMMARY,">>$OUT_DIR\/population\_summary\.txt");
+print POP_SUMMARY "file\tsites\tsites_coding\tsites_noncoding\t".
+	"pi\tpi_coding\tpi_noncoding\t".
+	#"mean_nonsyn_diffs\tmean_syn_diffs\t".
+	#"mean_nonsyn_diffs_vs_ref\tmean_syn_diffs_vs_ref\t".
+	"N_sites\tS_sites\t".
+	"piN\tpiS\tmean_dN_vs_ref\tmean_dS_vs_ref\t".
+	"mean_gdiv_polymorphic\tmean_N_gdiv\tmean_S_gdiv\t".
+	"mean_gdiv\t".
+	"sites_polymorphic\t".
+	"mean_gdiv_coding_poly\t".
+	"sites_coding_poly\t".
+	"mean_gdiv_noncoding_poly\t".
+	"sites_noncoding_poly\n";
+close POP_SUMMARY;
+
+
+### A LOG file
+open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
+print ERROR_FILE "file\tproduct\tsite\t".
+		"LOG\n";
+close ERROR_FILE;
+
 
 # Hash for storing which product we've seen, just for error-reporting purposes
 my %seen_product_early_stop_hash;
@@ -303,19 +378,21 @@ print "\n\n#####################################################################
 
 # Print LICENSE
 print "\n  ###############################  LICENSE:  #################################\n";
-print "  ##            SNPGenie Copyright (C) 2015-18 Chase W. Nelson              ##\n".
+print "  ##            SNPGenie Copyright (C) 2015-19 Chase W. Nelson              ##\n".
 	"  ##            This program comes with ABSOLUTELY NO WARRANTY;             ##\n".
 	"  ##     This is free software, and you are welcome to redistribute it      ##\n".
 	"  ##               under certain conditions; see LICENSE.txt.               ##";
 print "\n  ############################################################################\n";
 
+# REPORT DIRECTORIES
+print "\nWORKING_DIRECTORY=$WORK\n";
+print "RESULTS_DIRECTORY=$OUT_DIR\n";
+
 # GET THE TIME
-chdir('SNPGenie_Results');
-open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 print ERROR_FILE "NA\tNA\tNA\t".
 		"SNPGenie initiated at local time $local_time1\n";
 close ERROR_FILE;
-chdir('..');
 
 if($minfreq > 0) {
 	print "\nYour MIN. MINOR ALLELE FREQ. is $minfreq. All variants falling below this frequency will be ignored.\n";
@@ -340,11 +417,9 @@ my @curr_compl_products_ordered_by_start;
 if($complementmode) {
 	print "\nThere are antisense ('-') strand records in the GTF file. COMPLEMENT MODE activated...\n";
 	
-	chdir('SNPGenie_Results');
-	open(PARAM_FILE,">>SNPGenie\_parameters\.txt");
+	open(PARAM_FILE,">>$OUT_DIR\/SNPGenie\_parameters\.txt");
 	print PARAM_FILE "COMPLEMENT MODE: Yes\n";
 	close PARAM_FILE;
-	chdir('..');
 	
 	# Look through the GTF file for the - strand entries
 	# translate the start and stop sites to + strand sites using $fasta_length
@@ -430,11 +505,9 @@ if($complementmode) {
 	#}
 } else {
 	#print "\nThere are NO - strand records in the GTF file. COMPLEMENT MODE NOT activated...\n";
-	chdir('SNPGenie_Results');
-	open(PARAM_FILE,">>SNPGenie\_parameters\.txt");
+	open(PARAM_FILE,">>$OUT_DIR\/SNPGenie\_parameters\.txt");
 	print PARAM_FILE "COMPLEMENT MODE: No\n";
 	close PARAM_FILE;
-	chdir('..');
 }
 
 #foreach my $this_product(keys %hh_compl_position_info) {
@@ -450,12 +523,11 @@ my @product_names_arr = &get_product_names_from_gtf($cds_file);
 
 # DIE if no sense + strand products seen
 if(! $seen_sense_strand_products) {
-	chdir('SNPGenie_Results');
-	open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+	
+	open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 	print ERROR_FILE "$cds_file\tNA\tNA\t".
 		"Does not contain any sense (+) strand products. SNPGenie terminated.\n";
 	close ERROR_FILE;
-	chdir('..');
 	
 	die "\n\n## WARNING: $cds_file does not contain any sense (+) strand products. SNPGenie terminated.\n\n";
 }
@@ -871,75 +943,67 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	}
 	
 	if($seen_index_ref_pos == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
 			"Does not contain the column header \"Reference Position\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $file_nm does not contain the column header \"Reference Position\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_type == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
 			"Does not contain the column header \"Type\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $file_nm does not contain the column header \"Type\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_ref == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
 			"Does not contain the column header \"Reference\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $file_nm does not contain the column header \"Reference\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_allele == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
 			"Does not contain the column header \"Allele\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $file_nm does not contain the column header \"Allele\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_count == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
 			"Does not contain the column header \"Count\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $file_nm does not contain the column header \"Count\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_cov == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
 			"Does not contain the column header \"Coverage\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $file_nm does not contain the column header \"Coverage\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_freq == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
 			"Does not contain the column header \"Frequency\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $file_nm does not contain the column header \"Frequency\". SNPGenie terminated.\n\n";
 	} elsif($seen_index_over_annot == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tNA\t".
 			"Does not contain the column header \"Overlapping annotations\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $file_nm does not contain the column header \"Overlapping annotations\". SNPGenie terminated.\n\n";
 	}
@@ -1073,13 +1137,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						
 						# EXPERIMENTAL
 						if ($over_annot =~/Mature peptide: ([\w\s\.\-\:\'\"]+)/) {
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 							print ERROR_FILE "$file_nm\tNA\tNA\t".
 								"\"Mature peptide\" annotation must take into account ".
 								"MNV records for CLC SNP Reports\n";
 							close ERROR_FILE;
-							chdir('..');
 							
 							print "\n## WARNING: \"Mature peptide\" annotation must take into account\n".
 							"### MNV records for CLC SNP Reports.\n";
@@ -1120,15 +1183,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						#print "The array: @product_coord_arr";
 						
 						if($seen_percent_warning == 0 && $frequency < 0.01) {
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 							print ERROR_FILE "$file_nm\t$product_name\t$position\t".
 								"There is a variant frequency <0.01%. If this ".
 								"was unexpected, make sure that the values in the ".
 								"\"Frequency\" column are percentages, not ".
 								"decimals.\n";
 							close ERROR_FILE;
-							chdir('..');
 							
 							warn "\n## WARNING There is a variant frequency <0.01%. If this ".
 								"was unexpected, make sure that the \n## values in the ".
@@ -1231,13 +1293,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
 							
 							if ($hh_product_position_info{$product_name}->{$position}->{cov} != $coverage) {
-								chdir('SNPGenie_Results');
-								open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+								
+								open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 								print ERROR_FILE "$file_nm\t$product_name\t$position\t".
 									"There are conflicting coverages reported. ".
 										"An averaging has taken place\n";
 								close ERROR_FILE;
-								chdir('..');
 								
 								warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position\n".
@@ -1258,13 +1319,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# NOTE: Mature peptide is never the same as CDS in examples.
 						if ($mature_peptide_name) {
 							if (! exists $hh_product_position_info{$mature_peptide_name}->{$position}) { # Product/position HAVEN'T been seen
-								chdir('SNPGenie_Results');
-								open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+								
+								open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 								print ERROR_FILE "$file_nm\t$mature_peptide_name\t$position\t".
 									"A \'mature peptide\' annotation is being used. Contact ".
 										"the author to update this deprecated function\n";
 								close ERROR_FILE;
-								chdir('..');
 								
 								warn "\n## WARNING: A \'mature peptide\' annotation is being used at ".
 										"$file_nm|$product_name|$position\n".
@@ -1349,13 +1409,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$mature_peptide_name}->{$position}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$mature_peptide_name\t$position\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$mature_peptide_name|$position\n".
@@ -1412,13 +1471,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
 							
 							if ($hh_nc_position_info{$position}->{cov} != $coverage) {
-								chdir('SNPGenie_Results');
-								open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+								
+								open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 								print ERROR_FILE "$file_nm\tN\/A\t$position\t".
 									"There are conflicting coverages reported. ".
 										"An averaging has taken place\n";
 								close ERROR_FILE;
-								chdir('..');
 								
 								warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N\/A|$position\n".
@@ -1591,13 +1649,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position\n".
@@ -1679,13 +1736,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position2}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position2\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position2\n".
@@ -1783,13 +1839,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position}->{cov} != $coverage) {					
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position\n".
@@ -1871,13 +1926,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position2}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position2\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position2\n".
@@ -1956,13 +2010,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position3}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position3\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position3\n".
@@ -2069,13 +2122,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position\n".
@@ -2154,13 +2206,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position2}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position2\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position2\n".
@@ -2239,13 +2290,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position3}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position3\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position3\n".
@@ -2324,13 +2374,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position4}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position4\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position4\n".
@@ -2442,13 +2491,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position\n".
@@ -2527,13 +2575,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position2}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position2\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position2\n".
@@ -2612,13 +2659,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position3}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position3\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position3\n".
@@ -2697,13 +2743,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position4}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position4\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position4\n".
@@ -2782,13 +2827,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position5}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$product_name}->{$position5}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$product_name\t$position5\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$product_name|$position5\n".
@@ -2852,13 +2896,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_product_position_info{$product_name}->{$position}->{cov_arr}},$coverage);
 								
 								if ($hh_product_position_info{$mature_peptide_name}->{$position}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\t$mature_peptide_name\t$position\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|$mature_peptide_name|$position\n".
@@ -2938,13 +2981,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position\n".
@@ -2990,13 +3032,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position2}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position2\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position2\n".
@@ -3059,13 +3100,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position}->{cov} != $coverage) {					
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position\n".
@@ -3110,13 +3150,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position2}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position2\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position2\n".
@@ -3161,13 +3200,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position3}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position3\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position3\n".
@@ -3240,13 +3278,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position\n".
@@ -3291,13 +3328,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position2}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position2\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position2\n".
@@ -3342,13 +3378,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position3}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position3\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position3\n".
@@ -3394,13 +3429,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position4}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position4\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position4\n".
@@ -3479,13 +3513,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position\n".
@@ -3530,13 +3563,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position2}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position2}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position2\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position2\n".
@@ -3581,13 +3613,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position3}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position3}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position3\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position3\n".
@@ -3632,13 +3663,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position4}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position4}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position4\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position4\n".
@@ -3683,13 +3713,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								push(@{$hh_nc_position_info{$position5}->{cov_arr}},$coverage);
 								
 								if ($hh_nc_position_info{$position5}->{cov} != $coverage) {
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									print ERROR_FILE "$file_nm\tN/A\t$position5\t".
 										"There are conflicting coverages reported. ".
 											"An averaging has taken place\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									warn "\n## WARNING: Conflicting coverages reported at ".
 										"$file_nm|N/A|$position5\n".
@@ -3812,15 +3841,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			$hh_nc_position_info{$curr_spot}->{A} = 0;
 			
 			if($A < -0.1) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative number of A nucleotides: $A. This most often results from variants ".
 					"which are assigned to the wrong site in the SNP Report. Results at this site ".
 					"are unreliable; A count set to 0; proceed with caution.\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative number of A nucleotides: $A. This most often results from\n".
@@ -3832,15 +3860,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			$hh_nc_position_info{$curr_spot}->{C} = 0;
 			
 			if($C < -0.1) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative number of C nucleotides: $C. This most often results from variants ".
 					"which are assigned to the wrong site in the SNP Report. Results at this site ".
 					"are unreliable; C count set to 0; proceed with caution.\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative number of C nucleotides: $C. This most often results from\n".
@@ -3852,15 +3879,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			$hh_nc_position_info{$curr_spot}->{G} = 0;
 			
 			if($G < -0.1) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative number of G nucleotides: $G. This most often results from variants ".
 					"which are assigned to the wrong site in the SNP Report. Results at this site ".
 					"are unreliable; G count set to 0; proceed with caution.\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative number of G nucleotides: $G. This most often results from\n".
@@ -3872,15 +3898,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			$hh_nc_position_info{$curr_spot}->{T} = 0;
 			
 			if($T < -0.1) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative number of T nucleotides: $T. This most often results from variants ".
 					"which are assigned to the wrong site in the SNP Report. Results at this site ".
 					"are unreliable; T count set to 0; proceed with caution.\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative number of T nucleotides: $T. This most often results from\n".
@@ -3899,8 +3924,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			$hh_nc_position_info{$curr_spot}->{A_prop} = 0;
 			
 			if($A_prop < -0.001) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative proportion of A nucleotides of $A_prop. This may result from rounding error, ".
@@ -3908,7 +3933,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
 					"are unreliable. In either case, A prop has set to 0; proceed with caution.\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative proportion of A nucleotides: $A_prop.\n".
@@ -3921,8 +3945,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			$hh_nc_position_info{$curr_spot}->{C_prop} = 0;
 			
 			if($C_prop < -0.001) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative proportion of C nucleotides of $C_prop. This may result from rounding error, ".
@@ -3930,7 +3954,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
 					"are unreliable. In either case, C prop has set to 0; proceed with caution.\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative proportion of C nucleotides: $C_prop.\n".
@@ -3943,8 +3966,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			$hh_nc_position_info{$curr_spot}->{G_prop} = 0;
 			
 			if($G_prop < -0.001) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative proportion of G nucleotides of $G_prop. This may result from rounding error, ".
@@ -3952,7 +3975,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
 					"are unreliable. In either case, G prop has set to 0; proceed with caution.\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative proportion of G nucleotides: $G_prop.\n".
@@ -3965,8 +3987,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			$hh_nc_position_info{$curr_spot}->{T_prop} = 0;
 			
 			if($T_prop < -0.001) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative proportion of T nucleotides of $T_prop. This may result from rounding error, ".
@@ -3974,7 +3996,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
 					"are unreliable. In either case, T prop has set to 0; proceed with caution.\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative proportion of T nucleotides: $T_prop.\n".
@@ -4024,13 +4045,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$hh_nc_position_info{$curr_spot}->{A_prop} = 0;
 				$leftover_prop += $A_prop;
 				$A_prop = 0;
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\t".
 					"Variant 'A' excluded from analysis because it falls below the minimum ".
 						"minor allele frequency\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				print "\n## Variant 'A' excluded from analysis because it falls below the\n".
 					"## minimum minor allele frequency at:\n".
@@ -4045,13 +4065,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$hh_nc_position_info{$curr_spot}->{C_prop} = 0;
 				$leftover_prop += $C_prop;
 				$C_prop = 0;
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\t".
 					"Variant 'C' excluded from analysis because it falls below the minimum ".
 						"minor allele frequency\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				print "\n## Variant 'C' excluded from analysis because it falls below the\n".
 					"## minimum minor allele frequency at:\n".
@@ -4066,13 +4085,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$hh_nc_position_info{$curr_spot}->{G_prop} = 0;
 				$leftover_prop += $G_prop;
 				$G_prop = 0;
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\t".
 					"Variant 'G' excluded from analysis because it falls below the minimum ".
 						"minor allele frequency\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				print "\n## Variant 'G' excluded from analysis because it falls below the\n".
 					"## minimum minor allele frequency at:\n".
@@ -4087,13 +4105,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				$hh_nc_position_info{$curr_spot}->{T_prop} = 0;
 				$leftover_prop += $T_prop;
 				$T_prop = 0;
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\t".
 					"Variant 'T' excluded from analysis because it falls below the minimum ".
 						"minor allele frequency\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				print "\n## Variant 'T' excluded from analysis because it falls below the\n".
 					"## minimum minor allele frequency at:\n".
@@ -4148,13 +4165,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	}
 	
 	if($variants_excluded > 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$file_nm\tNA\tN/A\t".
 			"A total of $variants_excluded variants have been excluded because they fall below the ".
 				"minimum minor allele frequency\n";
 		close ERROR_FILE;
-		chdir('..');
 						
 		print "\n## In $file_nm|N/A\n".
 			"## A total of $variants_excluded variants have been excluded because they\n".
@@ -4254,13 +4270,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			
 			# WARN if the coverage doesn't match the sum of nucleotide counts
 			if($cov_for_comp != $cov_old_for_comp) {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$position\tCoverage ($cov_old_for_comp) does not equal ".
 					"the nucleotide sum ($cov_for_comp).\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				print "\n## WARNING: In $file_nm, at site $position,\n".
 					"## the coverage ($cov_old_for_comp) does not equal the nucleotide sum ($cov_for_comp).\n";
@@ -4587,15 +4602,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{A} = 0;
 					
 					if($A < -0.1) {
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative number of A nucleotides: $A. This most often results from variants ".
 							"which are assigned to the wrong site in the SNP Report. Results at this site ".
 							"are unreliable; A count set to 0; proceed with caution.\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative number of A nucleotides: $A. This most often results from\n".
@@ -4607,15 +4621,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{C} = 0;
 					
 					if($C < -0.1) {
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative number of C nucleotides: $C. This most often results from variants ".
 							"which are assigned to the wrong site in the SNP Report. Results at this site ".
 							"are unreliable; C count set to 0; proceed with caution.\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative number of C nucleotides: $C. This most often results from\n".
@@ -4627,15 +4640,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{G} = 0;
 					
 					if($G < -0.1) {
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative number of G nucleotides: $G. This most often results from variants ".
 							"which are assigned to the wrong site in the SNP Report. Results at this site ".
 							"are unreliable; G count set to 0; proceed with caution.\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative number of G nucleotides: $G. This most often results from\n".
@@ -4647,15 +4659,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{T} = 0;
 					
 					if($T < -0.1) {
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative number of T nucleotides: $T. This most often results from variants ".
 							"which are assigned to the wrong site in the SNP Report. Results at this site ".
 							"are unreliable; T count set to 0; proceed with caution.\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative number of T nucleotides: $T. This most often results from\n".
@@ -4676,8 +4687,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{A_prop} = 0;
 					
 					if($A_prop < -0.001) {
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative proportion of A nucleotides of $A_prop. This may result from rounding error, ".
@@ -4685,7 +4696,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
 							"are unreliable. In either case, A prop has set to 0; proceed with caution.\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative proportion of A nucleotides: $A_prop.\n".
@@ -4698,8 +4708,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{C_prop} = 0;
 					
 					if($C_prop < -0.001) {
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative proportion of C nucleotides of $C_prop. This may result from rounding error, ".
@@ -4707,7 +4717,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
 							"are unreliable. In either case, C prop has set to 0; proceed with caution.\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative proportion of C nucleotides: $C_prop.\n".
@@ -4720,8 +4729,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{G_prop} = 0;
 					
 					if($G_prop < -0.001) {
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative proportion of G nucleotides of $G_prop. This may result from rounding error, ".
@@ -4729,7 +4738,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
 							"are unreliable. In either case, G prop has set to 0; proceed with caution.\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative proportion of G nucleotides: $G_prop.\n".
@@ -4742,8 +4750,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 					$hh_product_position_info{$curr_product}->{$curr_spot}->{T_prop} = 0;
 					
 					if($T_prop < -0.001) {
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative proportion of T nucleotides of $T_prop. This may result from rounding error, ".
@@ -4751,7 +4759,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
 							"are unreliable. In either case, T prop has set to 0; proceed with caution.\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative proportion of T nucleotides: $T_prop.\n".
@@ -4833,13 +4840,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						$hh_product_position_info{$curr_product}->{$curr_spot}->{A_prop} = 0;
 						$leftover_prop += $A_prop;
 						$A_prop = 0;
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\t".
 							"Variant 'A' excluded from analysis because it falls below the minimum ".
 								"minor allele frequency\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						print "\n## Variant 'A' excluded from analysis because it falls below the\n".
 							"## minimum minor allele frequency at:\n".
@@ -4854,13 +4860,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						$hh_product_position_info{$curr_product}->{$curr_spot}->{C_prop} = 0;
 						$leftover_prop += $C_prop;
 						$C_prop = 0;
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\t".
 							"Variant 'C' excluded from analysis because it falls below the minimum ".
 								"minor allele frequency\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						print "\n## Variant 'C' excluded from analysis because it falls below the\n".
 							"## minimum minor allele frequency at:\n".
@@ -4875,13 +4880,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						$hh_product_position_info{$curr_product}->{$curr_spot}->{G_prop} = 0;
 						$leftover_prop += $G_prop;
 						$G_prop = 0;
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\t".
 							"Variant 'G' excluded from analysis because it falls below the minimum ".
 								"minor allele frequency\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						print "\n## Variant 'G' excluded from analysis because it falls below the\n".
 							"## minimum minor allele frequency at:\n".
@@ -4896,13 +4900,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						$hh_product_position_info{$curr_product}->{$curr_spot}->{T_prop} = 0;
 						$leftover_prop += $T_prop;
 						$T_prop = 0;
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\t".
 							"Variant 'T' excluded from analysis because it falls below the minimum ".
 								"minor allele frequency\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						print "\n## Variant 'T' excluded from analysis because it falls below the\n".
 							"## minimum minor allele frequency at:\n".
@@ -4960,13 +4963,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		}
 		
 		if($variants_excluded > 0) {
-			chdir('SNPGenie_Results');
-			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+			
+			open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 			print ERROR_FILE "$file_nm\t$curr_product\tN/A\t".
 				"A total of $variants_excluded variants have been excluded because they fall below the ".
 					"minimum minor allele frequency\n";
 			close ERROR_FILE;
-			chdir('..');
 							
 			print "\n## In $file_nm|$curr_product|N/A\n".
 				"## A total of $variants_excluded variants have been excluded because they\n".
@@ -4995,8 +4997,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				my $fasta_nt = substr($seq, ($position - 1), 1);
 				
 				if($snp_report_reference_nt ne $fasta_nt) {
-					chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+					
+					open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 					# FILE | PRODUCT | SITE | WARNING
 					print ERROR_FILE "$file_nm\t$curr_product\t$position\tThe reference nucleotide ".
 						"in the SNP Report does not match the FASTA file. Results at this site ".
@@ -5004,7 +5006,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						"fixing the SNP Reports) to ".
 						"address the issue.\n";
 					close ERROR_FILE;
-					chdir('..');
 					
 					print "\n## WARNING: In $file_nm, $curr_product, site $position,\n".
 						"## the reference nucleotide in the SNP Report does not match the FASTA file.\n".
@@ -5066,13 +5067,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								"$curr_product does not begin with a START (ATG) codon at site $start_site, but rather $curr_partial_codon.".
 								"\n## If this was unexpected, please check your annotations.\n";
 								
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						# FILE | PRODUCT | SITE | CODON | WARNING
 						print ERROR_FILE "N/A\t$curr_product\t$start_site\tDoes not begin with a ".
 						"START (ATG) codon, but rather $curr_partial_codon. If this was unexpected, please check your annotations\n";
 						close ERROR_FILE;
-						chdir('..');
 								
 						$seen_no_start_hash{$curr_product} = 1;
 					}
@@ -5086,13 +5086,12 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								"$curr_product does not begin with a START (ATG) codon at site $start_site, but rather $curr_partial_codon.".
 								"\n## If this was unexpected, please check your annotations.\n";
 								
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						# FILE | PRODUCT | SITE | CODON | WARNING
 						print ERROR_FILE "N/A\t$curr_product\t$start_site\tDoes not begin with a ".
 						"START (ATG) codon, but rather $curr_partial_codon. If this was unexpected, please check your annotations\n";
 						close ERROR_FILE;
-						chdir('..');
 								
 						$seen_no_start_hash{$curr_product} = 1;
 					}
@@ -5115,8 +5114,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								"\n## A premature STOP codon may also indicate a pseudogene, for which ".
 								"piN vs. piS analysis may not be appropriate.\n";
 								
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 							# FILE | PRODUCT | SITE | CODON | WARNING
 							print ERROR_FILE "N/A\t$curr_product\t$j\tMid-sequence ".
 							"STOP codon. Please check your annotations for: (1) incorrect ".
@@ -5124,7 +5123,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							"premature STOP codon may also indicate a pseudogene, for which ".
 							"piN vs. piS analysis may not be appropriate.\n";
 							close ERROR_FILE;
-							chdir('..');
 						
 					} elsif ( (($j < $stop_site) && # we're in last segment and BEFORE last site
 						(! exists $seen_product_early_stop_hash{$curr_product})) && # we haven't seen the product yet &&
@@ -5143,8 +5141,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 								"\n## A premature STOP codon may also indicate a pseudogene, for which ".
 								"piN vs. piS analysis may not be appropriate.\n";
 								
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 							# FILE | PRODUCT | SITE | CODON | WARNING
 							print ERROR_FILE "N/A\t$curr_product\t$j\tMid-sequence ".
 							"STOP codon. Please check your annotations for: (1) incorrect ".
@@ -5152,7 +5150,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							"premature STOP codon may also indicate a pseudogene, for which ".
 							"piN vs. piS analysis may not be appropriate.\n";
 							close ERROR_FILE;
-							chdir('..');
 					}
 					
 					# RESET CODON
@@ -5170,14 +5167,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		
 		# WARNING and DIE if the total coding length wasn't a multiple of 3
 		if(($coding_length_sum % 3) != 0) {
-			chdir('SNPGenie_Results');
-			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+			
+			open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 			# FILE | PRODUCT | SITE | CODON | WARNING
 			print ERROR_FILE "N/A\t$curr_product\tN/A\tTotal length is not a multiple".
 			" of 3. Please check your annotations; a complete codon set is required.".
 			" SNPGenie terminated.\n";
 			close ERROR_FILE;
-			chdir('..');
 			
 			die "\n## WARNING: For product $curr_product, the total length is not a multiple\n".
 				"## of 3. Please check your annotations; a complete codon set is required.\n".
@@ -5193,7 +5189,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		my $total_S_sites = 0;
 		
 		# CHANGE DIRECTORY TO RESULTS FOR WRITING
-		chdir('SNPGenie_Results');
+		#chdir("$OUT_DIR");
 		
 		my $codon_counter = 0;
 		my $contiguous_zero_diffs_counter;
@@ -5295,7 +5291,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							"you may need to specify Unix (\\n) newline characters! See ".
 							"Troubleshooting.\n";
 							
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\t$curr_product\t$curr_site\t".
 					"No SNPs in >=1000 contiguous codons. If this was unexpected, ".
@@ -5407,7 +5403,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							"be 100.00%) is instead: $tot_perc_rounded\%.\n## This should occur ".
 							"only when conflicting coverages have been reported.\n";
 					
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+					open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 					# FILE | PRODUCT | SITE | WARNING
 					print ERROR_FILE "$file_nm\t$curr_product\t$curr_site\t".
 						"Nucleotide total does not equal 100.00% of coverage, but instead ".
@@ -5771,16 +5767,14 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							"$curr_site,\n## the nucleotide total (which should ".
 							"be 100.00%) is instead: $tot_perc_rounded\%.\n## This should occur ".
 							"only when conflicting coverages have been reported.\n";
-					
-					#chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+
+					open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 					# FILE | PRODUCT | SITE | CODON | WARNING
 					print ERROR_FILE "$file_nm\t$curr_product\t$curr_site\t".
 						"Nucleotide total does not equal 100.00% of coverage, but instead ".
 						"$tot_perc_rounded\%. This should occur only when conflicting ".
 						"coverages have been reported\n";
 					close ERROR_FILE;
-					#chdir('..');
 				}
 				
 				# Construct the codon with different nucleotides in position 2
@@ -6138,15 +6132,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							"be 100.00%) is instead: $tot_perc_rounded\%.\n## This should occur ".
 							"only when conflicting coverages have been reported.\n";
 					
-					#chdir('SNPGenie_Results');
-					open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+					open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 					# FILE | PRODUCT | SITE | CODON | WARNING
 					print ERROR_FILE "$file_nm\t$curr_product\t$curr_site\t".
 						"Nucleotide total does not equal 100.00% of coverage, but instead ".
 						"$tot_perc_rounded\%. This should occur only when conflicting ".
 						"coverages have been reported\n";
 					close ERROR_FILE;
-					#chdir('..');
 				}
 				
 				# Construct the codon with different nucleotides in position 1
@@ -6843,7 +6835,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			
 			
 			# PRINT DATA LINE TO COMPILED NUCLEOTIDE DIVERSITY FILE
-			open(OUTFILE_NT_DIV,">>codon\_results\.txt");
+			open(OUTFILE_NT_DIV,">>$OUT_DIR\/codon\_results\.txt");
 			
 			my $ntd_line_to_print = "$file_nm\t$curr_product\t$curr_site\t".
 				"$curr_codon\t$codon_overlap_nts\t". 
@@ -6994,7 +6986,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			}
 			
 			# PRINT GENE DIVERSITY DATA TO FILE
-			open(OUTFILE_GENE_DIV,">>site\_results\.txt");			
+			open(OUTFILE_GENE_DIV,">>$OUT_DIR\/site\_results\.txt");			
 			
 			# For codon's FIRST SITE -- print only if there is a polymorphism
 			if($this_codon_site1_polymorphic == 1) {
@@ -7294,7 +7286,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 			
 			# PRINT AVERAGE GENE DIVERSITY VALUES for this codon to the nucleotide 
 			# diversity file
-			open(OUTFILE_NT_DIV,">>codon\_results\.txt");
+			open(OUTFILE_NT_DIV,">>$OUT_DIR\/codon\_results\.txt");
 			print OUTFILE_NT_DIV "$this_codon_avg_gene_diversity\t".
 					"$this_codon_avg_gene_diversity_N\t$this_codon_avg_gene_diversity_S\n";
 			close OUTFILE_NT_DIV;
@@ -7395,7 +7387,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		#	"MEAN GD_A: $mean_gene_diversity_A\n\n";
 		
 		### PRODUCT SUMMARY FILE ## WORK IN PROGRESS
-		open(PRODUCT_SUMMARY,">>product\_results\.txt");
+		open(PRODUCT_SUMMARY,">>$OUT_DIR\/product\_results\.txt");
 		print PRODUCT_SUMMARY "$file_nm\t$curr_product\t$sum_N_diffs\t$sum_S_diffs\t".
 			#"$sum_N_diffs_vs_ref\t$sum_S_diffs_vs_ref\t".
 			"$sum_mean_N_diffs_vs_ref\t$sum_mean_S_diffs_vs_ref\t".
@@ -7405,7 +7397,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		close PRODUCT_SUMMARY;
 		
 		# Go back to working directory, in which SNPGenie_Results resides
-		chdir('..');
+		#chdir("$WORK");
 		
 		# ADD TO POPULATION SUMMARY VARIABLES
 		$pop_sum_ndiffs += $sum_N_diffs;
@@ -7429,8 +7421,8 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	
 	print "\nPerforming final calculations, noncoding overlap analysis, and output... ";
 	# DEAL WITH NONCODING SITES for site file and population summary file	
-	chdir('SNPGenie_Results');
-	open(OUTFILE_GENE_DIV,">>site\_results\.txt");
+	
+	open(OUTFILE_GENE_DIV,">>$OUT_DIR\/site\_results\.txt");
 	foreach my $curr_site (sort {$a <=> $b} (keys %hh_nc_position_info)) { # only poly were stored #comeback; we've got an array already
 		if($hh_nc_position_info{$curr_site}->{polymorphic} == 1) { # poly
 			if(! $hh_nc_position_info{$curr_site}->{coding}) { # poly-noncoding
@@ -7500,7 +7492,6 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		}
 	}
 	close OUTFILE_GENE_DIV;
-	chdir('..');
 	
 	my $pop_piN;
 	if($pop_sum_nsites > 0) {
@@ -7581,11 +7572,10 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 	
 	####### PRINT SNP REPORT TOTALS HERE BEFORE FINISHING WITH CURRENT FILE #########
 	
-	chdir('SNPGenie_Results');
-	open(POP_SUMMARY,">>population\_summary\.txt");
+	
+	open(POP_SUMMARY,">>$OUT_DIR\/population\_summary\.txt");
 	print POP_SUMMARY "$pop_summary_line";
 	close POP_SUMMARY;
-	chdir('..');
 	
 	print "$file_nm COMPLETED.\n";
 	
@@ -7715,7 +7705,7 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 		#print "\nMaximum coverage is $max_cov\n\n";
 		
 		my $counter = 1;
-		open(OUT_FASTAS, ">>rand_seqs.fasta");
+		open(OUT_FASTAS, ">>$OUT_DIR\/rand_seqs.fasta");
 		foreach(@all_possible_seqs) {
 			my $seq_length = length($_);
 			
@@ -8336,8 +8326,8 @@ sub get_header_names {
 				#print "COMMA!!!!!";
 				last;
 			} else {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | CODON | WARNING
 				
 				# No change OR error should occur if the file does not, in fact, end
@@ -8349,7 +8339,6 @@ sub get_header_names {
 				print ERROR_FILE "$filename\tN/A\tN/A\t".
 					"File not TAB(\\t)- or COMMA-delimited, or there is only one column. SNPGenie terminated.\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				#unlink $curr_snp_report_filename;
 				
@@ -8358,8 +8347,8 @@ sub get_header_names {
 					"terminated\n\n";
 			}
 		} else {
-			chdir('SNPGenie_Results');
-			open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+			
+			open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 			# FILE | PRODUCT | SITE | CODON | WARNING
 			
 			# No change OR error should occur if the file does not, in fact, end
@@ -8371,7 +8360,6 @@ sub get_header_names {
 			print ERROR_FILE "$filename\tN/A\tN/A\t".
 				"File not TAB(\\t)- or COMMA-delimited, or there is only one column. SNPGenie terminated.\n";
 			close ERROR_FILE;
-			chdir('..');
 			
 			#unlink $curr_snp_report_filename;
 			
@@ -8457,14 +8445,13 @@ sub get_product_names_from_gtf {
 				$products_hash{$1} = 1;
 				$seen_sense_strand_products = 1;
 			} else {
-				chdir('SNPGenie_Results');
-				open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+				
+				open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 				# FILE | PRODUCT | SITE | CODON | WARNING
 				
 				print ERROR_FILE "$cds_file\tN/A\tN/A\t".
 					"CDS annotation(s) does not have a gene_id. SNPGenie terminated.\n";
 				close ERROR_FILE;
-				chdir('..');
 				
 				#unlink $curr_snp_report_filename;
 				
@@ -8600,13 +8587,13 @@ sub get_fasta_file_names {
 	#print "\n\n@fasta_file_names\n\n";
 	
 	if (scalar(@fasta_file_names) == 0) {
-		#chdir('SNPGenie_Results');
+		#chdir("$OUT_DIR");
 		#open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		## FILE | PRODUCT | SITE | CODON | WARNING
 		#print ERROR_FILE "N/A\tN/A\tN/A\t".
 		#	"No FASTA (.fa or .fasta) files in directory. SNPGenie terminated.\n";
 		#close ERROR_FILE;
-		#chdir('..');
+		#chdir("$WORK");
 		
 		die "\n\n## WARNING: There are no .fa or .fasta files. SNPGenie terminated.\n\n";
 	}
@@ -8620,14 +8607,14 @@ sub get_fasta_file_names {
 sub get_txt_file_names { 
 	my @txt_file_names = glob "*.txt";
 #	if (scalar (@txt_file_names) == 0) {
-		#chdir('SNPGenie_Results');
+		#chdir("$OUT_DIR");
 		#open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		## FILE | PRODUCT | SITE | CODON | WARNING
 		#print ERROR_FILE "N/A\tN/A\tN/A\t".
 		##	"No SNP Reports (.txt) files in directory. SNPGenie terminated.\n";
 		#	"No SNP Reports (.txt) files in directory.\n";
 		#close ERROR_FILE;
-		#chdir('..');
+		#chdir("$WORK");
 		
 		#die "\n\n## WARNING: There are no .txt SNP Reports. SNPGenie terminated.\n\n";
 #		print "\n\n## WARNING: There are no .txt SNP Reports.\n\n";
@@ -8640,14 +8627,14 @@ sub get_txt_file_names {
 sub get_csv_file_names { 
 	my @csv_file_names = glob "*.csv";
 #	if (scalar (@csv_file_names) == 0) {
-		#chdir('SNPGenie_Results');
+		#chdir("$OUT_DIR");
 		#open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		## FILE | PRODUCT | SITE | CODON | WARNING
 		#print ERROR_FILE "N/A\tN/A\tN/A\t".
 		##	"No SNP Reports (.txt) files in directory. SNPGenie terminated.\n";
 		#	"No SNP Reports (.csv) files in directory.\n";
 		#close ERROR_FILE;
-		#chdir('..');
+		#chdir("$WORK");
 		
 		#die "\n\n## WARNING: There are no .csv SNP Reports. SNPGenie terminated.\n\n";
 #		print "\n\n## WARNING: There are no .csv SNP Reports.\n\n";
@@ -8660,14 +8647,14 @@ sub get_csv_file_names {
 sub get_vcf_file_names { 
 	my @csv_file_names = glob "*.vcf";
 #	if (scalar (@csv_file_names) == 0) {
-		#chdir('SNPGenie_Results');
+		#chdir("$OUT_DIR");
 		#open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 		## FILE | PRODUCT | SITE | CODON | WARNING
 		#print ERROR_FILE "N/A\tN/A\tN/A\t".
 		##	"No SNP Reports (.txt) files in directory. SNPGenie terminated.\n";
 		#	"No SNP Reports (.csv) files in directory.\n";
 		#close ERROR_FILE;
-		#chdir('..');
+		#chdir("$WORK");
 		
 		#die "\n\n## WARNING: There are no .csv SNP Reports. SNPGenie terminated.\n\n";
 #		print "\n\n## WARNING: There are no .csv SNP Reports.\n\n";
@@ -8840,14 +8827,14 @@ sub get_vcf_file_names {
 #	
 #	#my @new_snp_report_file_names = glob "*_snpg9temp.txt";
 ##	if (scalar (@new_snp_report_file_names) == 0) {
-##		chdir('SNPGenie_Results');
+##		chdir("$OUT_DIR");
 ##		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
 ##		# FILE | PRODUCT | SITE | CODON | WARNING
 ##		print ERROR_FILE "N/A\tN/A\tN/A\t".
 ##			"Error processing SNP Reports due to anomalous CDS information. SNPGenie ".
 ##			"terminated\n";
 ##		close ERROR_FILE;
-##		chdir('..');
+##		chdir("$WORK");
 ##		
 ##		die "\n\n## WARNING: Error processing SNP Reports due to anomalous CDS ".
 ##			"information.\n\n##SNPGenie terminated.\n\n";
@@ -9160,56 +9147,51 @@ sub populate_tempfile_geneious {
 	
 	# DIE if one of the headers have not been seen
 	if ($seen_index_min == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the column header \"Minimum\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Minimum\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_max == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the column header \"Maximum\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Maximum\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_poly_type == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the column header \"Polymorphism Type\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Polymorphism Type\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_type == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the column header \"Type\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Type\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_cds_position == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the column header \"CDS Position\". Proceed with extreme caution\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
@@ -9217,45 +9199,41 @@ sub populate_tempfile_geneious {
 			"## RECOMMENDED that you include this column, because the \"Minimum\" column is prone to\n".
 			"## SUBSTANTIAL ERROR. Proceed with extreme caution.\n\n";
 	} elsif ($seen_index_change == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the column header \"Change\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Change\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_percent == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the column header \"Variant Frequency\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Variant Frequency\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_cov == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the column header \"Coverage\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"Coverage\". SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_product == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the column header \"product\". SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
@@ -9337,15 +9315,14 @@ sub populate_tempfile_geneious {
 					my $product_name = $line_arr[$index_product];
 					
 					if($min eq '...') {
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$curr_snp_report_name\t$product_name\t$min\t".
 							"In this Geneious SNP report, a site in the Minimum column is reported as '...'. ".
 							"SNPGenie will try to infer the stie from the CDS Position. However, if possible, ".
 							"please try to produce a SNP report without errors.\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						print "\n\n## WARNING: In file $curr_snp_report_name, product $product_name, site $min,\n".
 							"## a site in the Minimum column is reported as '...'. SNPGenie will try to infer the stie\n".
@@ -9387,14 +9364,13 @@ sub populate_tempfile_geneious {
 								
 								if($min != $actual) {
 									
-									chdir('SNPGenie_Results');
-									open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+									
+									open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 									# FILE | PRODUCT | SITE | WARNING
 									print ERROR_FILE "$curr_snp_report_name\t$product_name\t$min\t".
 										"There is a conflict between the Minimum ($min) and the actual site ($actual) implied by the CDS Position. The ".
 										"latter has been used to determine the correct site; please verify these results\n";
 									close ERROR_FILE;
-									chdir('..');
 									
 									print "\n\n## WARNING: In file $curr_snp_report_name, product $product_name, site $min,\n".
 									"## there is a conflict between the Minimum ($min) and the actual site ($actual) implied by the CDS Position.\n".
@@ -9645,77 +9621,69 @@ sub populate_tempfile_vcf {
 	
 	# DIE if one of the headers have not been seen
 	if ($seen_index_chrom == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the standard VCF column header \"CHROM\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"CHROM\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_pos == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the standard VCF column header \"POS\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"POS\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_id == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the standard VCF column header \"ID\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"ID\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_ref == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the standard VCF column header \"REF\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"REF\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_alt == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the standard VCF column header \"ALT\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"ALT\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_qual == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the standard VCF column header \"QUAL\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"QUAL\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_filter == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the standard VCF column header \"FILTER\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"FILTER\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	} elsif ($seen_index_info == 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 		print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 			"Does not contain the standard VCF column header \"INFO\". Wrong --vcfformat specified? SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: $curr_snp_report_name does not contain the standard VCF column header \"INFO\". Wrong --vcfformat specified? SNPGenie terminated.\n\n";	
 	}
@@ -10127,14 +10095,13 @@ sub populate_tempfile_vcf {
 					##SAMVCF VCF FORMAT #3
 					} elsif($vcfformat == 3) {
 					#} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						print ERROR_FILE "$curr_snp_report_name\t". $this_site_products[0] .
 							"\t$ref_pos\t".
 							"Site has three variants in a pooled VCF file. Variant frequencies".
 							" have been approximated\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						my $fwd_ref_reads;
 						my $rev_ref_reads;
@@ -10228,12 +10195,11 @@ sub populate_tempfile_vcf {
 					#} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
 						# Die if there wasn't a FORMAT column, necessary for this format
 						if ($seen_index_format == 0) {
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 								"Does not contain the column header \"FORMAT\". SNPGenie terminated.\n";
 							close ERROR_FILE;
-							chdir('..');
 		
 							die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FORMAT\". SNPGenie terminated.\n\n";	
 						}
@@ -10259,12 +10225,11 @@ sub populate_tempfile_vcf {
 							$colon_count_before_DP = @colons_prior_to_DP;
 							#print "\n\nColon count before DP: $colon_count_before_DP\n";
 						} else {
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 								"VCF file $curr_snp_report_name contains AD but not DP data. SNPGenie terminated.\n";
 							close ERROR_FILE;
-							chdir('..');
 							
 							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated.\n\n";	 
 						}
@@ -10302,14 +10267,13 @@ sub populate_tempfile_vcf {
 									"equal the coverage ($DP) but is instead: $coverage.".
 									"\n## The reads total has been used. Please verify your data.\n";
 							
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 							# FILE | PRODUCT | SITE | CODON | WARNING
 							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 								"The reads total should equal the coverage ($DP) but is instead: ".
 								"$coverage. The reads total has been used. Please verify your data.\n";
 							close ERROR_FILE;
-							chdir('..');
 						} # it seems common that DP > coverage, because some reads get filtered
 						
 						my $variant_freq1;
@@ -10521,14 +10485,13 @@ sub populate_tempfile_vcf {
 					##SAMVCF VCF FORMAT #3
 					} elsif($vcfformat == 3) { # We've got a VCF of POOL ##SAMVCF
 					#} elsif($info_value =~ /DP4=(\d+),(\d+),(\d+),(\d+)/) { # We've got a VCF of POOL
-						chdir('SNPGenie_Results');
-						open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+						
+						open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 						print ERROR_FILE "$curr_snp_report_name\t". $this_site_products[0] .
 							"\t$ref_pos\t".
 							"Site has two variants in a pooled VCF file. Variant frequencies".
 							" have been approximated\n";
 						close ERROR_FILE;
-						chdir('..');
 						
 						my $fwd_ref_reads;
 						my $rev_ref_reads;
@@ -10604,12 +10567,11 @@ sub populate_tempfile_vcf {
 					#} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
 						# Die if there wasn't a FORMAT column, necessary for this format
 						if ($seen_index_format == 0) {
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 								"Does not contain the column header \"FORMAT\". SNPGenie terminated.\n";
 							close ERROR_FILE;
-							chdir('..');
 		
 							die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FORMAT\". SNPGenie terminated.\n\n";	
 						}
@@ -10635,12 +10597,11 @@ sub populate_tempfile_vcf {
 							$colon_count_before_DP = @colons_prior_to_DP;
 							#print "\n\nColon count before DP: $colon_count_before_DP\n";
 						} else {
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 								"VCF file $curr_snp_report_name contains AD but not DP data. SNPGenie terminated.\n";
 							close ERROR_FILE;
-							chdir('..');
 							
 							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated.\n\n";	 
 						}
@@ -10681,14 +10642,13 @@ sub populate_tempfile_vcf {
 									"equal the coverage ($DP) but is instead: $coverage.".
 									"\n## The reads total has been used. Please verify your data.\n";
 							
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 							# FILE | PRODUCT | SITE | CODON | WARNING
 							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 								"The reads total should equal the coverage ($DP) but is instead: ".
 								"$coverage. The reads total has been used. Please verify your data.\n";
 							close ERROR_FILE;
-							chdir('..');
 						} # it seems common that DP > coverage, because some reads get filtered
 								
 						my $variant_freq1;
@@ -10904,12 +10864,11 @@ sub populate_tempfile_vcf {
 					#} elsif($format_value =~ /AD/) { # We've got a VCF of POOL; we need AD and DP
 						# Die if there wasn't a FORMAT column, necessary for this format
 						if ($seen_index_format == 0) {
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 								"Does not contain the column header \"FORMAT\". SNPGenie terminated.\n";
 							close ERROR_FILE;
-							chdir('..');
 		
 							die "\n\n## WARNING: $curr_snp_report_name does not contain the column header \"FORMAT\". SNPGenie terminated.\n\n";	
 						}
@@ -10935,12 +10894,11 @@ sub populate_tempfile_vcf {
 							$colon_count_before_DP = @colons_prior_to_DP;
 							#print "\n\nColon count before DP: $colon_count_before_DP\n";
 						} else {
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_WARNINGS\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_WARNINGS\.txt");
 							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 								"VCF file $curr_snp_report_name contains AD but not DP data. SNPGenie terminated.\n";
 							close ERROR_FILE;
-							chdir('..');
 							
 							die "\n\n## WARNING: $curr_snp_report_name contains AD but not DP data. SNPGenie terminated.\n\n";	 
 						}
@@ -10973,14 +10931,13 @@ sub populate_tempfile_vcf {
 									"equal the coverage ($DP) but is instead: $coverage.".
 									"\n## The reads total has been used. Please verify your data.\n";
 							
-							chdir('SNPGenie_Results');
-							open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+							
+							open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 							# FILE | PRODUCT | SITE | CODON | WARNING
 							print ERROR_FILE "$curr_snp_report_name\tNA\tNA\t".
 								"The reads total should equal the coverage ($DP) but is instead: ".
 								"$coverage. The reads total has been used. Please verify your data.\n";
 							close ERROR_FILE;
-							chdir('..');
 						} # it seems common that DP > coverage, because some reads get filtered
 						
 						my $variant_freq1 = 0;
@@ -11105,13 +11062,12 @@ sub detect_newline_char {
 sub get_cds_file_name { 
 	my $cds_file_name = glob "*\.gtf";
 	if ($cds_file_name eq '') {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		# FILE | PRODUCT | SITE | CODON | WARNING
 		print ERROR_FILE "N/A\tN/A\tN/A\t".
 			"No .gtf file in the working directory for product information. SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		die "\n\n## WARNING: There is no .gtf file with CDS information. SNPGenie terminated.\n".
 		"\n";
@@ -11204,13 +11160,12 @@ sub get_product_coordinates {
 	# Make sure the sum of all nucleotides for this coding product add to a multiple of 3
 	# incomplete segments
 	if (($sum_of_lengths % 3) != 0) {
-		chdir('SNPGenie_Results');
-		open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+		
+		open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 		# FILE | PRODUCT | SITE | CODON | WARNING
 		print ERROR_FILE "N/A\t$product\tN/A\t".
 			"Coordinates do not specify complete codon set (nucleotides a multiple of 3). SNPGenie terminated.\n";
 		close ERROR_FILE;
-		chdir('..');
 		
 		#unlink $curr_snp_report_name;
 		
@@ -15552,7 +15507,7 @@ sub return_avg_diffs {
 #########################################################################################
 # Perform the sliding window codon analysis using the finished codon_results.txt file
 sub sliding_window {
-	chdir('SNPGenie_Results');
+	chdir("$OUT_DIR");
 	my ($sliding_window_size) = @_;
 	my $results_file = 'codon_results.txt';
 	
@@ -15865,12 +15820,92 @@ sub sliding_window {
 						
 				} else {
 					print "\n\n## WARNING:\n## For file $file, product $product,\n## there are ".
-					"not enough sites to perform a sliding window of $sliding_window_size.\n\n";
+						"not enough sites to perform a sliding window of $sliding_window_size.\n\n";
 				}
 			}
 		}
 	}
-	chdir('..');
+	chdir("$WORK");
+}
+
+
+#########################################################################################
+# Print how to use SNPGenie
+sub print_usage_message {
+	my ($specific_warning) = @_;
+	
+	print "\n################################################################################".
+		"\n##                                                                            ##".
+		"\n##           SNPGenie: Estimating Evolutionary Parameters from SNPs!          ##".
+		"\n##                                                                            ##".
+		"\n################################################################################\n";
+	
+	if($specific_warning) {
+		print "\nSNPGenie was TERMINATED because of an error in the input. Specifically:\n";
+		print "\n$specific_warning\n";
+	}
+	
+	print "\n################################################################################\n";
+	print "### OPTIONS:\n";
+	print "################################################################################\n";
+	
+	print "\n";
+	
+	print "\t--fastafile: FASTA file containing exactly one (1) reference sequence.\n" . 
+			"\t\tAll positions in the SNP report must correspond to one position in this\n" .
+			"\t\tsequence. DEFAULT: .fa/.fasta file in the working directory.\n";
+	print "\t--gtffile: tab-delimited Gene Transfer Format file containing non-redundant\n" . 
+			"\t\trecords for all \"CDS\" elements (i.e., open reading frames, or ORFs)\n" .
+			"\t\tpresent in the SNP report(s). DEFAULT: .gtf file in the working directory.\n";
+	print "\t--snpreport: CLC, Geneious, or VCF file containing SNP data with respect to\n" . 
+			"\t\tpositions in the provided reference sequence (FASTA). If VCF, the exact\n" .
+			"\t\tformat must be specified (see documentation). DEFAULT: .txt or .vcf file(s)\n" .
+			"\t\tin the working directory.\n";
+	print "\t--vcfformat (REQUIRED IF VCF): format ID of the VCF file (see documentation).\n" . 
+			"\t\tFormat 4 is the only option which provides support for concurrent analysis\n" . 
+			"\t\t of multiple samples.\n";
+	print "\t--minfreq: minimum SNP frequency to consider when calculating diversity measures;\n" . 
+			"\t\tuseful if SNPs below a certain frequency are likely to be errors.\n" .
+			"\t\tDEFAULT: 0\n";
+	print "\t--workdir (OPTIONAL): user-specified working directory name. DEFAULT: current\n" . 
+			"\t\tworking directory.\n";
+	print "\t--outdir (OPTIONAL): user-specified output directory name. Unless a full path,\n" . 
+			"\t\tis given, the directory will be created in the working directory.\n" .
+			"\t\tDEFAULT: SNPGenie_Results (in working directory).\n";
+		
+	print "\n################################################################################\n";
+	print "### EXAMPLES:\n";
+	print "################################################################################\n";
+
+	print "\n### FORMAT\n";
+
+	print "\n\tsnpgenie.pl --fastafile=<ref_seq>.\(fa\|fasta\) --gtffile=<CDS_annotations>.\(gff\|gtf\) --snpreport=<variants>.\(txt\|vcf\)\n";
+
+	print "\n### EXAMPLE 1: BASIC USAGE\n";
+
+	print "\n\tsnpgenie.pl --fastafile=chr1.fa --gtffile=chr1_genes.gtf --snpreport=chr1_SNPs_CLC.txt\n";
+	
+	print "\n### EXAMPLE 2: VCF INPUT\n";
+	
+	print "\n\tsnpgenie.pl --fastafile=seg1.fa --gtffile=seg1_genes.gtf --snpreport=seg1_VARSCAN.vcf \\\n" . 
+		"\t--vcfformat=4\n";
+		
+	print "\n### EXAMPLE 3: USER-SPECIFIED DIRECTORIES & RE-DIRECTED OUTPUT\n";
+	
+	print "\n\tsnpgenie.pl --fastafile=HPV_genome.fa --gtffile=HPV_genes.gtf --snpreport=HPV_SNPs_Geneious.txt \\\n" . 
+		"\t--workdir=\/home\/kimura\/HPV\/SNPs\/ --outdir=\/home\/kimura\/HPV\/SNPs\/diversity\/ > SNPGenie_HPV.out\n";
+		
+	print "\n### EXAMPLE 4: ALL OPTIONS USED\n";
+	
+	print "\n\tsnpgenie.pl --fastafile=chr21.fa --gtffile=chr21_genes.gtf --snpreport=chr21_GATK.vcf \\\n" . 
+		"\t--vcfformat=4 --minfreq=0.001 --workdir=\/home\/ohta\/human\/data\/ --outdir=SNPGenie_Results\n";
+
+	print "\n################################################################################\n";
+	print "################################################################################\n\n";
+	
+	exit;
+	#die;
+	
 }
 
 
@@ -15888,13 +15923,12 @@ sub end_the_program {
 	my $secs_remaining = ($time_diff - $whole_mins_in_secs);
 	my $secs_remaining_rounded = sprintf("%.2f",$secs_remaining);
 	
-	chdir('SNPGenie_Results');
-	open(ERROR_FILE,">>SNPGenie\_LOG\.txt");
+	
+	open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
 	print ERROR_FILE "NA\tNA\tNA\t".
 			"SNPGenie completed at local time $local_time2. The process took $time_diff_rounded secs, i.e., ".
 			"$whole_mins_elapsed mins and $secs_remaining_rounded secs\n";
 	close ERROR_FILE;
-	chdir('..');
 	
 	if($vcfformat == 4) { # remove the temp SNP reports
 		foreach(@temp_vcf4_file_names) {
@@ -15908,3 +15942,6 @@ sub end_the_program {
 		"################################################################################".
 		"\n\n\n"; 
 }
+
+exit;
+
