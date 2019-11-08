@@ -635,7 +635,7 @@ if($vcfformat == 4) { # generate as many SNP reports as there are sample columns
 		}
 	}
 	
-	# Count the number of samples
+	# Count the number of samples (i.e., columns after FORMAT)
 	my $num_samples = 0;
 	my @sample_names;
 	for(my $samp_index = $FORMAT_index+1; $samp_index < scalar(@header_arr); $samp_index++) {
@@ -691,7 +691,7 @@ if($vcfformat == 4) { # generate as many SNP reports as there are sample columns
 				
 				my $this_new_variant_line;
 
-				# This will include records with 0 coverage; eliminate later
+				# This will include records with 0 coverage; eliminate later if necessary
 				for(my $vcf_i = 0; $vcf_i <= $FORMAT_index; $vcf_i++) {
 					$this_new_variant_line .= "$this_line_arr[$vcf_i]\t";
 				}
@@ -9772,7 +9772,7 @@ sub populate_tempfile_vcf {
 	print TEMP_FILE "$clc_format_header";
 	
 	open (ORIGINAL_SNP_REPORT, $curr_snp_report_name);
-	while (<ORIGINAL_SNP_REPORT>) {
+	RECORDS: while (<ORIGINAL_SNP_REPORT>) { # note that this may NOT be the original, if VCF 4
 		unless(/^#/) { # lines that begins with "##" or "#" are metadata
 			chomp;
 			# CHOMP for 3 operating systems
@@ -9785,6 +9785,7 @@ sub populate_tempfile_vcf {
 			}
 			
 			my @line_arr = split(/\t/,$_,-1);
+			my $problem_line = $_;
 			
 			# ONLY DO THE THING IF THE GENEIOUS TYPE IS "Polymorphism"; not CDS.
 			my $id = $line_arr[$index_id];
@@ -10246,8 +10247,14 @@ sub populate_tempfile_vcf {
 							$AD2 = $2;
 							$AD3 = $3;
 							$AD4 = $4;
+						} elsif($sample_value_arr[$colon_count_before_AD] =~ /\./) {
+							print "\n### WARNING: for ID $id_value\, the value of AD contains \"\.\". Record ignored.\n";
+							next RECORDS;
 						} else {
-							die "\n### WARNING: for vcfformat==4, AD must list numbers of reads for three SNPs as follows: <REF>,<ALT1>,<ALT2>,<ALT3>. SNPGenie TERMINATED.\n\n";
+							die "\n### WARNING: for ID $id_value\, the value of AD is \"" . $sample_value_arr[$colon_count_before_AD] . "\".\n" .
+								"### WARNING: the sample values are \"$sample_value\".\n" .
+								"### WARNING: the line is:\n$problem_line\n" .
+								"### For vcfformat==4, AD must list numbers of reads for three SNPs as follows: <REF>,<ALT1>,<ALT2>,<ALT3>. SNPGenie TERMINATED.\n\n";
 						}
 						
 						# EXTRACT the VALUE of DP (coverage)
@@ -10622,8 +10629,14 @@ sub populate_tempfile_vcf {
 							$AD1 = $1;
 							$AD2 = $2;
 							$AD3 = $3;
+						} elsif($sample_value_arr[$colon_count_before_AD] =~ /\./) {
+							print "\n### WARNING: for ID $id_value\, the value of AD contains \"\.\". Record ignored.\n";
+							next RECORDS;
 						} else {
-							die "\n### WARNING: for vcfformat==4, AD must list numbers of reads for two SNPs as follows: <REF>,<ALT1>,<ALT2>. SNPGenie TERMINATED.\n\n";
+							die "\n### WARNING: for ID $id_value\, the value of AD is \"" . $sample_value_arr[$colon_count_before_AD] . "\".\n" .
+								"### WARNING: the sample values are \"$sample_value\".\n" .
+								"### WARNING: the line is:\n$problem_line\n" .
+								"### For vcfformat==4, AD must list numbers of reads for two SNPs as follows: <REF>,<ALT1>,<ALT2>. SNPGenie TERMINATED.\n\n";
 						}
 						
 						# EXTRACT the VALUE of DP (coverage)
@@ -10904,16 +10917,22 @@ sub populate_tempfile_vcf {
 						}
 						
 						# EXTRACT the VALUE of AD
-						my @sample_value_arr = split(/\:/,$sample_value,-1);
+						my @sample_value_arr = split(/\:/, $sample_value, -1);
 						my $AD1;
 						my $AD2;
 						
 						if($sample_value_arr[$colon_count_before_AD] =~ /(\d+)\,(\d+)/) { # REF and 1 ALT
 							$AD1 = $1;
 							$AD2 = $2;
+						} elsif($sample_value_arr[$colon_count_before_AD] =~ /\./) {
+							print "\n### WARNING: for ID $id_value\, the value of AD contains \"\.\". Record ignored.\n";
+							next RECORDS;
 						} else {
 							#unlink($curr_snp_report_name);
-							die "\n### WARNING: for vcfformat==4, AD must list numbers of reads for one SNP as follows: <REF>,<ALT>. SNPGenie TERMINATED.\n\n";
+							die "\n### WARNING: for ID $id_value\, the value of AD is \"" . $sample_value_arr[$colon_count_before_AD] . "\".\n" .
+								"### WARNING: the sample values are \"$sample_value\".\n" .
+								"### WARNING: the line is:\n$problem_line\n" .
+								"### For vcfformat==4, AD must list numbers of reads for one SNP as follows: <REF>,<ALT>. SNPGenie TERMINATED.\n\n";
 						}
 						
 						# EXTRACT the VALUE of DP (coverage)

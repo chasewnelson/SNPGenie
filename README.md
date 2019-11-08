@@ -1,6 +1,6 @@
 <img src="https://github.com/chasewnelson/snpgenie/blob/master/logo1a.jpg?raw=true" alt="SNPGenie logo by Elizabeth Ogle" width="450" height="175" align="middle">
 
-SNPGenie is a collection of Perl scripts for estimating *π*<sub>N</sub>/*π*<sub>S</sub>, *d*<sub>N</sub>/*d*<sub>S</sub>, and other evolutionary parameters from next-generation sequencing (NGS) single-nucleotide polymorphism (SNP) variant data. Each analysis uses its own script:
+SNPGenie is a collection of Perl scripts for estimating *π*<sub>N</sub>/*π*<sub>S</sub>, *d*<sub>N</sub>/*d*<sub>S</sub>, and gene diversity from next-generation sequencing (NGS) single-nucleotide polymorphism (SNP) variant data. Each analysis uses its own script:
 
 1. **WITHIN-POOL ANALYSIS**. Use `snpgenie.pl`, the original SNPGenie. Analyzes within-sample *π*<sub>N</sub>/*π*<sub>S</sub> from **pooled NGS SNP data**. SNP reports (CLC, Geneious, or VCF) must each correspond to a single population/pool, with variants called relative to one reference sequence (one sequence in one FASTA file). Example:
 
