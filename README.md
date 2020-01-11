@@ -27,7 +27,7 @@ SNPGenie is a collection of Perl scripts for estimating *π*<sub>N</sub>/*π*<su
 			* [CLC](#clc)
 			* [Geneious](#geneious)
 			* [VCF](#vcf)
-		* [A Note on Reverse Complement ('—' Strand) Records](#revcom)
+		* [A Note on Reverse Complement ('-' Strand) Records](#revcom)
 	* [Options](#options)
 	* [Output](#output)
 * [SNPGenie Within-Group](#snpgenie-within)
@@ -65,7 +65,7 @@ Further details on [input](#ref-seq) and [options](#options) are below.
 Only one reference sequence must be provided in a single **FASTA** (.fa/.fasta) file (*i.e.*, one file containing one sequence). Thus, all SNP positions in the SNP reports are called relative to the single reference sequence. Because of this one-sequence stipulation, a script has been provided to split a multi-sequence FASTA file into its constituent sequences for multiple or parallel analyses; see [Additional Scripts](#additional-scripts) below.
 
 #### <a name="gtf"></a>INPUT (2) One Gene Transfer Format File
-The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include *non-redundant* records for all CDS elements (*i.e.*, open reading frames, or ORFs) present in your SNP report(s). Thus, if multiple records exist with the same gene name (*e.g.*, different transcripts), ONLY ONE may be included in your analysis at a time. The GTF should also include any ORFs which do not contain any variants (if they exist). **SNPGenie expects every coding element to be labeled as type "CDS", and for its product name to follow a "gene\_id" tag.** In the case of CLC and Geneious SNP reports, this name must match that present in the SNP report. If a single coding element has multiple segments (*e.g.*, exons) with different coordinates, simply enter one line for each segment, using the same product name; they will be concatenated. Finally, for sequences with genes on the reverse '–' strand, SNPGenie must be run twice, once for each strand, with the minus strand's own set of input files (*i.e.*, the '–' strand FASTA, GTF, and SNP report); see [A Note on Reverse Complement ('–' Strand) Records](#revcom) below. For more information about GTF, please visit <a target="_blank" href="http://mblab.wustl.edu/GTF22.html">The Brent Lab</a>. To convert a GFF file to GTF format, use a tool like <a target="_blank" href="https://ccb.jhu.edu/software/stringtie/gff.shtml#gffread">gffread</a>. A short GTF example follows:
+The **Gene Transfer Format** (.gtf) file is tab (\t)-delimited, and must include *non-redundant* records for all CDS elements (*i.e.*, open reading frames, or ORFs) present in your SNP report(s). Thus, if multiple records exist with the same gene name (*e.g.*, different transcripts), ONLY ONE may be included in your analysis at a time. The GTF should also include any ORFs which do not contain any variants (if they exist). **SNPGenie expects every coding element to be labeled as type "CDS", and for its product name to follow a "gene\_id" tag.** In the case of CLC and Geneious SNP reports, this name must match that present in the SNP report. If a single coding element has multiple segments (*e.g.*, exons) with different coordinates, simply enter one line for each segment, using the same product name; they will be concatenated. Finally, for sequences with genes on the reverse '-' strand, SNPGenie must be run twice, once for each strand, with the minus strand's own set of input files (*i.e.*, the '-' strand FASTA, GTF, and SNP report); see [A Note on Reverse Complement ('-' Strand) Records](#revcom) below. For more information about GTF, please visit <a target="_blank" href="http://mblab.wustl.edu/GTF22.html">The Brent Lab</a>. To convert a GFF file to GTF format, use a tool like <a target="_blank" href="https://ccb.jhu.edu/software/stringtie/gff.shtml#gffread">gffread</a>. A short GTF example follows:
 
 	reference.gbk	CLC	CDS	5694	8369	.	+	0	gene_id "ORF1";
 	reference.gbk	CLC	CDS	8203	8772	.	+	0	gene_id "ORF2";
@@ -143,8 +143,8 @@ Because VCF files vary widely in format, **SNPGenie now requires** users to spec
 
 As usual, you will want to make sure to maintain the VCF file's features, such as TAB(\t)-delimited columns. Unlike some other formats, the allele frequency in VCF is a decimal.
 
-#### <a name="revcom"></a>A Note on Reverse Complement ('–' Strand) Records
-Many large genomes have coding products on both strands. In this case, SNPGenie must be run twice: once for the '+' strand, and once for the '—' strand. This requires FASTA, GTF, and SNP report input for the '–' strand. I provide a script for converting input files to their reverse complement strand in the [Additional Scripts](#additional-scripts) below. Note that, regardless of the original SNP report format, the reverse complement SNP report is in a CLC-like format that SNPGenie will recognize. For both runs, the GTF should include all products for both strands, with products on the strand being analyzed labeled '+' and coordinates defined with respect to the beginning of that strand's FASTA sequence. Also note that a GTF file containing *only* '—' strand records will not run; SNPGenie does calculations only for the products on the current + strand, using the '—' strand products only to determine the number of overlapping reading frames for each variant.
+#### <a name="revcom"></a>A Note on Reverse Complement ('-' Strand) Records
+Many large genomes have coding products on both strands. In this case, SNPGenie must be run twice: once for the '+' strand, and once for the '—' strand. This requires FASTA, GTF, and SNP report input for the '-' strand. I provide a script for converting input files to their reverse complement strand in the [Additional Scripts](#additional-scripts) below. Note that, regardless of the original SNP report format, the reverse complement SNP report is in a CLC-like format that SNPGenie will recognize. For both runs, the GTF should include all products for both strands, with products on the strand being analyzed labeled '+' and coordinates defined with respect to the beginning of that strand's FASTA sequence. Also note that a GTF file containing *only* '-' strand records will not run; SNPGenie does calculations only for the products on the current + strand, using the '-' strand products only to determine the number of overlapping reading frames for each variant.
 
 ### <a name="options"></a>Options
 
@@ -328,7 +328,7 @@ For further background, see Nelson & Hughes (2015) in the [References](#referenc
 
 ## <a name="additional-scripts"></a>Additional Scripts
 
-Previous versions of the additional scripts, provided to help in the preparation of SNPGenie input, have moved to the <a target="_blank" href="https://github.com/chasewnelson/CHASeq">CHASeq</a> repository. Here, you can find the following scripts for use in converting files to the reverse complement strand, to be run as follows:
+Previous versions of the additional scripts, provided to help in the preparation of SNPGenie input, have moved to the <a target="_blank" href="https://github.com/chasewnelson/EBT">Evolutionary Bioinformatics Toolkit (EBT)</a> repository. Here, you can find the following scripts for use in converting files to the reverse complement strand, to be run as follows:
 
 * Convert a VCF file to the reverse complement by inputting the file and the total sequence length of the corresponding FASTA:
 

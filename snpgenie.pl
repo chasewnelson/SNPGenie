@@ -3846,13 +3846,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative number of A nucleotides: $A. This most often results from variants ".
-					"which are assigned to the wrong site in the SNP Report. Results at this site ".
+					"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site ".
 					"are unreliable; A count set to 0; proceed with caution.\n";
 				close ERROR_FILE;
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative number of A nucleotides: $A. This most often results from\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site\n".
 					"## are unreliable; A count set to 0; proceed with caution.\n";
 			}
 		}
@@ -3865,13 +3865,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative number of C nucleotides: $C. This most often results from variants ".
-					"which are assigned to the wrong site in the SNP Report. Results at this site ".
+					"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site ".
 					"are unreliable; C count set to 0; proceed with caution.\n";
 				close ERROR_FILE;
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative number of C nucleotides: $C. This most often results from\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site\n".
 					"## are unreliable; C count set to 0; proceed with caution.\n";
 			}
 		}
@@ -3884,13 +3884,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative number of G nucleotides: $G. This most often results from variants ".
-					"which are assigned to the wrong site in the SNP Report. Results at this site ".
+					"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site ".
 					"are unreliable; G count set to 0; proceed with caution.\n";
 				close ERROR_FILE;
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative number of G nucleotides: $G. This most often results from\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site\n".
 					"## are unreliable; G count set to 0; proceed with caution.\n";
 			}
 		}
@@ -3903,13 +3903,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative number of T nucleotides: $T. This most often results from variants ".
-					"which are assigned to the wrong site in the SNP Report. Results at this site ".
+					"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site ".
 					"are unreliable; T count set to 0; proceed with caution.\n";
 				close ERROR_FILE;
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative number of T nucleotides: $T. This most often results from\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site\n".
 					"## are unreliable; T count set to 0; proceed with caution.\n";
 			}
 		}
@@ -3929,15 +3929,15 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative proportion of A nucleotides of $A_prop. This may result from rounding error, ".
-					"in which case the number will be very small in magnitude, or variants ".
-					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+					"in which case the number will be very small in magnitude, variants ".
+					"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. If the latter, results at this site ".
 					"are unreliable. In either case, A prop has set to 0; proceed with caution.\n";
 				close ERROR_FILE;
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative proportion of A nucleotides: $A_prop.\n".
-					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## This may result from rounding error, in which case the number will be very small in magnitude,\n".
+					"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site\n".
 					"## may be unreliable; A prop set to 0; proceed with caution.\n";
 			}
 		}
@@ -3950,15 +3950,15 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative proportion of C nucleotides of $C_prop. This may result from rounding error, ".
-					"in which case the number will be very small in magnitude, or variants ".
-					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+					"in which case the number will be very small in magnitude, variants ".
+					"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. If the latter, results at this site ".
 					"are unreliable. In either case, C prop has set to 0; proceed with caution.\n";
 				close ERROR_FILE;
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative proportion of C nucleotides: $C_prop.\n".
-					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## This may result from rounding error, in which case the number will be very small in magnitude,\n".
+					"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site\n".
 					"## may be unreliable; C prop set to 0; proceed with caution.\n";
 			}
 		}
@@ -3971,15 +3971,15 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative proportion of G nucleotides of $G_prop. This may result from rounding error, ".
-					"in which case the number will be very small in magnitude, or variants ".
-					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+					"in which case the number will be very small in magnitude, variants ".
+					"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. If the latter, results at this site ".
 					"are unreliable. In either case, G prop has set to 0; proceed with caution.\n";
 				close ERROR_FILE;
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative proportion of G nucleotides: $G_prop.\n".
-					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## This may result from rounding error, in which case the number will be very small in magnitude,\n".
+					"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site\n".
 					"## may be unreliable; G prop set to 0; proceed with caution.\n";
 			}
 		}
@@ -3992,15 +3992,15 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 				# FILE | PRODUCT | SITE | WARNING
 				print ERROR_FILE "$file_nm\tNA\t$curr_spot\tVariant data at this site ".
 					"imply a negative proportion of T nucleotides of $T_prop. This may result from rounding error, ".
-					"in which case the number will be very small in magnitude, or variants ".
-					"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+					"in which case the number will be very small in magnitude, variants ".
+					"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. If the latter, results at this site ".
 					"are unreliable. In either case, T prop has set to 0; proceed with caution.\n";
 				close ERROR_FILE;
 				
 				warn "\n## WARNING: In $file_nm, the variant at site $curr_spot,\n".
 					"## the variant data imply a negative proportion of T nucleotides: $T_prop.\n".
-					"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-					"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+					"## This may result from rounding error, in which case the number will be very small in magnitude,\n".
+					"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site\n".
 					"## may be unreliable; T prop set to 0; proceed with caution.\n";
 			}
 		}
@@ -4607,13 +4607,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative number of A nucleotides: $A. This most often results from variants ".
-							"which are assigned to the wrong site in the SNP Report. Results at this site ".
+							"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site ".
 							"are unreliable; A count set to 0; proceed with caution.\n";
 						close ERROR_FILE;
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative number of A nucleotides: $A. This most often results from\n".
-							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+							"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site\n".
 							"## are unreliable; A count set to 0; proceed with caution.\n";
 					}
 				}
@@ -4626,13 +4626,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative number of C nucleotides: $C. This most often results from variants ".
-							"which are assigned to the wrong site in the SNP Report. Results at this site ".
+							"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site ".
 							"are unreliable; C count set to 0; proceed with caution.\n";
 						close ERROR_FILE;
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative number of C nucleotides: $C. This most often results from\n".
-							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+							"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site\n".
 							"## are unreliable; C count set to 0; proceed with caution.\n";
 					}
 				}
@@ -4645,13 +4645,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative number of G nucleotides: $G. This most often results from variants ".
-							"which are assigned to the wrong site in the SNP Report. Results at this site ".
+							"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site ".
 							"are unreliable; G count set to 0; proceed with caution.\n";
 						close ERROR_FILE;
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative number of G nucleotides: $G. This most often results from\n".
-							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+							"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site\n".
 							"## are unreliable; G count set to 0; proceed with caution.\n";
 					}
 				}
@@ -4664,13 +4664,13 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative number of T nucleotides: $T. This most often results from variants ".
-							"which are assigned to the wrong site in the SNP Report. Results at this site ".
+							"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site ".
 							"are unreliable; T count set to 0; proceed with caution.\n";
 						close ERROR_FILE;
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative number of T nucleotides: $T. This most often results from\n".
-							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
+							"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. Results at this site\n".
 							"## are unreliable; T count set to 0; proceed with caution.\n";
 					}
 				}
@@ -4692,16 +4692,16 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative proportion of A nucleotides of $A_prop. This may result from rounding error, ".
-							"in which case the number will be very small in magnitude, or variants ".
-							"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+							"in which case the number will be very small in magnitude, variants ".
+							"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. If the latter, results at this site ".
 							"are unreliable. In either case, A prop has set to 0; proceed with caution.\n";
 						close ERROR_FILE;
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative proportion of A nucleotides: $A_prop.\n".
-							"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-							"## may be unreliable; A prop set to 0; proceed with caution.\n";
+							"## This may result from rounding error, in which case the number will be very small in magnitude,\n".
+							"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file.\n".
+							"## Results at this site may be unreliable; A prop set to 0; proceed with caution.\n";
 					}
 				}
 				if($C_prop < 0) {
@@ -4713,16 +4713,16 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative proportion of C nucleotides of $C_prop. This may result from rounding error, ".
-							"in which case the number will be very small in magnitude, or variants ".
-							"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+							"in which case the number will be very small in magnitude, variants ".
+							"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. If the latter, results at this site ".
 							"are unreliable. In either case, C prop has set to 0; proceed with caution.\n";
 						close ERROR_FILE;
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative proportion of C nucleotides: $C_prop.\n".
-							"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-							"## may be unreliable; C prop set to 0; proceed with caution.\n";
+							"## This may result from rounding error, in which case the number will be very small in magnitude,\n".
+							"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file.\n".
+							"## Results at this site may be unreliable; C prop set to 0; proceed with caution.\n";
 					}
 				}
 				if($G_prop < 0) {
@@ -4734,16 +4734,16 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative proportion of G nucleotides of $G_prop. This may result from rounding error, ".
-							"in which case the number will be very small in magnitude, or variants ".
-							"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+							"in which case the number will be very small in magnitude, variants ".
+							"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. If the latter, results at this site ".
 							"are unreliable. In either case, G prop has set to 0; proceed with caution.\n";
 						close ERROR_FILE;
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative proportion of G nucleotides: $G_prop.\n".
-							"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-							"## may be unreliable; G prop set to 0; proceed with caution.\n";
+							"## This may result from rounding error, in which case the number will be very small in magnitude,\n".
+							"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file.\n".
+							"## Results at this site may be unreliable; G prop set to 0; proceed with caution.\n";
 					}
 				}
 				if($T_prop < 0) {
@@ -4755,16 +4755,16 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 						# FILE | PRODUCT | SITE | WARNING
 						print ERROR_FILE "$file_nm\t$curr_product\t$curr_spot\tVariant data at this site ".
 							"imply a negative proportion of T nucleotides of $T_prop. This may result from rounding error, ".
-							"in which case the number will be very small in magnitude, or variants ".
-							"which are assigned to the wrong site in the SNP Report. If the latter, results at this site ".
+							"in which case the number will be very small in magnitude, variants ".
+							"which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file. If the latter, results at this site ".
 							"are unreliable. In either case, T prop has set to 0; proceed with caution.\n";
 						close ERROR_FILE;
 						
 						warn "\n## WARNING: In $file_nm, $curr_product, the codon at site $curr_spot,\n".
 							"## the variant data imply a negative proportion of T nucleotides: $T_prop.\n".
-							"## This may result from rounding error, in which case the number will be very small in magnitude, or\n".
-							"## variants which are assigned to the wrong site in the SNP Report. Results at this site\n".
-							"## may be unreliable; T prop set to 0; proceed with caution.\n";
+							"## This may result from rounding error, in which case the number will be very small in magnitude,\n".
+							"## variants which are assigned to the wrong site in the SNP Report, or multiple copies of the same genes/exons in the GTF file.\n".
+							"## Results at this site may be unreliable; T prop set to 0; proceed with caution.\n";
 					}
 				}
 			}
