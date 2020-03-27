@@ -1,4 +1,4 @@
-#! /usr/bin/perl
+#!/usr/bin/env perl
 
 # PROGRAM: SNPGenie for within-group analysis is a Perl program that calculates dN/dS, 
 # piN/piS, and gene diversity for a single aligned FASTA file, with accompanying CDS 

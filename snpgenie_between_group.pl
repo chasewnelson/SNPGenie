@@ -1,4 +1,4 @@
-#! /usr/bin/perl
+#!/usr/bin/env perl
 
 # PROGRAM: SNPGenie, between-group analysis, for two or more aligned multi-FASTA files.
 

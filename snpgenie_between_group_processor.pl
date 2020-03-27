@@ -1,4 +1,4 @@
-#! /usr/bin/perl
+#!/usr/bin/env perl
 
 #AMNH-HUXLEY-PBS is #! /usr/local/software/PERL/perl-5.26.0/bin/perl
 #NYU-PRINCE-SLURM is #! /share/apps/perl/5.24.0/intel/bin/perl 

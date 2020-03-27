@@ -1,4 +1,4 @@
-#! /usr/bin/perl
+#!/usr/bin/env perl
 
 # Creates reverse complement versions of all 3 SNPGenie input files.
 
