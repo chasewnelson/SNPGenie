@@ -1,4 +1,4 @@
-#! /usr/bin/perl
+#!/usr/bin/env perl
 
 # PROGRAM: SNPGenie is a Perl program that calculates dN/dS, piN/piS, and gene diversity
 # from NGS SNP Reports generated from pooled DNA samples.

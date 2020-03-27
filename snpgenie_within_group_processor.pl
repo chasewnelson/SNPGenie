@@ -1,4 +1,4 @@
-#! /usr/bin/perl
+#!/usr/bin/env perl
 
 # PREVIOUSLY snpgenie_sw.pl
 
