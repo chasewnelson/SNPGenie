@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-#!/usr/bin/env perl
-=======
 #! /usr/bin/env perl
->>>>>>> Stashed changes
 
 # PROGRAM: SNPGenie is a Perl program that calculates dN/dS, piN/piS, and gene diversity
 # from NGS SNP Reports generated from pooled DNA samples.
