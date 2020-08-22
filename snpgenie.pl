@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 #!/usr/bin/env perl
+=======
+#! /usr/bin/env perl
+>>>>>>> Stashed changes
 
 # PROGRAM: SNPGenie is a Perl program that calculates dN/dS, piN/piS, and gene diversity
 # from NGS SNP Reports generated from pooled DNA samples.
@@ -6721,6 +6725,34 @@ foreach my $curr_snp_report_name (@snp_report_file_names_arr) {
 							
 							my $N_to_add = ($curr_N_diffs * $weight);
 							my $S_to_add = ($curr_S_diffs * $weight);
+							
+							if ($this_codon_pw_comps == 0) {
+								print "\nnum_codons_here=$num_codons_here\n" .
+									"i=$i\n" .
+									"j=$j\n" .
+									"codon1=$codon1\n" .
+									"codon2=$codon2\n" .
+									"this_codon_pw_comps=$this_codon_pw_comps\n" .
+									"weight=$weight\n" .
+									"curr_product=$curr_product\n" .
+									"curr_site=$curr_site\n" .
+									"site_pos_1=$site_pos_1\n" .
+									"site_pos_2=$site_pos_2\n" .
+									"site_pos_3=$site_pos_3\n\n";
+								
+								# Throw error and die
+								# FILE | PRODUCT | SITE | CODON | WARNING
+								open(ERROR_FILE,">>$OUT_DIR\/SNPGenie\_LOG\.txt");
+								
+								print ERROR_FILE "$file_nm\tN/A\tN/A\t". # $filename
+									"Impossible number of sequenced alleles given the allele frequency " . 
+									"reported at site $curr_site\. SNPGenie terminated.\n";
+								close ERROR_FILE;
+								
+								die "\n\n## WARNING: The SNP Report $file_nm contains ".
+									"an impossible number of sequenced alleles given the allele " . 
+									"frequency reported at site $curr_site\. SNPGenie terminated\n\n";
+							}
 							
 							my $new_weight = ($product_num_hh{$codon1}->{$codon2} / $this_codon_pw_comps);
 							my $new_N_to_add = ($curr_N_diffs * $new_weight);
