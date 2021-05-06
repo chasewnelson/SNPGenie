@@ -1271,10 +1271,17 @@ for(my $seq_pos = 0; $seq_pos < $aln_length; $seq_pos++) {
 	
 	my $num_pw_diffs = ($A * $C) + ($A * $G) + ($A * $T) +
 		($C * $G) + ($C * $T) + ($G * $T);
-		
+	
+	# UPDATE number of sequences to reflect only those that are defined
+	$num_seqs = 0 + $A + $C + $G + $T;
+	
 	my $num_pw_comps = ($num_seqs**2 - $num_seqs) / 2;
 	
-	my $mean_num_pw_diffs = $num_pw_diffs / $num_pw_comps; # this is pi
+	my $mean_num_pw_diffs = 'NA';
+	
+	if($num_pw_comps > 0) {
+		$mean_num_pw_diffs = $num_pw_diffs / $num_pw_comps; # this is pi
+	}
 	
 	$pi_by_site[$seq_pos] = $mean_num_pw_diffs;
 	
