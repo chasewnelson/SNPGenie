@@ -33,7 +33,7 @@ SNPGenie is a collection of Perl scripts for estimating *π*<sub>N</sub>/*π*<su
 * [SNPGenie Within-Group](#snpgenie-within)
 * [SNPGenie Between-Group](#snpgenie-between)
 * [How SNPGenie Works](#how-snpgenie-works)
-* [Additional Scripts](#additional-scripts) (vcf2revcom.pl, gtf2revcom.pl, fasta2revcom.pl)
+* [Additional Scripts](#additional-scripts)
 * [Troubleshooting](#troubleshooting)
 * [Citation](#citation)
 * [Studies Using SNPGenie](#studies-using-snpgenie)
@@ -341,6 +341,10 @@ Previous versions of the additional scripts, provided to help in the preparation
 * Convert a FASTA file (containing one sequence) to the reverse complement by inputting the file:
 
 `fasta2revcom.pl <seq>.fa`
+
+* Script containing an R function, `Tajima.D()` to calculate Tajima's D (Tajima 1989). For example, for a sequence of length *n*=1000 nt with *S*=15 segregating sites and total nucleotide diversity *π*=0.05, run as follows:
+
+`Tajima.D(1000, 15, 0.05)`
 
 
 ## <a name="troubleshooting"></a>Troubleshooting
