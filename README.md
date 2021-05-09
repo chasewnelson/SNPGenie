@@ -342,7 +342,7 @@ Previous versions of the additional scripts, provided to help in the preparation
 
 `fasta2revcom.pl <seq>.fa`
 
-* Script containing an R function, `Tajima.D()` to calculate Tajima's D (Tajima 1989). (**WARNING**: not extensively tested!) For example, for a sequence of length *n*=1000 nt with *S*=15 segregating sites and total nucleotide diversity *π*=0.05, run as follows:
+* Script containing an R function, `Tajima.D()` to calculate Tajima's D (Tajima 1989). (**WARNING**: not extensively tested!) For example, for *n*=1000 sequences with *S*=15 segregating sites and total nucleotide diversity *π*=0.05, run as follows:
 
 `Tajima.D(1000, 15, 0.05)` 
 
