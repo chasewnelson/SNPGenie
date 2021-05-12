@@ -337,9 +337,9 @@ To run this analysis, use processing script **SNPGenie\_sliding\_windows.R** wit
 9. **NUMBER OF CPUS** (OPTIONAL). Must be ≥1; DEFAULT=1.
 10. **STRING TO PREPEND TO OUTPUT LINES** (OPTIONAL). DEFAULT="" (empty string).
 
-For example, to compute *d*<sub>N</sub>/*d*<sub>S</sub> or *π*<sub>N</sub>/*π*<sub>S</sub> in sliding windows of 40 codons with a step size of 1 codon; 1,000 bootstrap replicates per window; requiring a minimum of 6 defined codons (e.g., unambiguous reads) per position; using no multiple hits correction; and parallelizing over 6 CPUs, call the following:
+For example, to compute *d*<sub>N</sub>/*d*<sub>S</sub> or *π*<sub>N</sub>/*π*<sub>S</sub> in sliding windows of 40 codons with a step size of 1 codon; 1,000 bootstrap replicates per window; requiring a minimum of 100 defined codons (e.g., unambiguous reads) per position; using no multiple hits correction; and parallelizing over 6 CPUs, call the following:
 
-	SNPGenie_sliding_windows.R codon_results_oneProduct.txt N S 40 1 1000 6 NONE 6 > SNPGenie_sliding_windows_oneProduct.out
+	SNPGenie_sliding_windows.R codon_results_oneProduct.txt N S 40 1 1000 100 NONE 6 > SNPGenie_sliding_windows_oneProduct.out
 
 ## <a name="how-snpgenie-works"></a>How SNPGenie Works
 
