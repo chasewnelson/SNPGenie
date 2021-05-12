@@ -10,7 +10,7 @@ suppressMessages(library(package = dplyr))
 suppressMessages(library(package = boot))
 
 # At command line, call something like:
-# OLGenie_sliding_windows.R OLGenie_codon_results.txt NN NS 50 1 1000 6 NONE 6 > OLGenie_sliding_windows.out
+# SNPGenie_sliding_windows.R codon_results_oneProduct.tsv N S 40 1 1000 6 NONE 6 > SNPGenie_sliding_windows_oneProduct.out
 
 ############################################################################################################
 ############################################################################################################

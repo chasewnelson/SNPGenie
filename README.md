@@ -32,6 +32,7 @@ SNPGenie is a collection of Perl scripts for estimating *π*<sub>N</sub>/*π*<su
 	* [Output](#output)
 * [SNPGenie Within-Group](#snpgenie-within)
 * [SNPGenie Between-Group](#snpgenie-between)
+* [Sliding Windows and Bootstrapping](#sliding-windows-bootstrapping)
 * [How SNPGenie Works](#how-snpgenie-works)
 * [Additional Scripts](#additional-scripts)
 * [Troubleshooting](#troubleshooting)
@@ -275,18 +276,20 @@ For example, on a node with access to 64 processors in a high performance comput
 
 Results files will be generated in the working directory. For a detailed explanation of the results, consult the [output descriptions](#output) above (however, note that not all files and columns generated for the within-pool analysis will be present for the within-group analysis).
 
-To execute bootstrapping and/or sliding window analyses, run the processing script **snpgenie\_within\_group\_processor.pl** with the following arguments:
+To execute bootstrapping and/or sliding window analyses, run the processing script **SNPGenie\_sliding\_windows.R** (see [Sliding Windows and Bootstrapping](#sliding-windows-bootstrapping)).
 
-* **--codon\_file**: the name or path of the **within\_group\_codon\_results.txt** file produced using snpgenie\_within\_group.pl.
-* **--sliding\_window\_size**: the size of the sliding windows to be calculated, in codons.
-* **--sliding\_window\_step**: the number of codons to advance forward for each subsequent sliding window.
-* **--num\_bootstraps**: OPTIONAL. the number of bootstrap replicates to be performed for calculating the standard error of *d*<sub>N</sub>-*d*<sub>S</sub> for genes and sliding windows. DEFAULT: 0.
+> **SNPGenie\_sliding\_windows.R** replaces the bootstrapping and sliding window script **snpgenie\_within\_group\_processor.pl**, which is no longer supported. Its (deprecated) description is below:
+> 
+> * **--codon\_file**: the name or path of the **within\_group\_codon\_results.txt** file produced using snpgenie\_within\_group.pl.
+> * **--sliding\_window\_size**: the size of the sliding windows to be calculated, in codons.
+> * **--sliding\_window\_step**: the number of codons to advance forward for each subsequent sliding window.
+> * **--num\_bootstraps**: OPTIONAL. the number of bootstrap replicates to be performed for calculating the standard error of *d*<sub>N</sub>-*d*<sub>S</sub> for genes and sliding windows. DEFAULT: 0.
+> 
+> The format for using the script is:
+> 
+> 	snpgenie\_within\_group\_processor.pl --codon\_file=within\_group\_codon\_results.txt --sliding\_window\_size=10 --sliding\_window\_step=1 --num\_bootstraps=10000
 
-The format for using the script is:
-
-	snpgenie_within_group_processor.pl --codon_file=within_group_codon_results.txt --sliding_window_size=10 --sliding_window_step=1 --num_bootstraps=10000
-
-A typical workflow thus includes one run of **snpgenie\_within\_group.pl** to obtain codon results, followed by one or more runs of **snpgenie\_within\_group\_processor.pl** to obtain sliding window results with bootstraps.
+A typical workflow thus includes one run of **snpgenie\_within\_group.pl** to obtain codon results, followed a run of **SNPGenie\_sliding\_windows.R** (previously **snpgenie\_within\_group\_processor.pl**) for each coding product to obtain sliding window results with bootstrap results.
 
 ## <a name="snpgenie-between"></a>SNPGenie Between-Group
 
@@ -300,21 +303,43 @@ SNPGenie automatically detects all FASTA files in the working directory. The GTF
 
 Results files will be generated in the working directory. For a detailed explanation of the results, consult the [output descriptions](#output) above (however, note that not all files and columns generated for the within-pool analysis will be present for the within-group analysis).
 
-To execute bootstrapping and/or sliding window analyses, run the processing script **snpgenie\_between\_group\_processor.pl** with the following arguments:
+To execute bootstrapping and/or sliding window analyses, run the processing script **SNPGenie\_sliding\_windows.R** (see [Sliding Windows and Bootstrapping](#sliding-windows-bootstrapping)).
 
-* **--between\_group\_codon\_file**: the name or path of the **between\_group\_codon\_results.txt** file produced using snpgenie\_between\_group.pl.
-* **--sliding\_window\_size**: the size of the sliding windows to be calculated, in codons.
-* **--sliding\_window\_step**: the number of codons to advance forward for each subsequent sliding window.
-* **--codon\_min\_taxa\_total**: the minimum number of total distinct sequences or taxa *across both groups* having defined (non-gap) codons at a codon position. If this criterion is not met for the groups being compared, the codon position is ignored.
-* **--codon\_min\_taxa\_group**: the minimum number of distinct sequences or taxa *in a single groups* having defined (non-gap) codons at a codon position. If this criterion is not met for either of the groups being compared, the codon position is ignored.
-* **--num\_bootstraps**: OPTIONAL. the number of bootstrap replicates to be performed for calculating the standard error of *d*<sub>N</sub>-*d*<sub>S</sub> for genes and sliding windows. DEFAULT: 0.
-* **--procs\_per\_node**: OPTIONAL. The number of parallel processes to be invoked for processing codons and bootstraps (speeds up SNPGenie if high performance computing resources are available). DEFAULT: 1.
+> **SNPGenie\_sliding\_windows.R** replaces the bootstrapping and sliding window script **snpgenie\_between\_group\_processor.pl**, which is no longer supported. Its (deprecated) description is below:
+> 
+> * **--between\_group\_codon\_file**: the name or path of the **between\_group\_codon\_results.txt** file produced using snpgenie\_between\_group.pl.
+> * **--sliding\_window\_size**: the size of the sliding windows to be calculated, in codons.
+> * **--sliding\_window\_step**: the number of codons to advance forward for each subsequent sliding window.
+> * **--codon\_min\_taxa\_total**: the minimum number of total distinct sequences or taxa *across both groups* having defined (non-gap) codons at a codon position. If this criterion is not met for the groups being compared, the codon position is ignored.
+> * **--codon\_min\_taxa\_group**: the minimum number of distinct sequences or taxa *in a single groups* having defined (non-gap) codons at a codon position. If this criterion is not met for either of the groups being compared, the codon position is ignored.
+> * **--num\_bootstraps**: OPTIONAL. the number of bootstrap replicates to be performed for calculating the standard error of *d*<sub>N</sub>-*d*<sub>S</sub> for genes and sliding windows. DEFAULT: 0.
+> * **--procs\_per\_node**: OPTIONAL. The number of parallel processes to be invoked for processing codons and bootstraps (speeds up SNPGenie if high performance computing resources are available). DEFAULT: 1.
+> 
+> The format for using the script is:
+> 
+> 	snpgenie\_between\_group\_processor.pl --between\_group\_codon\_file=<between\_group\_codon\_results>.txt --sliding\_window\_size=10 --sliding\_window\_step=1 --codon\_min\_taxa\_total=5 --codon\_min\_taxa\_group=2 --num\_bootstraps=10000 --procs\_per\_node=8 
 
-The format for using the script is:
+A typical workflow thus includes one run of **snpgenie\_between\_group.pl** to obtain codon results, followed a run of **SNPGenie\_sliding\_windows.R** (previously **snpgenie\_between\_group\_processor.pl**) for each coding product to obtain sliding window results with bootstrap results.
 
-	snpgenie_between_group_processor.pl --between_group_codon_file=<between_group_codon_results>.txt --sliding_window_size=10 --sliding_window_step=1 --codon_min_taxa_total=5 --codon_min_taxa_group=2 --num_bootstraps=10000 --procs_per_node=8 
+## <a name="sliding-windows-bootstrapping"></a>Sliding Windows and Bootstrapping
+Bootstrapping and/or sliding window analyses can be computed for any codon results file produced by `snpgenie.pl`, `snpgenie_within_group.pl`, or `snpgenie_between_group.pl`. The codon results file must (1) contain **one codon per line**; (2) contain the columns **N_diffs**, **N_sites**, **S_diffs**, and **S_sites**; and (3) contain results for **only one gene/product** (no redundant codon numbers). 
 
-A typical workflow thus includes one run of **snpgenie\_between\_group.pl** to obtain codon results, followed by one or more runs of **snpgenie\_between\_group\_processor.pl** to obtain sliding window and/or whole-gene results with various codon criteria, numbers of bootstraps, and sliding window sizes.
+To run this analysis, use processing script **SNPGenie\_sliding\_windows.R** with the following unnamed arguments:
+
+1. **CODON RESULTS FILE**. The name or path of the **codon\_results.txt** file produced using snpgenie.pl or snpgenie\_within\_group.pl. Must contain results for **only one gene/product**.
+2. **NUMERATOR SITE TYPE**. Usually 'N', for nonsynonymous (*d*<sub>N</sub>; *π*<sub>N</sub>).
+3. **DENOMINATOR SITE TYPE**. Usually 'S', for synonymous (*d*<sub>S</sub>; *π*<sub>S</sub>).
+4. **SLIDING WINDOW SIZE** (CODONS). Must be ≥2; ≥10 recommended.
+5. **SLIDING WINDOW STEP SIZE** (CODONS). Must be ≥1.
+6. **NUMBER OF BOOTSTRAP REPLICATES PER WINDOW** (OPTIONAL). Must be ≥2; DEFAULT is 1000.
+7. **MINIMUM NUMBER OF DEFINED CODONS PER CODON POSITION** (OPTIONAL). Must be ≥2; DEFAULT is 6.
+8. **MULTIPLE HITS CORRECTION** (OPTIONAL). Must be "NONE" or "JC" (Jukes-Cantor); DEFAULT=NONE.
+9. **NUMBER OF CPUS** (OPTIONAL). Must be ≥1; DEFAULT=1.
+10. **STRING TO PREPEND TO OUTPUT LINES** (OPTIONAL). DEFAULT="" (empty string).
+
+For example, to compute *d*<sub>N</sub>/*d*<sub>S</sub> or *π*<sub>N</sub>/*π*<sub>S</sub> in sliding windows of 40 codons with a step size of 1 codon; 1,000 bootstrap replicates per window; requiring a minimum of 6 defined codons (e.g., unambiguous reads) per position; using no multiple hits correction; and parallelizing over 6 CPUs, call the following:
+
+	SNPGenie_sliding_windows.R codon_results_oneProduct.txt N S 40 1 1000 6 NONE 6 > SNPGenie_sliding_windows_oneProduct.out
 
 ## <a name="how-snpgenie-works"></a>How SNPGenie Works
 
