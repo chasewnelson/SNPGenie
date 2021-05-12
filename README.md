@@ -332,7 +332,7 @@ To run this analysis, use processing script **SNPGenie\_sliding\_windows.R** wit
 4. **SLIDING WINDOW SIZE** (CODONS). Must be ≥2; ≥10 recommended.
 5. **SLIDING WINDOW STEP SIZE** (CODONS). Must be ≥1.
 6. **NUMBER OF BOOTSTRAP REPLICATES PER WINDOW** (OPTIONAL). Must be ≥2; DEFAULT is 1000.
-7. **MINIMUM NUMBER OF DEFINED CODONS PER CODON POSITION** (OPTIONAL). Must be ≥2; DEFAULT is 6.
+7. **MINIMUM NUMBER OF DEFINED CODONS PER CODON POSITION** (OPTIONAL). Must be ≥2; DEFAULT is 6. For **snpgenie.pl** results, a minimum read depth of 100 is assumed at all sites; it is incumbent on the user to check for sufficient coverage in their data, and to filter variants for false positives.
 8. **MULTIPLE HITS CORRECTION** (OPTIONAL). Must be "NONE" or "JC" (Jukes-Cantor); DEFAULT=NONE.
 9. **NUMBER OF CPUS** (OPTIONAL). Must be ≥1; DEFAULT=1.
 10. **STRING TO PREPEND TO OUTPUT LINES** (OPTIONAL). DEFAULT="" (empty string).

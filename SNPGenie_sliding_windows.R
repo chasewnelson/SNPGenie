@@ -20,22 +20,22 @@ ARGV <- commandArgs(trailingOnly = T)
 kill_script <- FALSE
 
 if(! (length(ARGV) >= 5)) {
-  cat("Got here 1")
+  cat("Error 1")
   kill_script <- TRUE
 } else if(! str_detect(string = ARGV[1], pattern = "\\w")) {
-  cat("Got here 2")
+  cat("Error 2")
   kill_script <- TRUE
 } else if(! (ARGV[2] == "N" || ARGV[2] == "T")) {
-  cat("Got here 3")
+  cat("Error 3")
   kill_script <- TRUE
 } else if(! (ARGV[3] == "S" || ARGV[3] == "N")) {
-  cat("Got here 4")
+  cat("Error 4")
   kill_script <- TRUE
 } else if(! (str_detect(string = ARGV[4], pattern = "\\d") && as.integer(ARGV[4]) >= 2)) {
-  cat("Got here 5")
+  cat("Error 5")
   kill_script <- TRUE
 } else if(! (str_detect(string = ARGV[5], pattern = "\\d") && as.integer(ARGV[5]) >= 1)) {
-  cat("Got here 6")
+  cat("Error 6")
   kill_script <- TRUE
 } # could add more conditions later
 
@@ -93,7 +93,7 @@ if(! is.na(ARGV[10])) {
 }
 
 # EXAMPLES
-#CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SARS-CoV-2-South-Africa/intrahost_sliding_windows/codon_results_byProductCodon_nsp3.tsv"
+#CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SARS-CoV-2-South-Africa/intrahost_sliding_windows_size40/codon_results_byProductCodon_E_WINDOWS_dNdS.tsv"
 #NUMERATOR <- "N"
 #DENOMINATOR <- "S"
 #WINDOW_SIZE <- 10
@@ -106,14 +106,38 @@ if(! is.na(ARGV[10])) {
 
 ### Read in the file
 suppressMessages(codon_data <- read_tsv(file = CODON_RESULTS_FILE))
+
+# If it's a classic snpgenie.pl output, add codon_num and num_defined_seqs columns
+if('N_diffs_vs_ref' %in% names(codon_data)) {
+  min_site <- min(codon_data$site)
+  
+  # number codons and make sure they're all evenly divisible
+  if(any((codon_data$site - min_site + 3) %% 3 > 0)) {
+    cat("\n###############################################################################\n")
+    cat("    ERROR: the input seems to contain codons for more than one gene/product.\n")
+    cat("    If this is not the case, your gene may contain multiple exons: contact author for an update.\n")
+    quit(save = 'no', status = 1, runLast = TRUE)
+  } else {
+    codon_data$codon_num <- (codon_data$site - min_site + 3) / 3 # number the codons
+  }
+  
+  # assume a minimum read depth of 100
+  codon_data$num_defined_seqs <- 100
+  cat("\n###############################################################################\n")
+  cat("ALERT: bootstrapping assumes reliable estimates of N and S differences for all codons.\n")
+  cat("    For snpgenie.pl results, this means there should be sufficient coverage at each site,\n")
+  cat("    and variants should be filtered for false positives. It is incumbent on the user to check these issues.\n")
+}
+
+# Check for unique codon set
 if(length(codon_data$codon_num) != unique(length(codon_data$codon_num))) {
   cat("\n\n### WARNING: there must only be results for ONE GENE PRODUCT PER FILE, i.e., a unique set of codons per frame.:\n")
   quit(save = 'no', status = 1, runLast = TRUE)
 }
 
 ### PRINT ANALYSIS LOG:
-cat("###############################################################################\n")
-cat("OLGenie sliding window analysis LOG\n\n")
+cat("\n###############################################################################\n")
+cat("SNPGenie sliding window analysis LOG\n\n")
 cat("PARAMETERS:\n")
 cat(paste0("(1) CODON_RESULTS_FILE=", CODON_RESULTS_FILE, "\n"))
 cat(paste0("(2) NUMERATOR=", NUMERATOR, "\n"))
