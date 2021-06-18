@@ -341,6 +341,52 @@ For example, to compute *d*<sub>N</sub>/*d*<sub>S</sub> or *π*<sub>N</sub>/*π*
 
 	SNPGenie_sliding_windows.R codon_results_oneProduct.txt N S 40 1 1000 100 NONE 6 > SNPGenie_sliding_windows_oneProduct.out
 
+The **output** of this script provides the following TAB-delimited columns:
+
+* *file*. The name of the input (codon results for one product) file.
+* *product*. The name of the gene product analyzed.
+* *site*. The 1-based coordinate of the first site in the codon, with respect to the analyzed reference sequence.
+* *codon*. The codon (nucleotide triplet) in the reference sequence at this site.
+* *num\_overlap\_ORF\_nts*. The number of additional protein-coding open reading frames (ORFs) provided in the original GTF file that overlap this gene at this site.
+* *N\_diffs*. The mean number of nonsynonymous differences between all pairs of sequences at this codon.
+* *S\_diffs*. The mean number of synonymous differences between all pairs of sequences at this codon.
+* *N\_sites*. The mean number of nonsynonymous sites for all sequences at this codon.
+* *S\_sites*. The mean number of synonymous sites for all sequences at this codon.
+* *N\_sites\_ref*. The number of nonsynonymous sites in the reference sequence at this codon.
+* *S\_sites\_ref*. The number of synonymous sites in the reference sequence at this codon.
+* *N\_diffs\_vs\_ref*. The mean number of nonsynonymous differences for all comparisons between the reference sequence and each sequence at this codon.
+* *S\_diffs\_vs\_ref*. The mean number of synonymous differences for all comparisons between the reference sequence and each sequence at this codon.
+* *gdiv*. Gene diversiy (expected heterozygosity) at this codon.
+* *N\_gdiv*. Gene diversiy (expected heterozygosity) at nonsynonymous sites in this codon.
+* *S\_gdiv*. Gene diversiy (expected heterozygosity) at synonymous sites in this codon.
+* *codon\_num*. The 1-based number of the codon in this gene (CDS record). For genes consisting of more than one segment or exon, numbering is continuous (i.e., not reset to 0 for each segment or exon).
+* *num\_defined\_seqs*. The number of defined (non-gap, non-ambiguous) sequences in the aligned group of sequences at this codon. For within-host (snpgenie.pl) results, this value is automatically set to an acceptable number, because it is assumed the user has assured sufficient coverage
+* *sw\_ratio*. The ratio being estimated, almost always *d*<sub>N</sub>/*d*<sub>S</sub> or *π*<sub>N</sub>/*π*<sub>S</sub> ('dNdS').
+* *sw\_start*. The 1-based coordinate of the first codon in the window, with respect to the full gene product.
+* *sw\_center*. The 1-based coordinate of the center codon ([start+end]/2) in the window, with respect to the full gene product.
+* *sw\_end*. The 1-based coordinate of the last codon in the window, with respect to the full gene product.
+* *sw\_num\_replicates*. The user-defined number of bootstrap replicates performed for the window.
+* *sw\_N\_diffs*. The mean number of nonsynonymous differences between all pairs of sequences in this window.
+* *sw\_S\_diffs*. The mean number of synonymous differences between all pairs of sequences in this window.
+* *sw\_N\_sites*. The mean number of nonsynonymous sites for all sequences in this window.
+* *sw\_S\_sites*. The mean number of synonymous sites for all sequences in this window.
+* *sw\_dN*. Estimated *d*<sub>N</sub> or *π*<sub>N</sub> for this window.
+* *sw\_dS*. Estimated *d*<sub>S</sub> or *π*<sub>S</sub> for this window.
+* *sw\_dNdS*. Estimated *d*<sub>N</sub>/*d*<sub>S</sub> or *π*<sub>N</sub>/*π*<sub>S</sub> for this window.
+* *sw\_dN\_m\_dS*. Estimated *d*<sub>N</sub>-*d*<sub>S</sub> or *π*<sub>N</sub>-*π*<sub>S</sub> for this window.
+* *sw\_boot\_dN\_SE*. Estimated standard error of *d*<sub>N</sub> or *π*<sub>N</sub> for this window, determined using the user-defined number of bootstrap replicates.
+* *sw\_boot\_dS\_SE*. Estimated standard error of *d*<sub>S</sub> or *π*<sub>S</sub> for this window, determined using the user-defined number of bootstrap replicates.
+* *sw\_boot\_dN\_over\_dS\_SE*. Estimated standard error of *d*<sub>N</sub>/*d*<sub>S</sub> or *π*<sub>N</sub>/*π*<sub>S</sub> for this window, determined using the user-defined number of bootstrap replicates. NOT STANDARD.
+* *sw\_boot\_dN\_over\_dS\_P*. P-value of Z-test of null hypothesis that *d*<sub>N</sub>/*d*<sub>S</sub>=1 or *π*<sub>N</sub>/*π*<sub>S</sub>=1 for this window, determined using the user-defined number of bootstrap replicates. NOT STANDARD.
+* *sw\_boot\_dN\_m\_dS\_SE*. Estimated standard error of *d*<sub>N</sub>-*d*<sub>S</sub> or *π*<sub>N</sub>-*π*<sub>S</sub> for this window, determined using the user-defined number of bootstrap replicates. STANDARD.
+* *sw\_boot\_dN\_m\_dS\_P*. P-value of Z-test of null hypothesis that *d*<sub>N</sub>-*d*<sub>S</sub>=0 or *π*<sub>N</sub>-*π*<sub>S</sub>=0 for this window, determined using the user-defined number of bootstrap replicates. STANDARD.
+* *sw\_boot\_dN\_gt\_dS\_count*. Number of bootstrap replicates in which *d*<sub>N</sub>>*d*<sub>S</sub> or *π*<sub>N</sub>>*π*<sub>S</sub> for the window.
+* *sw\_boot\_dN\_eq\_dS\_count*. Number of bootstrap replicates in which *d*<sub>N</sub>=*d*<sub>S</sub> or *π*<sub>N</sub>=*π*<sub>S</sub> for the window.
+* *sw\_boot\_dN\_lt\_dS\_count*. Number of bootstrap replicates in which *d*<sub>N</sub><*d*<sub>S</sub> or *π*<sub>N</sub><*π*<sub>S</sub> for the window.
+* *sw\_ASL\_dN\_gt\_dS\_P*. Permutation test one-sided P-value ('Achieved Significance Level') of null hypothesis that *d*<sub>N</sub>≤*d*<sub>S</sub> or *π*<sub>N</sub>≤*π*<sub>S</sub> for this window, determined using the user-defined number of bootstrap replicates. Only recommended if both *d*<sub>N</sub>>0 (*π*<sub>N</sub>>0) and *d*<sub>S</sub>>0 (*π*<sub>S</sub>>0) for all windows.
+* *sw\_ASL\_dN\_lt\_dS\_P*. Permutation test one-sided P-value ('Achieved Significance Level') of null hypothesis that *d*<sub>N</sub>≥*d*<sub>S</sub> or *π*<sub>N</sub>≥*π*<sub>S</sub> for this window, determined using the user-defined number of bootstrap replicates. Only recommended if both *d*<sub>N</sub>>0 (*π*<sub>N</sub>>0) and *d*<sub>S</sub>>0 (*π*<sub>S</sub>>0) for all windows.
+* *sw\_ASL\_dNdS\_P*. Permutation test two-sided P-value ('Achieved Significance Level') of null hypothesis that *d*<sub>N</sub>≠*d*<sub>S</sub> or *π*<sub>N</sub>≠*π*<sub>S</sub> for this window, determined using the user-defined number of bootstrap replicates. Only recommended if both *d*<sub>N</sub>>0 (*π*<sub>N</sub>>0) and *d*<sub>S</sub>>0 (*π*<sub>S</sub>>0) for all windows.
+
 ## <a name="how-snpgenie-works"></a>How SNPGenie Works
 
 SNPGenie calculates gene and nucleotide diversities for sites in a protein-coding sequence. Nucleotide diversity, *π*, is the average number of nucleotide variants per nucleotide site for all pairwise comparisons. To distinguish between nonsynonymous and synonymous differences and sites, it is necessary to consider the codon context of each nucleotide in a sequence. This is why the user must submit the starting and ending sites of the coding regions in the .gtf file, along with the reference FASTA sequence file, so that the numbers of nonsynonymous and synonymous sites for each codon may be accurately estimated by a derivation of the Nei-Gojobori (1986) method. 
