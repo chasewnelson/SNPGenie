@@ -97,6 +97,7 @@ if(! is.na(ARGV[10])) {
 #CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SARS-CoV-2-South-Africa/intrahost_sliding_windows_size40/codon_results_byProductCodon_E_WINDOWS_dNdS.tsv"
 #CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SNPGenie/Dan/between_group_codon_results.txt" # between-group example failure
 #CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SNPGenie/Dan/between_group_codon_results_oneComp_oneProduct.txt" # between-group example success
+#CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SNPGenie/Chongli/Testing2/PA-X.txt"
 #NUMERATOR <- "N"
 #DENOMINATOR <- "S"
 #WINDOW_SIZE <- 10
@@ -117,9 +118,22 @@ if('N_diffs_vs_ref' %in% names(codon_data)) {
   # number codons and make sure they're all evenly divisible
   if(any((codon_data$site - min_site + 3) %% 3 > 0)) {
     cat("\n###############################################################################\n")
-    cat("    ERROR: the input seems to contain codons for more than one gene/product.\n")
-    cat("    If this is not the case, your gene may contain multiple exons: contact author for an update.\n")
-    quit(save = 'no', status = 1, runLast = TRUE)
+    cat("WARNING: the input seems to contain codons for more than one gene/product, a frameshift,\n")
+    cat("    or multiple exons. Codons will be numbered by their relative starting site position.\n")
+    cat("    The user must ensure that this is appropriate, i.e., that the numerically ordered\n")
+    cat("    starting sites correspond to the numerically ordered codons.\n")
+    #quit(save = 'no', status = 1, runLast = TRUE)
+    
+    # assign codon_num by numeric order of site
+    codon_data <- dplyr::arrange(codon_data, site)
+    
+    if(nrow(codon_data) >= WINDOW_SIZE) {
+      codon_data$codon_num <- 1:nrow(codon_data)
+    } else {
+      cat("\n###############################################################################\n")
+      cat(paste0("TERMINATED: WINDOW_SIZE=", WINDOW_SIZE, " greater than NUM_CODONS=", nrow(codon_data), ".\n"))
+      quit(save = 'no', status = 1, runLast = TRUE)
+    }
   } else {
     codon_data$codon_num <- (codon_data$site - min_site + 3) / 3 # number the codons
   }
@@ -129,14 +143,15 @@ if('N_diffs_vs_ref' %in% names(codon_data)) {
   cat("\n###############################################################################\n")
   cat("ALERT: bootstrapping assumes reliable estimates of N and S differences for all codons.\n")
   cat("    For snpgenie.pl results, this means there should be sufficient coverage at each site,\n")
-  cat("    and variants should be filtered for false positives.\nIt is incumbent on the user to check these issues.\n")
+  cat("    and variants should be filtered for false positives. It is incumbent on the user to\n")
+  cat("    check these issues.\n")
 } 
 
 # If it's a between-group output
 if('num_defined_codons_g1' %in% names(codon_data)) {
   cat("\n###############################################################################\n")
   cat("BETWEEN-GROUP FILE DETECTED. SNPGenie will require both groups to have at least\n")
-  cat("the user-specified number of MIN_DEFINED_CODONS:", MIN_DEFINED_CODONS, ".\n")
+  cat("    the user-specified number of MIN_DEFINED_CODONS:", MIN_DEFINED_CODONS, ".\n")
   
   # Calculate minimum number defined codons for the two groups being compared
   min_num_defined_codons <- apply(data.frame(num_defined_codons_g1 = codon_data$num_defined_codons_g1, num_defined_codons_g2 = codon_data$num_defined_codons_g2),
@@ -154,6 +169,21 @@ if(length(unique(codon_data$product)) != 1 || length(codon_data$codon_num) != le
   cat("### TERMINATED.\n\n")
   quit(save = 'no', status = 1, runLast = TRUE)
 }
+
+if(WINDOW_SIZE < 10) {
+  cat("\n###############################################################################\n")
+  cat(paste0("ALERT: user-specified WINDOW_SIZE=", WINDOW_SIZE, "\n"))
+  cat("    With rare exceptions, windows should be at least 10 codons in width, because\n")
+  cat("    small windows are subject to large stochastic error, especially for synonymous\n")
+  cat("    differences. Bootstrapping will proceed, but it is incumbent on the user to\n")
+  cat("    ensure that the sliding window size is appropriate for the analysis, particularly\n")
+  cat("    for the levels of diversity observed in the dataset.\n")
+  
+  cat("\n###############################################################################\n")
+  cat("WINDOW SIZE RULE OF THUMB: windows should be large enough so that both the\n")
+  cat("    numerator (e.g., dN) and denominator (e.g., dS) are >0 for all windows.\n")
+}
+
 
 ### PRINT ANALYSIS LOG:
 cat("\n###############################################################################\n")
