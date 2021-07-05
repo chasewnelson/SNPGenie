@@ -409,7 +409,7 @@ codon_data_filtered <- filter(codon_data, num_defined_seqs >= MIN_DEFINED_CODONS
 codon_data_filtered <- dplyr::arrange(codon_data_filtered, codon_num)
 
 if(nrow(codon_data_filtered) >= WINDOW_SIZE) {
-  for(i in (min(codon_data_filtered$codon_num)):(max(codon_data_filtered$codon_num) - WINDOW_SIZE + 1)) {
+  for(i in seq(from = min(codon_data_filtered$codon_num), to = (max(codon_data_filtered$codon_num) - WINDOW_SIZE + 1), by = STEP_SIZE)) {
     #for(i in 1:(nrow(codon_data_filtered) - WINDOW_SIZE + 1)) { # each window starting at row 1
     #i <- 1 # 111
     #cat(i, "")
@@ -489,8 +489,8 @@ if(nrow(codon_data_filtered) >= WINDOW_SIZE) {
       codon_data[codon_data$codon_num == lowest_codon_num, ]$sw_end <- highest_codon_num
       codon_data[codon_data$codon_num == lowest_codon_num, ]$sw_num_replicates <- num_replicates
       codon_data[codon_data$codon_num == lowest_codon_num, ]$sw_N_diffs <- sum(unname(unlist(window_codon_data[ , paste0(NUMERATOR, '_diffs')])), na.rm = TRUE)
-      codon_data[codon_data$codon_num == lowest_codon_num, ]$sw_N_sites <- sum(unname(unlist(window_codon_data[ , paste0(DENOMINATOR, '_diffs')])), na.rm = TRUE)
-      codon_data[codon_data$codon_num == lowest_codon_num, ]$sw_S_diffs <- sum(unname(unlist(window_codon_data[ , paste0(NUMERATOR, '_sites')])), na.rm = TRUE)
+      codon_data[codon_data$codon_num == lowest_codon_num, ]$sw_S_diffs <- sum(unname(unlist(window_codon_data[ , paste0(DENOMINATOR, '_diffs')])), na.rm = TRUE)
+      codon_data[codon_data$codon_num == lowest_codon_num, ]$sw_N_sites <- sum(unname(unlist(window_codon_data[ , paste0(NUMERATOR, '_sites')])), na.rm = TRUE)
       codon_data[codon_data$codon_num == lowest_codon_num, ]$sw_S_sites <- sum(unname(unlist(window_codon_data[ , paste0(DENOMINATOR, '_sites')])), na.rm = TRUE)
       codon_data[codon_data$codon_num == lowest_codon_num, ]$sw_dN <- dN
       codon_data[codon_data$codon_num == lowest_codon_num, ]$sw_dS <- dS
