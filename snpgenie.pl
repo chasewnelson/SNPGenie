@@ -8478,13 +8478,13 @@ sub get_product_names_from_gtf {
 				# FILE | PRODUCT | SITE | CODON | WARNING
 				
 				print ERROR_FILE "$cds_file\tN/A\tN/A\t".
-					"CDS annotation(s) does not have a gene_id. SNPGenie terminated.\n";
+					"CDS annotation(s) gene_id is lacking or contains invalid characters (e.g., */^). SNPGenie terminated.\n";
 				close ERROR_FILE;
 				
 				#unlink $curr_snp_report_filename;
 				
-				die "\n\n## WARNING: CDS annotation(s) in $cds_file does not have a ".
-					"gene_id. SNPGenie terminated.\n\n";
+				die "\n\n## WARNING: CDS annotation(s) gene_id is lacking or contains invalid characters (e.g., */^) ".
+					"in $cds_file. SNPGenie terminated.\n\n";
 			}
 		}
 	}
