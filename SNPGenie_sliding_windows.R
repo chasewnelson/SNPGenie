@@ -9,6 +9,11 @@ suppressMessages(library(package = stringr))
 suppressMessages(library(package = dplyr))
 suppressMessages(library(package = boot))
 
+# library(package = readr)
+# library(package = stringr)
+# library(package = dplyr)
+# library(package = boot)
+
 # At command line, call something like:
 # SNPGenie_sliding_windows.R codon_results_oneProduct.tsv N S 40 1 1000 6 NONE 6 > SNPGenie_sliding_windows_oneProduct.out
 
@@ -94,19 +99,43 @@ if(! is.na(ARGV[10])) {
 }
 
 # EXAMPLES
-#CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SARS-CoV-2-South-Africa/intrahost_sliding_windows_size40/codon_results_byProductCodon_E_WINDOWS_dNdS.tsv"
-#CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SNPGenie/Dan/between_group_codon_results.txt" # between-group example failure
-#CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SNPGenie/Dan/between_group_codon_results_oneComp_oneProduct.txt" # between-group example success
-#CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SNPGenie/Chongli/Testing2/PA-X.txt"
-#NUMERATOR <- "N"
-#DENOMINATOR <- "S"
-#WINDOW_SIZE <- 10
-#STEP_SIZE <- 1
-#MIN_DEFINED_CODONS <- 90 # 100 # 2
-#NBOOTSTRAPS <- 100
-#CORRECTION <- 'NONE'
-#NCPUS <- 6
-#PREPEND_TO_OUTPUT <- ''
+# CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SARS-CoV-2-South-Africa/intrahost_sliding_windows_size40/codon_results_byProductCodon_E_WINDOWS_dNdS.tsv"
+# CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SNPGenie/Dan/between_group_codon_results.txt" # between-group example failure
+# CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SNPGenie/Dan/between_group_codon_results_oneComp_oneProduct.txt" # between-group example success
+# CODON_RESULTS_FILE <- "/Users/cwnelson88/Desktop/SCIENCE/SNPGenie/Chongli/Testing2/PA-X.txt"
+# NUMERATOR <- "N"
+# DENOMINATOR <- "S"
+# WINDOW_SIZE <- 10
+# STEP_SIZE <- 1
+# NBOOTSTRAPS <- 100
+# MIN_DEFINED_CODONS <- 90 # 100 # 2
+# CORRECTION <- 'NONE'
+# NCPUS <- 6
+# PREPEND_TO_OUTPUT <- ''
+
+# # EXAMPLES 2
+# CODON_RESULTS_FILE <- "~/Desktop/NCI/research/HPV16/IPS_mincov10_fullmask_analysis/lineages/A/within_group_codon_results_E6.txt"
+# NUMERATOR <- "N"
+# DENOMINATOR <- "S"
+# WINDOW_SIZE <- 9
+# STEP_SIZE <- 1
+# NBOOTSTRAPS <- 100
+# MIN_DEFINED_CODONS <- 10
+# CORRECTION <- 'NONE'
+# NCPUS <- 4
+# PREPEND_TO_OUTPUT <- ''
+
+# # EXAMPLES 3
+# CODON_RESULTS_FILE <- "~/Desktop/SCIENCE/SNPGenie/Yue/between_group_codon_results_onegene.txt"
+# NUMERATOR <- "N"
+# DENOMINATOR <- "S"
+# WINDOW_SIZE <- 100
+# STEP_SIZE <- 1
+# NBOOTSTRAPS <- 1000
+# MIN_DEFINED_CODONS <- 10  # 40
+# CORRECTION <- 'NONE'
+# NCPUS <- 6
+# PREPEND_TO_OUTPUT <- ''
 
 ### Read in the file
 suppressMessages(codon_data <- read_tsv(file = CODON_RESULTS_FILE))
@@ -159,7 +188,7 @@ if('num_defined_codons_g1' %in% names(codon_data)) {
   codon_data$num_defined_seqs <- min_num_defined_codons
   
   # Reformat the codon_num values for consistency
-  codon_data$codon_num <- as.integer(str_replace(string = codon_data$codon_num, pattern = "codon_", replacement = ""))
+  codon_data$codon_num <- as.integer(str_replace(string = codon_data$codon, pattern = "codon_", replacement = ""))
 }
 
 # Check for unique codon set
@@ -210,7 +239,13 @@ cat(paste0("(10) PREPEND_TO_OUTPUT=", PREPEND_TO_OUTPUT, "\n\n"))
 ############################################################################################################
 # BOOTSTRAP FUNCTION (dN - dS) for CODON UNIT, NO CORRECTION
 dNdS_diff_boot_fun <- function(codon_results, numerator, denominator, num_replicates, num_cpus) {
-  
+  # # DUMMY
+  #  codon_results <- codon_data_filtered
+  #  numerator <- NUMERATOR
+  #  denominator <- DENOMINATOR
+  #  num_replicates <- NBOOTSTRAPS
+  #  num_cpus <- NCPUS
+   
   # Function for dN
   dN_function <- function(D, indices) {
     dN <- sum(D[indices, paste0(numerator, "_diffs")], na.rm = TRUE) / sum(D[indices, paste0(numerator, "_sites")], na.rm = TRUE)
@@ -240,8 +275,8 @@ dNdS_diff_boot_fun <- function(codon_results, numerator, denominator, num_replic
   }
   
   # CREATE FUNCTION FOR dN/dS TO CALCULATE ITS SE
-  (dN <- sum(as.vector(codon_results[ , paste0(numerator, "_diffs")]), na.rm = TRUE) / sum(as.vector(codon_results[ , paste0(numerator, "_sites")]), na.rm = TRUE))
-  (dS <- sum(as.vector(codon_results[ , paste0(denominator, "_diffs")]), na.rm = TRUE) / sum(as.vector(codon_results[ , paste0(denominator, "_sites")]), na.rm = TRUE))
+  (dN <- sum(codon_results[ , paste0(numerator, "_diffs")], na.rm = TRUE) / sum(codon_results[ , paste0(numerator, "_sites")], na.rm = TRUE))
+  (dS <- sum(codon_results[ , paste0(denominator, "_diffs")], na.rm = TRUE) / sum(codon_results[ , paste0(denominator, "_sites")], na.rm = TRUE))
   (dNdS <- dN / dS)
   
   # Run the BOOTSTRAPS
@@ -322,9 +357,9 @@ dNdS_diff_boot_fun_JC <- function(codon_results, numerator, denominator, num_rep
   }
   
   # CREATE FUNCTION FOR dN/dS TO CALCULATE ITS SE
-  dN <- sum(as.vector(codon_results[ , paste0(numerator, "_diffs")]), na.rm = TRUE) / sum(as.vector(codon_results[ , paste0(numerator, "_sites")]), na.rm = TRUE)
+  dN <- sum(codon_results[ , paste0(numerator, "_diffs")], na.rm = TRUE) / sum(codon_results[ , paste0(numerator, "_sites")], na.rm = TRUE)
   dN <- -3/4 * log(1 - (4/3) * dN)
-  dS <- sum(as.vector(codon_results[ , paste0(denominator, "_diffs")]), na.rm = TRUE) / sum(as.vector(codon_results[ , paste0(denominator, "_sites")]), na.rm = TRUE)
+  dS <- sum(codon_results[ , paste0(denominator, "_diffs")], na.rm = TRUE) / sum(codon_results[ , paste0(denominator, "_sites")], na.rm = TRUE)
   dS <- -3/4 * log(1 - (4/3) * dS)
   dNdS <- dN / dS
   
